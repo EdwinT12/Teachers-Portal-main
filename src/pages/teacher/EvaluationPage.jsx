@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router';
 import { AuthContext } from '../../context/AuthContext';
 import supabase from '../../utils/supabase';
 import { batchSyncEvaluations } from '../../utils/googleSheetsEvaluationAPI';
-import toast from 'react-hot-toast';
+import toast from 'react-hot-toast'; 
 
 const EvaluationPage = () => {
   const { classId } = useParams();
