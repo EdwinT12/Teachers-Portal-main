@@ -5,7 +5,7 @@ import { Toaster } from "react-hot-toast";
 
 import "./index.css";
 import App from "./App.jsx";
-import AppBar from "./containers/AppBar";
+import AppBar from "./containers/AppBar"; 
 import AuthProvider from "./context/AuthContext.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import RoleBasedRoute from "./components/RoleBasedRoute.jsx"; 
