@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router';
-import { AuthContext } from '../../context/AuthContext'; 
+import { useParams, useNavigate } from 'react-router'; 
+import { AuthContext } from '../../context/AuthContext';  
 import supabase from '../../utils/supabase';
 import { batchSyncAttendance } from '../../utils/googleSheetsAPI';
 import toast from 'react-hot-toast';  
