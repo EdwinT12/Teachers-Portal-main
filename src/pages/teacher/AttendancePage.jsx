@@ -17,7 +17,8 @@ import {
   RefreshCw,
   Check,
   Loader,
-  HelpCircle
+  HelpCircle,
+  Church
 } from 'lucide-react';
 
 const AttendancePage = () => {
@@ -30,23 +31,18 @@ const AttendancePage = () => {
     const date = new Date(dateString + 'T12:00:00');
     const dayOfWeek = date.getDay();
     
-    // If already Sunday, return as is
     if (dayOfWeek === 0) {
       return dateString;
     }
     
-    // Calculate days to nearest Sunday
     const daysToPrevSunday = dayOfWeek;
     const daysToNextSunday = 7 - dayOfWeek;
     
-    // Choose the nearest Sunday (prefer previous if equal distance)
     let nearestSunday;
     if (daysToPrevSunday <= daysToNextSunday) {
-      // Go to previous Sunday
       nearestSunday = new Date(date);
       nearestSunday.setDate(date.getDate() - daysToPrevSunday);
     } else {
-      // Go to next Sunday
       nearestSunday = new Date(date);
       nearestSunday.setDate(date.getDate() + daysToNextSunday);
     }
@@ -220,6 +216,7 @@ const AttendancePage = () => {
     const configs = {
       P: { label: 'Present', icon: CheckCircle2, color: '#10b981', bg: '#d1fae5', border: '#6ee7b7' },
       L: { label: 'Late', icon: Clock, color: '#f59e0b', bg: '#fef3c7', border: '#fcd34d' },
+      UM: { label: 'Unattended Mass', icon: Church, color: '#8b5cf6', bg: '#ede9fe', border: '#c4b5fd' },
       E: { label: 'Excused', icon: AlertCircle, color: '#3b82f6', bg: '#dbeafe', border: '#93c5fd' },
       U: { label: 'Unexcused', icon: XCircle, color: '#ef4444', bg: '#fee2e2', border: '#fca5a5' }
     };
@@ -269,8 +266,9 @@ const AttendancePage = () => {
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      padding: isMobile ? '20px 16px 40px' : '40px 24px 60px',
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+      padding: isMobile ? '16px 12px 40px' : '40px 24px 60px',
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+      overflowX: 'hidden'
     }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -481,10 +479,10 @@ const AttendancePage = () => {
 
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(4, 1fr)',
-                  gap: isMobile ? '8px' : '10px'
+                  gridTemplateColumns: 'repeat(5, 1fr)',
+                  gap: isMobile ? '6px' : '8px'
                 }}>
-                  {['P', 'L', 'E', 'U'].map((status) => {
+                  {['P', 'L', 'UM', 'E', 'U'].map((status) => {
                     const config = getStatusConfig(status);
                     const isSelected = currentStatus === status;
                     const Icon = config.icon;
@@ -498,22 +496,22 @@ const AttendancePage = () => {
                           background: isSelected ? config.color : 'white',
                           border: `2px solid ${isSelected ? config.color : '#e2e8f0'}`,
                           borderRadius: '12px',
-                          padding: isMobile ? '12px 8px' : '14px 12px',
+                          padding: isMobile ? '10px 6px' : '12px 8px',
                           cursor: 'pointer',
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
-                          gap: '6px',
+                          gap: '4px',
                           transition: 'all 0.2s ease'
                         }}
                       >
                         <Icon style={{
-                          width: isMobile ? '20px' : '22px',
-                          height: isMobile ? '20px' : '22px',
+                          width: isMobile ? '18px' : '20px',
+                          height: isMobile ? '18px' : '20px',
                           color: isSelected ? 'white' : config.color
                         }} />
                         <span style={{
-                          fontSize: isMobile ? '11px' : '12px',
+                          fontSize: isMobile ? '10px' : '11px',
                           fontWeight: '700',
                           color: isSelected ? 'white' : config.color
                         }}>
@@ -640,7 +638,7 @@ const AttendancePage = () => {
               gridTemplateColumns: '1fr',
               gap: '12px'
             }}>
-              {['P', 'L', 'E', 'U'].map((status) => {
+              {['P', 'L', 'UM', 'E', 'U'].map((status) => {
                 const config = getStatusConfig(status);
                 const Icon = config.icon;
                 return (

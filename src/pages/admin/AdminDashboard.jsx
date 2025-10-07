@@ -3,6 +3,7 @@ import { AuthContext } from '../../context/AuthContext';
 import supabase from '../../utils/supabase';
 import toast from 'react-hot-toast';
 import BulkStudentImport from '../../components/BulkStudentImport';
+import UnifiedEvaluationSetup from '../../components/UnifiedEvaluationSetup';
 
 const AdminDashboard = () => {
   const { user } = useContext(AuthContext);
@@ -554,42 +555,74 @@ const AdminDashboard = () => {
           color: '#666',
           margin: 0
         }}>
-          Manage teacher assignments, classes, and import students
+          Manage teachers, import students, and configure evaluation system
         </p>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs - ONLY 3 TABS */}
       <div style={{
         display: 'flex',
         gap: '8px',
         marginBottom: '32px',
-        borderBottom: '2px solid #e5e7eb'
+        borderBottom: '2px solid #e5e7eb',
+        flexWrap: 'wrap'
       }}>
-        {['overview', 'import'].map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: activeTab === tab ? '#4CAF50' : 'transparent',
-              color: activeTab === tab ? 'white' : '#666',
-              border: 'none',
-              borderRadius: '8px 8px 0 0',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: '600',
-              textTransform: 'capitalize',
-              transition: 'all 0.2s'
-            }}
-          >
-            {tab === 'import' ? '📥 Import Students' : '📊 Overview'}
-          </button>
-        ))}
+        <button
+          onClick={() => setActiveTab('overview')}
+          style={{
+            padding: '12px 24px',
+            backgroundColor: activeTab === 'overview' ? '#4CAF50' : 'transparent',
+            color: activeTab === 'overview' ? 'white' : '#666',
+            border: 'none',
+            borderRadius: '8px 8px 0 0',
+            cursor: 'pointer',
+            fontSize: '15px',
+            fontWeight: '600',
+            transition: 'all 0.2s'
+          }}
+        >
+          📊 Overview
+        </button>
+        
+        <button
+          onClick={() => setActiveTab('import-attendance')}
+          style={{
+            padding: '12px 24px',
+            backgroundColor: activeTab === 'import-attendance' ? '#4CAF50' : 'transparent',
+            color: activeTab === 'import-attendance' ? 'white' : '#666',
+            border: 'none',
+            borderRadius: '8px 8px 0 0',
+            cursor: 'pointer',
+            fontSize: '15px',
+            fontWeight: '600',
+            transition: 'all 0.2s'
+          }}
+        >
+          📥 Attendance Students
+        </button>
+        
+        <button
+          onClick={() => setActiveTab('evaluation-setup')}
+          style={{
+            padding: '12px 24px',
+            backgroundColor: activeTab === 'evaluation-setup' ? '#4CAF50' : 'transparent',
+            color: activeTab === 'evaluation-setup' ? 'white' : '#666',
+            border: 'none',
+            borderRadius: '8px 8px 0 0',
+            cursor: 'pointer',
+            fontSize: '15px',
+            fontWeight: '600',
+            transition: 'all 0.2s'
+          }}
+        >
+          ⭐ Evaluation Setup
+        </button>
       </div>
 
       {/* Tab Content */}
       {activeTab === 'overview' && renderOverviewTab()}
-      {activeTab === 'import' && <BulkStudentImport />}
+      {activeTab === 'import-attendance' && <BulkStudentImport />}
+      {activeTab === 'evaluation-setup' && <UnifiedEvaluationSetup />}
     </div>
   );
 };

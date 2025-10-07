@@ -18,6 +18,8 @@ import GoogleAuthLanding from "./pages/auth/GoogleAuthLanding.jsx";
 import TeacherDashboard from "./pages/teacher/TeacherDashboard.jsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
 import AttendancePage from "./pages/teacher/AttendancePage.jsx";
+import EvaluationPage from "./pages/teacher/EvaluationPage.jsx";
+import EvaluationDiagnostic from "./components/EvaluationDiagnostic.jsx";
 
 createRoot(document.getElementById("root")).render(
   <div
@@ -67,6 +69,24 @@ createRoot(document.getElementById("root")).render(
                   </RoleBasedRoute>
                 </ProtectedRoute>
               } />
+
+              // Add this route inside your Routes component:
+              <Route path="/teacher/evaluation/:classId?" element={
+                <ProtectedRoute>
+                  <RoleBasedRoute>
+                    <EvaluationPage />
+                  </RoleBasedRoute>
+                </ProtectedRoute>
+              } />
+
+              // Add this route:
+<Route path="/admin/diagnostic" element={
+  <ProtectedRoute>
+    <RoleBasedRoute>
+      <EvaluationDiagnostic />
+    </RoleBasedRoute>
+  </ProtectedRoute>
+} />
               
               <Route path="/admin" element={
                 <ProtectedRoute>

@@ -60,6 +60,14 @@ const TeacherDashboard = () => {
     navigate(`/teacher/attendance/${profile.default_class_id}`);
   };
 
+  const handleEvaluation = () => {
+    if (!profile?.default_class_id) {
+      toast.error('You have not been assigned to a class yet. Please contact an administrator.');
+      return;
+    }
+    navigate(`/teacher/evaluation/${profile.default_class_id}`);
+  };
+
   const handlePublishResults = () => {
     if (!profile?.default_class_id) {
       toast.error('You have not been assigned to a class yet. Please contact an administrator.');
@@ -190,6 +198,40 @@ const TeacherDashboard = () => {
         >
           <span style={{ fontSize: '24px' }}>📋</span>
           Take Attendance
+        </button>
+
+        <button
+          onClick={handleEvaluation}
+          disabled={!profile?.default_class_id}
+          style={{
+            padding: '24px 32px',
+            backgroundColor: profile?.default_class_id ? '#9C27B0' : '#ccc',
+            color: 'white',
+            border: 'none',
+            borderRadius: '12px',
+            cursor: profile?.default_class_id ? 'pointer' : 'not-allowed',
+            fontSize: '20px',
+            fontWeight: '600',
+            boxShadow: profile?.default_class_id ? '0 4px 12px rgba(156, 39, 176, 0.3)' : 'none',
+            transition: 'all 0.3s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px'
+          }}
+          onMouseEnter={(e) => {
+            if (profile?.default_class_id) {
+              e.target.style.transform = 'translateY(-2px)';
+              e.target.style.boxShadow = '0 6px 16px rgba(156, 39, 176, 0.4)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = 'translateY(0)';
+            e.target.style.boxShadow = profile?.default_class_id ? '0 4px 12px rgba(156, 39, 176, 0.3)' : 'none';
+          }}
+        >
+          <span style={{ fontSize: '24px' }}>⭐</span>
+          Lesson Evaluation
         </button>
 
         <button
