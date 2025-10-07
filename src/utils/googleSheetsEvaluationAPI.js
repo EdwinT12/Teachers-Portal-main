@@ -12,7 +12,7 @@ export const getEvaluationColumn = (date, category) => {
   // Column B: CLASS
   // Column C: Student names (Johny Joisy, Jose Edwin, etc.)
   // Column D: Mid Term Total
-  // Column E: Final Term Total
+  // Column E: Final Term Total 
   // Column F onwards: Date columns starting with 09/07/2025
   // Each date has 4 sub-columns for D, B, HW, AP
   
