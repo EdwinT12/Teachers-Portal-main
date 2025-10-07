@@ -4,7 +4,7 @@ import { AuthContext } from '../../context/AuthContext';
 import supabase from '../../utils/supabase';
 import { batchSyncAttendance } from '../../utils/googleSheetsAPI';
 import toast from 'react-hot-toast';  
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion'; 
 import { 
   Calendar, 
   Users, 
