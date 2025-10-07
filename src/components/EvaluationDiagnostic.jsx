@@ -2,7 +2,7 @@ import { useContext, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import supabase from '../utils/supabase';
 import { getEvaluationColumn } from '../utils/googleSheetsEvaluationAPI';
-import { getColumnLetter } from '../utils/googleSheetsAPI';
+import { getColumnLetter } from '../utils/googleSheetsAPI'; 
 import toast from 'react-hot-toast';
 
 const EvaluationDiagnostic = () => {
