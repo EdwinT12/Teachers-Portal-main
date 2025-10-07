@@ -8,7 +8,7 @@ import App from "./App.jsx";
 import AppBar from "./containers/AppBar";
 import AuthProvider from "./context/AuthContext.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
-import RoleBasedRoute from "./components/RoleBasedRoute.jsx";
+import RoleBasedRoute from "./components/RoleBasedRoute.jsx"; 
 import githubLogo from "/github.svg";
 
 // Auth pages
