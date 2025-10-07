@@ -5,7 +5,7 @@ import supabase from '../../utils/supabase';
 import toast from 'react-hot-toast';
 
 const TeacherDashboard = () => {
-  const { user } = useContext(AuthContext);
+  const { user } = useContext(AuthContext); 
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(true);
