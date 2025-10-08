@@ -3,7 +3,22 @@ import { useParams, useNavigate } from 'react-router';
 import { AuthContext } from '../../context/AuthContext';
 import supabase from '../../utils/supabase';
 import { batchSyncEvaluations } from '../../utils/googleSheetsEvaluationAPI';
-import toast from 'react-hot-toast'; 
+import toast from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  ArrowLeft,
+  Save,
+  Check,
+  Loader,
+  Calendar,
+  Users,
+  TrendingUp,
+  Award,
+  BookOpen,
+  Heart,
+  Zap,
+  Star
+} from 'lucide-react';
 
 const EvaluationPage = () => {
   const { classId } = useParams();
@@ -16,19 +31,27 @@ const EvaluationPage = () => {
   const [evalStudents, setEvalStudents] = useState([]);
   const [evaluations, setEvaluations] = useState({});
   const [selectedDate, setSelectedDate] = useState('2025-09-07');
+  const [isMobile, setIsMobile] = useState(false);
 
   const categories = [
-    { key: 'D', label: 'Discipline', color: '#2196F3' },
-    { key: 'B', label: 'Behaviour', color: '#4CAF50' },
-    { key: 'HW', label: 'Homework', color: '#FF9800' },
-    { key: 'AP', label: 'Active Participation', color: '#9C27B0' }
+    { key: 'D', label: 'Discipline', color: '#3b82f6', icon: Award },
+    { key: 'B', label: 'Behaviour', color: '#10b981', icon: Heart },
+    { key: 'HW', label: 'Homework', color: '#f59e0b', icon: BookOpen },
+    { key: 'AP', label: 'Active Participation', color: '#8b5cf6', icon: Zap }
   ];
 
   const ratings = [
-    { value: 'E', label: 'Excellent', color: '#4CAF50' },
-    { value: 'G', label: 'Good', color: '#2196F3' },
-    { value: 'I', label: 'Improving', color: '#FF9800' }
+    { value: 'E', label: 'Excellent', color: '#10b981', bg: '#d1fae5' },
+    { value: 'G', label: 'Good', color: '#3b82f6', bg: '#dbeafe' },
+    { value: 'I', label: 'Improving', color: '#f59e0b', bg: '#fef3c7' }
   ];
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     if (classId && user) {
@@ -41,7 +64,6 @@ const EvaluationPage = () => {
   const loadClassAndStudents = async () => {
     setLoading(true);
     try {
-      // Load class info
       const { data: classData, error: classError } = await supabase
         .from('classes')
         .select('*')
@@ -51,7 +73,6 @@ const EvaluationPage = () => {
       if (classError) throw classError;
       setClassInfo(classData);
 
-      // Load eval_students (NOT regular students)
       const { data: evalStudentsData, error: studentsError } = await supabase
         .from('eval_students')
         .select('*')
@@ -61,7 +82,6 @@ const EvaluationPage = () => {
       if (studentsError) throw studentsError;
       setEvalStudents(evalStudentsData);
 
-      // Load existing evaluations for selected date
       const { data: evaluationsData, error: evaluationsError } = await supabase
         .from('lesson_evaluations')
         .select('eval_student_id, category, rating, synced_to_sheets')
@@ -72,7 +92,6 @@ const EvaluationPage = () => {
         throw evaluationsError;
       }
 
-      // Convert to nested map: { evalStudentId: { category: { rating, synced } } }
       const evaluationsMap = {};
       if (evaluationsData) {
         evaluationsData.forEach(record => {
@@ -110,7 +129,6 @@ const EvaluationPage = () => {
     try {
       const records = [];
       
-      // Prepare evaluation records
       for (const evalStudent of evalStudents) {
         const studentEvals = evaluations[evalStudent.id];
         if (studentEvals) {
@@ -137,9 +155,6 @@ const EvaluationPage = () => {
         return;
       }
 
-      console.log('Saving records:', records);
-
-      // Save to Supabase (upsert to handle updates)
       const { data: savedRecords, error: saveError } = await supabase
         .from('lesson_evaluations')
         .upsert(records, {
@@ -148,19 +163,14 @@ const EvaluationPage = () => {
         })
         .select();
 
-      if (saveError) {
-        console.error('Supabase save error:', saveError);
-        throw saveError;
-      }
+      if (saveError) throw saveError;
 
-      toast.success('Evaluations saved to database');
+      toast.success('Evaluations saved!');
 
-      // Sync to Google Sheets
       try {
         await batchSyncEvaluations(savedRecords);
-        toast.success('Successfully synced to Google Sheets!');
+        toast.success('Synced to Google Sheets!');
         
-        // Update local state to show synced status
         const updatedEvaluations = { ...evaluations };
         savedRecords.forEach(record => {
           if (updatedEvaluations[record.eval_student_id]?.[record.category]) {
@@ -171,7 +181,7 @@ const EvaluationPage = () => {
         
       } catch (syncError) {
         console.error('Sync error:', syncError);
-        toast.error('Saved locally but failed to sync to Google Sheets. Will retry later.');
+        toast.error('Saved locally. Sync failed.');
       }
 
     } catch (error) {
@@ -181,34 +191,6 @@ const EvaluationPage = () => {
       setSaving(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '60vh'
-      }}>
-        <div style={{
-          width: '50px',
-          height: '50px',
-          border: '3px solid #f3f3f3',
-          borderTop: '3px solid #4CAF50',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        <style>
-          {`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}
-        </style>
-      </div>
-    );
-  }
 
   const getTotalEvaluated = () => {
     let count = 0;
@@ -230,348 +212,456 @@ const EvaluationPage = () => {
     return count;
   };
 
+  const stats = {
+    total: evalStudents.length,
+    evaluated: getTotalEvaluated(),
+    synced: getTotalSynced(),
+    progress: evalStudents.length > 0 ? Math.round((getTotalEvaluated() / (evalStudents.length * 4)) * 100) : 0
+  };
+
+  if (loading) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+        }}
+      >
+        <div style={{ textAlign: 'center', color: 'white' }}>
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            style={{
+              width: '60px',
+              height: '60px',
+              border: '4px solid rgba(255,255,255,0.3)',
+              borderTop: '4px solid white',
+              borderRadius: '50%',
+              margin: '0 auto 20px'
+            }}
+          />
+          <h3 style={{ fontSize: '20px', fontWeight: '600', margin: 0 }}>Loading Evaluations...</h3>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
     <div style={{
-      maxWidth: '1400px',
-      margin: '0 auto',
-      padding: '20px'
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      padding: isMobile ? '16px 12px 40px' : '40px 32px 60px',
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+      overflowX: 'hidden',
+      width: '100%',
+      boxSizing: 'border-box'
     }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        * { box-sizing: border-box; }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+
       {/* Header */}
-      <div style={{
-        backgroundColor: 'white',
-        padding: '24px',
-        borderRadius: '10px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-        marginBottom: '20px'
-      }}>
+      <motion.div
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        style={{
+          maxWidth: isMobile ? '100%' : '1400px',
+          width: '100%',
+          margin: '0 auto 24px',
+          background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '24px',
+          padding: isMobile ? '20px' : '28px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.2)'
+        }}
+      >
         <div style={{
           display: 'flex',
-          justifyContent: 'space-between',
           alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '16px'
-        }}>
-          <div>
-            <h1 style={{
-              margin: '0 0 8px 0',
-              fontSize: '28px',
-              color: '#333'
-            }}>
-              {classInfo?.name} - Lesson Evaluation
-            </h1>
-            <p style={{
-              margin: 0,
-              color: '#666',
-              fontSize: '14px'
-            }}>
-              Evaluate students on Discipline, Behaviour, Homework & Active Participation
-            </p>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              max="2026-06-30"
-              min="2025-09-01"
-              style={{
-                padding: '10px 14px',
-                borderRadius: '6px',
-                border: '2px solid #ddd',
-                fontSize: '14px',
-                cursor: 'pointer'
-              }}
-            />
-            
-            <button
-              onClick={() => navigate('/teacher')}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: '#6c757d',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}
-            >
-              Back to Dashboard
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Evaluation Table */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '10px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-        overflow: 'hidden'
-      }}>
-        <div style={{
-          padding: '20px',
-          borderBottom: '1px solid #e5e7eb'
-        }}>
-          <h2 style={{
-            margin: '0 0 8px 0',
-            fontSize: '20px',
-            color: '#333'
-          }}>
-            Student Evaluation - {new Date(selectedDate).toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}
-          </h2>
-        </div>
-
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            minWidth: '1000px'
-          }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f8f9fa' }}>
-                <th style={{
-                  padding: '16px',
-                  textAlign: 'left',
-                  fontWeight: '600',
-                  color: '#333',
-                  fontSize: '14px',
-                  borderBottom: '2px solid #dee2e6',
-                  position: 'sticky',
-                  left: 0,
-                  backgroundColor: '#f8f9fa',
-                  zIndex: 10
-                }}>
-                  #
-                </th>
-                <th style={{
-                  padding: '16px',
-                  textAlign: 'left',
-                  fontWeight: '600',
-                  color: '#333',
-                  fontSize: '14px',
-                  borderBottom: '2px solid #dee2e6',
-                  position: 'sticky',
-                  left: '60px',
-                  backgroundColor: '#f8f9fa',
-                  zIndex: 10,
-                  minWidth: '180px'
-                }}>
-                  Student Name
-                </th>
-                {categories.map(cat => (
-                  <th key={cat.key} style={{
-                    padding: '16px',
-                    textAlign: 'center',
-                    fontWeight: '600',
-                    color: '#333',
-                    fontSize: '14px',
-                    borderBottom: '2px solid #dee2e6',
-                    backgroundColor: `${cat.color}15`
-                  }}>
-                    <div style={{ marginBottom: '4px' }}>{cat.label}</div>
-                    <div style={{ fontSize: '12px', fontWeight: '500', color: '#666' }}>({cat.key})</div>
-                  </th>
-                ))}
-                <th style={{
-                  padding: '16px',
-                  textAlign: 'center',
-                  fontWeight: '600',
-                  color: '#333',
-                  fontSize: '14px',
-                  borderBottom: '2px solid #dee2e6'
-                }}>
-                  Synced
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {evalStudents.map((student, index) => (
-                <tr
-                  key={student.id}
-                  style={{
-                    backgroundColor: index % 2 === 0 ? 'white' : '#f8f9fa'
-                  }}
-                >
-                  <td style={{
-                    padding: '16px',
-                    borderBottom: '1px solid #dee2e6',
-                    fontSize: '14px',
-                    color: '#666',
-                    position: 'sticky',
-                    left: 0,
-                    backgroundColor: index % 2 === 0 ? 'white' : '#f8f9fa',
-                    zIndex: 5
-                  }}>
-                    {index + 1}
-                  </td>
-                  <td style={{
-                    padding: '16px',
-                    borderBottom: '1px solid #dee2e6',
-                    fontSize: '14px',
-                    color: '#333',
-                    fontWeight: '500',
-                    position: 'sticky',
-                    left: '60px',
-                    backgroundColor: index % 2 === 0 ? 'white' : '#f8f9fa',
-                    zIndex: 5
-                  }}>
-                    {student.student_name}
-                  </td>
-                  {categories.map(category => (
-                    <td key={category.key} style={{
-                      padding: '8px',
-                      borderBottom: '1px solid #dee2e6',
-                      textAlign: 'center',
-                      backgroundColor: `${category.color}05`
-                    }}>
-                      <div style={{
-                        display: 'flex',
-                        gap: '4px',
-                        justifyContent: 'center'
-                      }}>
-                        {ratings.map(rating => (
-                          <button
-                            key={rating.value}
-                            onClick={() => handleEvaluationChange(student.id, category.key, rating.value)}
-                            style={{
-                              padding: '6px 12px',
-                              border: '2px solid',
-                              borderColor: evaluations[student.id]?.[category.key]?.rating === rating.value ? 
-                                rating.color : '#ddd',
-                              backgroundColor: evaluations[student.id]?.[category.key]?.rating === rating.value ? 
-                                rating.color : 'white',
-                              color: evaluations[student.id]?.[category.key]?.rating === rating.value ? 
-                                'white' : '#666',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontSize: '13px',
-                              fontWeight: '600',
-                              transition: 'all 0.2s'
-                            }}
-                            title={rating.label}
-                          >
-                            {rating.value}
-                          </button>
-                        ))}
-                      </div>
-                    </td>
-                  ))}
-                  <td style={{
-                    padding: '16px',
-                    borderBottom: '1px solid #dee2e6',
-                    textAlign: 'center'
-                  }}>
-                    {(() => {
-                      const studentEvals = evaluations[student.id];
-                      if (!studentEvals) return <span style={{ color: '#ccc' }}>-</span>;
-                      
-                      const total = Object.keys(studentEvals).length;
-                      const synced = Object.values(studentEvals).filter(e => e.synced).length;
-                      
-                      if (synced === total && total > 0) {
-                        return <span style={{ color: '#4CAF50', fontSize: '20px' }}>✓</span>;
-                      } else if (total > 0) {
-                        return <span style={{ color: '#ff9800', fontSize: '14px' }}>⏳ {synced}/{total}</span>;
-                      }
-                      return <span style={{ color: '#ccc' }}>-</span>;
-                    })()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Save Button */}
-        <div style={{
-          padding: '20px',
-          borderTop: '1px solid #e5e7eb',
-          display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '16px'
+          marginBottom: '16px'
         }}>
-          <div style={{ fontSize: '14px', color: '#666' }}>
-            Total Students: {evalStudents.length} | 
-            Evaluations: {getTotalEvaluated()} | 
-            Synced: {getTotalSynced()}
-          </div>
-          
-          <button
-            onClick={saveEvaluations}
-            disabled={saving || getTotalEvaluated() === 0}
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => navigate('/teacher')}
             style={{
-              padding: '12px 32px',
-              backgroundColor: saving ? '#ccc' : '#4CAF50',
-              color: 'white',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               border: 'none',
-              borderRadius: '6px',
-              cursor: saving || getTotalEvaluated() === 0 ? 'not-allowed' : 'pointer',
-              fontSize: '16px',
-              fontWeight: '600',
-              transition: 'background-color 0.2s'
+              borderRadius: '12px',
+              width: '44px',
+              height: '44px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)'
             }}
           >
-            {saving ? 'Saving & Syncing...' : 'Save & Sync to Google Sheets'}
-          </button>
+            <ArrowLeft style={{ color: 'white', width: '20px', height: '20px' }} />
+          </motion.button>
+
+          <div style={{ textAlign: 'center', flex: 1, margin: '0 16px' }}>
+            <h1 style={{
+              fontSize: isMobile ? '20px' : '24px',
+              fontWeight: '800',
+              color: '#1e293b',
+              margin: '0 0 4px 0',
+              lineHeight: 1.2
+            }}>
+              {classInfo?.name}
+            </h1>
+            <p style={{
+              fontSize: '13px',
+              color: '#64748b',
+              margin: 0,
+              fontWeight: '500'
+            }}>
+              Lesson Evaluation
+            </p>
+          </div>
+
+          <div style={{ width: '44px' }} />
         </div>
+
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          max="2026-06-30"
+          min="2025-09-01"
+          style={{
+            width: '100%',
+            padding: '14px 16px',
+            borderRadius: '12px',
+            border: '2px solid #e2e8f0',
+            fontSize: '15px',
+            fontWeight: '600',
+            color: '#334155',
+            background: 'white',
+            cursor: 'pointer'
+          }}
+        />
+
+        {/* Stats */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: isMobile ? '8px' : '12px',
+          marginTop: '16px'
+        }}>
+          {[
+            { label: 'Students', value: stats.total, color: '#64748b', icon: Users },
+            { label: 'Evaluated', value: stats.evaluated, color: '#3b82f6', icon: TrendingUp },
+            { label: 'Progress', value: `${stats.progress}%`, color: '#10b981', icon: Award },
+            { label: 'Synced', value: stats.synced, color: '#8b5cf6', icon: Check }
+          ].map((stat) => (
+            <div key={stat.label} style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: isMobile ? '10px 8px' : '12px',
+              textAlign: 'center',
+              border: '2px solid #f1f5f9'
+            }}>
+              <div style={{
+                fontSize: isMobile ? '20px' : '24px',
+                fontWeight: '800',
+                color: stat.color,
+                marginBottom: '2px'
+              }}>
+                {stat.value}
+              </div>
+              <div style={{
+                fontSize: isMobile ? '10px' : '11px',
+                color: '#94a3b8',
+                fontWeight: '600',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>
+                {stat.label}
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* Students List */}
+      <div style={{
+        maxWidth: '1200px',
+        margin: '0 auto'
+      }}>
+        <AnimatePresence>
+          {evalStudents.map((student, index) => {
+            const studentEvals = evaluations[student.id] || {};
+            const completedCount = Object.keys(studentEvals).filter(k => studentEvals[k]?.rating).length;
+            const allSynced = completedCount > 0 && Object.values(studentEvals).every(e => e?.synced);
+            
+            return (
+              <motion.div
+                key={student.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.03 }}
+                style={{
+                  background: 'rgba(255,255,255,0.95)',
+                  backdropFilter: 'blur(20px)',
+                  borderRadius: '16px',
+                  padding: isMobile ? '12px' : '14px',
+                  marginBottom: '8px',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                  border: '1.5px solid #f1f5f9'
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '10px',
+                  flexWrap: 'wrap',
+                  gap: '6px'
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: isMobile ? '14px' : '15px',
+                      fontWeight: '700',
+                      color: '#1e293b',
+                      marginBottom: '2px'
+                    }}>
+                      {student.student_name}
+                    </div>
+                    <div style={{
+                      fontSize: '11px',
+                      color: '#64748b',
+                      fontWeight: '500'
+                    }}>
+                      {completedCount}/4 Categories
+                    </div>
+                  </div>
+
+                  {allSynced && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      style={{
+                        background: '#d1fae5',
+                        borderRadius: '6px',
+                        padding: '4px 8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}
+                    >
+                      <Check style={{ width: '12px', height: '12px', color: '#10b981' }} />
+                      <span style={{ fontSize: '10px', fontWeight: '700', color: '#10b981' }}>
+                        Synced
+                      </span>
+                    </motion.div>
+                  )}
+                </div>
+
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: isMobile ? '6px' : '8px'
+                }}>
+                  {categories.map((category) => {
+                    const currentRating = studentEvals[category.key]?.rating;
+                    const Icon = category.icon;
+                    
+                    return (
+                      <div key={category.key} style={{
+                        background: 'white',
+                        borderRadius: '10px',
+                        padding: '8px',
+                        border: `1.5px solid ${currentRating ? category.color : '#e2e8f0'}25`
+                      }}>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          marginBottom: '6px'
+                        }}>
+                          <span style={{
+                            fontSize: isMobile ? '10px' : '11px',
+                            fontWeight: '700',
+                            color: category.color
+                          }}>
+                            {category.label}
+                          </span>
+                        </div>
+                        
+                        <div style={{
+                          display: 'flex',
+                          gap: '3px'
+                        }}>
+                          {ratings.map((rating) => {
+                            const isSelected = currentRating === rating.value;
+                            
+                            return (
+                              <motion.button
+                                key={rating.value}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleEvaluationChange(student.id, category.key, rating.value)}
+                                style={{
+                                  flex: 1,
+                                  background: isSelected ? rating.color : 'white',
+                                  border: `1.5px solid ${isSelected ? rating.color : '#e2e8f0'}`,
+                                  borderRadius: '6px',
+                                  padding: '6px 3px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  gap: '1px',
+                                  transition: 'all 0.2s ease'
+                                }}
+                              >
+                                <span style={{
+                                  fontSize: '13px',
+                                  fontWeight: '800',
+                                  color: isSelected ? 'white' : rating.color
+                                }}>
+                                  {rating.value}
+                                </span>
+                              </motion.button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
       </div>
 
-      {/* Legend */}
-      <div style={{
-        marginTop: '20px',
-        backgroundColor: 'white',
-        padding: '16px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
-      }}>
+      {/* Save Button */}
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        style={{
+          maxWidth: '1200px',
+          margin: '24px auto 0',
+          display: 'flex',
+          justifyContent: 'center'
+        }}
+      >
+        <motion.button
+          whileTap={{ scale: 0.98 }}
+          onClick={saveEvaluations}
+          disabled={saving || stats.evaluated === 0}
+          style={{
+            width: '100%',
+            maxWidth: '400px',
+            background: saving || stats.evaluated === 0
+              ? 'linear-gradient(135deg, #94a3b8 0%, #64748b 100%)'
+              : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            border: 'none',
+            borderRadius: '16px',
+            padding: '18px 32px',
+            fontSize: '17px',
+            fontWeight: '800',
+            color: 'white',
+            cursor: saving || stats.evaluated === 0 ? 'not-allowed' : 'pointer',
+            boxShadow: '0 12px 40px rgba(16, 185, 129, 0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px'
+          }}
+        >
+          {saving ? (
+            <>
+              <Loader style={{ width: '20px', height: '20px', animation: 'spin 1s linear infinite' }} />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save style={{ width: '20px', height: '20px' }} />
+              Save & Sync ({stats.evaluated})
+            </>
+          )}
+        </motion.button>
+      </motion.div>
+
+      {/* Rating Legend */}
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.3 }}
+        style={{
+          maxWidth: '1200px',
+          margin: '16px auto 0',
+          background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '16px',
+          padding: isMobile ? '12px' : '14px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.08)'
+        }}
+      >
         <h3 style={{
-          margin: '0 0 12px 0',
-          fontSize: '16px',
-          color: '#333'
+          fontSize: '12px',
+          fontWeight: '700',
+          color: '#1e293b',
+          marginBottom: '8px',
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px'
         }}>
-          Rating Legend:
+          Rating Guide
         </h3>
         <div style={{
-          display: 'flex',
-          gap: '24px',
-          flexWrap: 'wrap',
-          fontSize: '14px'
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+          gap: '8px'
         }}>
-          {ratings.map(rating => (
-            <div key={rating.value}>
-              <span style={{ color: rating.color, fontWeight: 'bold' }}>{rating.value}</span> = {rating.label}
+          {ratings.map((rating) => (
+            <div key={rating.value} style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px',
+              background: rating.bg,
+              borderRadius: '8px',
+              border: `1.5px solid ${rating.color}25`
+            }}>
+              <div style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '6px',
+                background: rating.color,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '14px',
+                fontWeight: '800',
+                color: 'white',
+                flexShrink: 0
+              }}>
+                {rating.value}
+              </div>
+              <span style={{
+                fontSize: '13px',
+                fontWeight: '600',
+                color: '#475569'
+              }}>
+                {rating.label}
+              </span>
             </div>
           ))}
         </div>
-        <h3 style={{
-          margin: '16px 0 12px 0',
-          fontSize: '16px',
-          color: '#333'
-        }}>
-          Categories:
-        </h3>
-        <div style={{
-          display: 'flex',
-          gap: '24px',
-          flexWrap: 'wrap',
-          fontSize: '14px'
-        }}>
-          {categories.map(cat => (
-            <div key={cat.key}>
-              <span style={{ color: cat.color, fontWeight: 'bold' }}>{cat.key}</span> = {cat.label}
-            </div>
-          ))}
-        </div>
-      </div>
+      </motion.div>
     </div>
   );
 };
