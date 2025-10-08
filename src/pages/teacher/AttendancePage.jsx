@@ -1,10 +1,10 @@
 import { useContext, useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router'; 
-import { AuthContext } from '../../context/AuthContext';  
+import { useParams, useNavigate } from 'react-router';
+import { AuthContext } from '../../context/AuthContext';
 import supabase from '../../utils/supabase';
-import { batchSyncAttendance } from '../../utils/googleSheetsAPI'; 
-import toast from 'react-hot-toast';  
-import { motion, AnimatePresence } from 'framer-motion';  
+import { batchSyncAttendance } from '../../utils/googleSheetsAPI';
+import toast from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Calendar, 
   Users, 
@@ -14,11 +14,11 @@ import {
   AlertCircle,
   ArrowLeft,
   Save,
-  RefreshCw,
   Check,
   Loader,
   HelpCircle,
-  Church
+  Church,
+  X
 } from 'lucide-react';
 
 const AttendancePage = () => {
@@ -26,7 +26,6 @@ const AttendancePage = () => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   
-  // Helper function to find nearest Sunday
   const getNearestSunday = (dateString) => {
     const date = new Date(dateString + 'T12:00:00');
     const dayOfWeek = date.getDay();
@@ -266,9 +265,11 @@ const AttendancePage = () => {
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      padding: isMobile ? '16px 12px 40px' : '40px 24px 60px',
+      padding: isMobile ? '16px 12px 40px' : '40px 32px 60px',
       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-      overflowX: 'hidden'
+      overflowX: 'hidden',
+      width: '100%',
+      boxSizing: 'border-box'
     }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -284,7 +285,8 @@ const AttendancePage = () => {
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         style={{
-          maxWidth: '800px',
+          maxWidth: isMobile ? '100%' : '1400px',
+          width: '100%',
           margin: '0 auto 24px',
           background: 'rgba(255,255,255,0.95)',
           backdropFilter: 'blur(20px)',
@@ -408,7 +410,7 @@ const AttendancePage = () => {
 
       {/* Students List */}
       <div style={{
-        maxWidth: '800px',
+        maxWidth: '1200px',
         margin: '0 auto'
       }}>
         <AnimatePresence>
@@ -533,7 +535,7 @@ const AttendancePage = () => {
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.2 }}
         style={{
-          maxWidth: '800px',
+          maxWidth: '1200px',
           margin: '24px auto 0',
           display: 'flex',
           justifyContent: 'center'
@@ -585,8 +587,8 @@ const AttendancePage = () => {
         onClick={() => setShowLegend(!showLegend)}
         style={{
           position: 'fixed',
-          bottom: '100px',
-          right: '20px',
+          bottom: isMobile ? '20px' : '30px',
+          right: isMobile ? '20px' : '30px',
           width: '56px',
           height: '56px',
           borderRadius: '50%',
@@ -600,7 +602,29 @@ const AttendancePage = () => {
           zIndex: 1000
         }}
       >
-        <HelpCircle style={{ width: '28px', height: '28px', color: 'white' }} />
+        <AnimatePresence mode="wait">
+          {showLegend ? (
+            <motion.div
+              key="close"
+              initial={{ rotate: -90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              exit={{ rotate: 90, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <X style={{ width: '28px', height: '28px', color: 'white' }} />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="help"
+              initial={{ rotate: 90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              exit={{ rotate: -90, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <HelpCircle style={{ width: '28px', height: '28px', color: 'white' }} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.button>
 
       {/* Legend Popup */}
@@ -612,15 +636,16 @@ const AttendancePage = () => {
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
             style={{
               position: 'fixed',
-              bottom: '170px',
-              right: '20px',
+              bottom: isMobile ? '90px' : '100px',
+              right: isMobile ? '20px' : '30px',
               background: 'rgba(255,255,255,0.98)',
               backdropFilter: 'blur(20px)',
               borderRadius: '20px',
               padding: '20px',
               boxShadow: '0 12px 48px rgba(0,0,0,0.2)',
               zIndex: 999,
-              minWidth: isMobile ? '280px' : '320px'
+              minWidth: isMobile ? '280px' : '320px',
+              maxWidth: isMobile ? 'calc(100vw - 40px)' : '320px'
             }}
           >
             <h3 style={{
