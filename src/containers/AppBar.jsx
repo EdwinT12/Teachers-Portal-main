@@ -1,20 +1,9 @@
 import { useState, memo, useContext, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router";
-import AppBar from "@mui/material/AppBar";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Container from "@mui/material/Container";
-import IconButton from "@mui/material/IconButton";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
-import Toolbar from "@mui/material/Toolbar";
-import Avatar from "@mui/material/Avatar";
-import Tooltip from "@mui/material/Tooltip";
-import Divider from "@mui/material/Divider";
-
 import { AuthContext } from "../context/AuthContext";
 import supabase from "../utils/supabase";
 import toast from "react-hot-toast";
+import { User, LogOut, Home, Shield, ChevronDown } from 'lucide-react';
 
 function ResponsiveAppBar() {
   const { user } = useContext(AuthContext);
@@ -81,215 +70,304 @@ function ResponsiveAppBar() {
     handleCloseUserMenu();
   };
 
-  // Don't show app bar on auth pages
   if (location.pathname.startsWith('/auth')) {
     return null;
   }
 
   return (
-    <AppBar position="sticky" elevation={1} sx={{ backgroundColor: '#fff', color: '#333' }}>
-      <Container maxWidth="xl">
-        <Toolbar disableGutters sx={{ minHeight: '64px !important' }}>
-          {/* Logo and App Name */}
-          <Box 
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              cursor: 'pointer',
-              mr: 'auto'
-            }}
-            onClick={() => handleNavigation(profile?.role === 'admin' ? '/admin' : '/teacher')}
-          >
-            <Box
-              sx={{
-                width: 40,
-                height: 40,
-                backgroundColor: '#4CAF50',
+    <div style={{
+      position: 'sticky',
+      top: 0,
+      left: 0,
+      right: 0,
+      width: '100vw',
+      background: '#ffffff',
+      color: '#374151',
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+      zIndex: 1000,
+      margin: 0,
+      padding: 0,
+      borderBottom: '1px solid #e5e7eb'
+    }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '12px 24px',
+        minHeight: '64px',
+        width: '100%',
+        boxSizing: 'border-box'
+      }}>
+        {/* Logo and App Name */}
+        <div 
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            cursor: 'pointer',
+            gap: '12px'
+          }}
+          onClick={() => handleNavigation(profile?.role === 'admin' ? '/admin' : '/teacher')}
+        >
+          <div style={{
+            width: '40px',
+            height: '40px',
+            backgroundColor: '#4CAF50',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '20px',
+            flexShrink: 0
+          }}>
+            📚
+          </div>
+          <div>
+            <div style={{
+              fontSize: '20px',
+              fontWeight: '700',
+              color: '#1a1a1a',
+              lineHeight: '1.2',
+              marginBottom: '2px'
+            }}>
+              School Attendance
+            </div>
+            <div style={{
+              fontSize: '12px',
+              color: '#666',
+              lineHeight: '1.2'
+            }}>
+              Management System
+            </div>
+          </div>
+        </div>
+
+        {/* User Menu */}
+        {user && profile ? (
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={handleOpenUserMenu}
+              style={{
+                backgroundColor: '#f8f9fa',
+                border: '1px solid #e5e7eb',
                 borderRadius: '8px',
+                padding: '6px 12px',
+                cursor: 'pointer',
+                color: '#1a1a1a',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                transition: 'all 0.2s ease',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#e9ecef';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#f8f9fa';
+              }}
+            >
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                backgroundColor: profile.role === 'admin' ? '#ff9800' : '#4CAF50',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '20px',
-                mr: 1.5
-              }}
-            >
-              📚
-            </Box>
-            <Box>
-              <Box sx={{ 
-                fontSize: '20px', 
-                fontWeight: 700, 
-                color: '#1a1a1a',
-                lineHeight: 1
+                fontSize: '16px',
+                fontWeight: '600',
+                color: 'white',
+                flexShrink: 0
               }}>
-                School Attendance
-              </Box>
-              <Box sx={{ 
-                fontSize: '12px', 
-                color: '#666',
-                lineHeight: 1
-              }}>
-                Management System
-              </Box>
-            </Box>
-          </Box>
+                {profile.full_name?.charAt(0).toUpperCase() || profile.email?.charAt(0).toUpperCase()}
+              </div>
+              
+              <div style={{ textAlign: 'left', display: window.innerWidth < 640 ? 'none' : 'block' }}>
+                <div style={{ fontSize: '14px', fontWeight: '600', lineHeight: '1.2' }}>
+                  {profile.full_name || 'User'}
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: '#666',
+                  textTransform: 'capitalize',
+                  lineHeight: '1.2',
+                  marginTop: '4px'
+                }}>
+                  {profile.role}
+                </div>
+              </div>
 
-          {/* User Menu */}
-          {user && profile ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Tooltip title="Open menu">
-                <Button
-                  onClick={handleOpenUserMenu}
-                  sx={{
-                    backgroundColor: '#f8f9fa',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    padding: '6px 12px',
-                    textTransform: 'none',
-                    color: '#1a1a1a',
-                    '&:hover': {
-                      backgroundColor: '#e9ecef'
-                    },
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1.5
+              <ChevronDown style={{
+                width: '16px',
+                height: '16px',
+                color: '#666',
+                transform: anchorElUser ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s ease'
+              }} />
+            </button>
+
+            {/* Dropdown Menu */}
+            {anchorElUser && (
+              <>
+                <div
+                  style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    zIndex: 999
                   }}
-                >
-                  <Avatar 
-                    sx={{ 
-                      bgcolor: profile.role === 'admin' ? '#ff9800' : '#4CAF50',
-                      width: 36,
-                      height: 36,
-                      fontSize: '16px',
-                      fontWeight: 600
+                  onClick={handleCloseUserMenu}
+                />
+                
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  right: 0,
+                  minWidth: '220px',
+                  backgroundColor: 'white',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                  border: '1px solid #e5e7eb',
+                  zIndex: 1000,
+                  overflow: 'hidden'
+                }}>
+                  {/* User Info */}
+                  <div style={{
+                    backgroundColor: '#f8f9fa',
+                    padding: '12px 16px',
+                    borderBottom: '1px solid #e5e7eb'
+                  }}>
+                    <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Signed in as
+                    </div>
+                    <div style={{
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: '#1a1a1a',
+                      wordBreak: 'break-all'
+                    }}>
+                      {profile.email}
+                    </div>
+                  </div>
+
+                  {/* Navigation Links */}
+                  {profile.role === 'admin' ? (
+                    <button
+                      onClick={() => handleNavigation('/admin')}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: 'none',
+                        backgroundColor: 'white',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        textAlign: 'left',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        transition: 'background-color 0.2s ease',
+                        borderBottom: '1px solid #f3f4f6'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f9fafb';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'white';
+                      }}
+                    >
+                      <Shield style={{ width: '16px', height: '16px' }} />
+                      Admin Dashboard
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleNavigation('/teacher')}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: 'none',
+                        backgroundColor: 'white',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        textAlign: 'left',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        transition: 'background-color 0.2s ease',
+                        borderBottom: '1px solid #f3f4f6'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f9fafb';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'white';
+                      }}
+                    >
+                      <Home style={{ width: '16px', height: '16px' }} />
+                      Dashboard
+                    </button>
+                  )}
+
+                  {/* Sign Out */}
+                  <button
+                    onClick={handleSignOut}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: 'none',
+                      backgroundColor: 'white',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      color: '#dc2626',
+                      fontWeight: '500',
+                      textAlign: 'left',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      transition: 'background-color 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#fef2f2';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white';
                     }}
                   >
-                    {profile.full_name?.charAt(0).toUpperCase() || profile.email?.charAt(0).toUpperCase()}
-                  </Avatar>
-                  
-                  <Box sx={{ textAlign: 'left', display: { xs: 'none', sm: 'block' } }}>
-                    <Box sx={{ fontSize: '14px', fontWeight: 600, lineHeight: 1.2 }}>
-                      {profile.full_name || 'User'}
-                    </Box>
-                    <Box sx={{ 
-                      fontSize: '12px', 
-                      color: '#666',
-                      textTransform: 'capitalize',
-                      lineHeight: 1.2,
-                      mt: 0.5
-                    }}>
-                      {profile.role}
-                    </Box>
-                  </Box>
-
-                  {/* Dropdown Arrow */}
-                  <Box sx={{ 
-                    width: 16, 
-                    height: 16,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path 
-                        d="M4 6L8 10L12 6" 
-                        stroke="#666" 
-                        strokeWidth="2" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </Box>
-                </Button>
-              </Tooltip>
-
-              <Menu
-                sx={{ mt: '8px' }}
-                anchorEl={anchorElUser}
-                anchorOrigin={{
-                  vertical: "bottom",
-                  horizontal: "right",
-                }}
-                transformOrigin={{
-                  vertical: "top",
-                  horizontal: "right",
-                }}
-                open={Boolean(anchorElUser)}
-                onClose={handleCloseUserMenu}
-                PaperProps={{
-                  sx: {
-                    minWidth: 220,
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                    border: '1px solid #e5e7eb'
-                  }
-                }}
-              >
-                {/* User Info */}
-                <MenuItem disabled sx={{ backgroundColor: '#f8f9fa !important', opacity: '1 !important' }}>
-                  <Box>
-                    <Box sx={{ fontSize: '12px', color: '#666', mb: 0.5 }}>
-                      Signed in as
-                    </Box>
-                    <Box sx={{ fontSize: '14px', fontWeight: 600, color: '#1a1a1a', wordBreak: 'break-all' }}>
-                      {profile.email}
-                    </Box>
-                  </Box>
-                </MenuItem>
-
-                <Divider />
-
-                {/* Navigation Links */}
-                {profile.role === 'admin' ? (
-                  <MenuItem onClick={() => handleNavigation('/admin')}>
-                    <Box sx={{ fontSize: '14px' }}>
-                      📊 Admin Dashboard
-                    </Box>
-                  </MenuItem>
-                ) : (
-                  <MenuItem onClick={() => handleNavigation('/teacher')}>
-                    <Box sx={{ fontSize: '14px' }}>
-                      🏠 Dashboard
-                    </Box>
-                  </MenuItem>
-                )}
-
-                <Divider />
-
-                {/* Sign Out */}
-                <MenuItem onClick={handleSignOut}>
-                  <Box sx={{ 
-                    fontSize: '14px', 
-                    color: '#dc2626',
-                    fontWeight: 500 
-                  }}>
-                    🚪 Sign Out
-                  </Box>
-                </MenuItem>
-              </Menu>
-            </Box>
-          ) : (
-            <Button
-              onClick={() => navigate('/auth')}
-              variant="contained"
-              sx={{
-                backgroundColor: '#4CAF50',
-                color: 'white',
-                fontWeight: 600,
-                textTransform: 'none',
-                borderRadius: '8px',
-                px: 3,
-                '&:hover': {
-                  backgroundColor: '#45a049',
-                }
-              }}
-            >
-              Sign In
-            </Button>
-          )}
-        </Toolbar>
-      </Container>
-    </AppBar>
+                    <LogOut style={{ width: '16px', height: '16px' }} />
+                    Sign Out
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <button
+            onClick={() => navigate('/auth')}
+            style={{
+              backgroundColor: '#4CAF50',
+              color: 'white',
+              fontWeight: '600',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '10px 24px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              transition: 'background-color 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#45a049';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#4CAF50';
+            }}
+          >
+            Sign In
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
