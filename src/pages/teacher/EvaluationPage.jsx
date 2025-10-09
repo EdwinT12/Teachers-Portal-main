@@ -10,14 +10,15 @@ import {
   Save,
   Check,
   Loader,
-  Calendar,
   Users,
   TrendingUp,
   Award,
   BookOpen,
   Heart,
   Zap,
-  Star
+  FileText,
+  X,
+  AlertCircle
 } from 'lucide-react';
 
 const EvaluationPage = () => {
@@ -27,10 +28,12 @@ const EvaluationPage = () => {
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [classInfo, setClassInfo] = useState(null);
   const [evalStudents, setEvalStudents] = useState([]);
   const [evaluations, setEvaluations] = useState({});
-  const [selectedDate, setSelectedDate] = useState('2025-09-07');
+  const [selectedChapter, setSelectedChapter] = useState(1);
+  const [studentNotes, setStudentNotes] = useState({});
   const [isMobile, setIsMobile] = useState(false);
 
   const categories = [
@@ -46,6 +49,9 @@ const EvaluationPage = () => {
     { value: 'I', label: 'Improving', color: '#f59e0b', bg: '#fef3c7' }
   ];
 
+  // Generate chapter options (1-15 based on the spreadsheet)
+  const chapterOptions = Array.from({ length: 15 }, (_, i) => i + 1);
+
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
@@ -59,7 +65,7 @@ const EvaluationPage = () => {
     } else if (!classId && user) {
       navigate('/teacher');
     }
-  }, [classId, user, selectedDate]);
+  }, [classId, user, selectedChapter]);
 
   const loadClassAndStudents = async () => {
     setLoading(true);
@@ -84,15 +90,17 @@ const EvaluationPage = () => {
 
       const { data: evaluationsData, error: evaluationsError } = await supabase
         .from('lesson_evaluations')
-        .select('eval_student_id, category, rating, synced_to_sheets')
+        .select('eval_student_id, category, rating, synced_to_sheets, teacher_notes')
         .eq('class_id', classId)
-        .eq('evaluation_date', selectedDate);
+        .eq('chapter_number', selectedChapter);
 
       if (evaluationsError && evaluationsError.code !== 'PGRST116') {
         throw evaluationsError;
       }
 
       const evaluationsMap = {};
+      const notesMap = {};
+      
       if (evaluationsData) {
         evaluationsData.forEach(record => {
           if (!evaluationsMap[record.eval_student_id]) {
@@ -102,9 +110,16 @@ const EvaluationPage = () => {
             rating: record.rating,
             synced: record.synced_to_sheets
           };
+          
+          // Store notes per student
+          if (record.teacher_notes) {
+            notesMap[record.eval_student_id] = record.teacher_notes;
+          }
         });
       }
+      
       setEvaluations(evaluationsMap);
+      setStudentNotes(notesMap);
 
     } catch (error) {
       console.error('Error loading data:', error);
@@ -124,7 +139,24 @@ const EvaluationPage = () => {
     }));
   };
 
+  const handleNotesChange = (evalStudentId, notes) => {
+    setStudentNotes(prev => ({
+      ...prev,
+      [evalStudentId]: notes
+    }));
+  };
+
+  const handleSaveClick = () => {
+    const totalEvaluated = getTotalEvaluated();
+    if (totalEvaluated === 0) {
+      toast.error('Please evaluate at least one student in one category');
+      return;
+    }
+    setShowConfirmation(true);
+  };
+
   const saveEvaluations = async () => {
+    setShowConfirmation(false);
     setSaving(true);
     try {
       const records = [];
@@ -139,9 +171,10 @@ const EvaluationPage = () => {
                 eval_student_id: evalStudent.id,
                 teacher_id: user.id,
                 class_id: classId,
-                evaluation_date: selectedDate,
+                chapter_number: selectedChapter,
                 category: category.key,
                 rating: evaluation.rating,
+                teacher_notes: studentNotes[evalStudent.id] || null,
                 synced_to_sheets: false
               });
             }
@@ -158,7 +191,7 @@ const EvaluationPage = () => {
       const { data: savedRecords, error: saveError } = await supabase
         .from('lesson_evaluations')
         .upsert(records, {
-          onConflict: 'eval_student_id,evaluation_date,category',
+          onConflict: 'eval_student_id,chapter_number,category',
           returning: 'representation'
         })
         .select();
@@ -210,6 +243,13 @@ const EvaluationPage = () => {
       });
     });
     return count;
+  };
+
+  const getEvaluatedStudentsCount = () => {
+    return Object.keys(evaluations).filter(studentId => {
+      const studentEvals = evaluations[studentId];
+      return Object.values(studentEvals).some(catEval => catEval.rating);
+    }).length;
   };
 
   const stats = {
@@ -269,6 +309,195 @@ const EvaluationPage = () => {
           to { transform: rotate(360deg); }
         }
       `}</style>
+
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {showConfirmation && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.6)',
+              backdropFilter: 'blur(4px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 9999,
+              padding: '20px'
+            }}
+            onClick={() => setShowConfirmation(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'white',
+                borderRadius: '24px',
+                padding: isMobile ? '24px' : '32px',
+                maxWidth: '480px',
+                width: '100%',
+                boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)'
+              }}
+            >
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '20px'
+              }}>
+                <div style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '16px',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <AlertCircle style={{ width: '28px', height: '28px', color: 'white' }} />
+                </div>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowConfirmation(false)}
+                  style={{
+                    background: '#f1f5f9',
+                    border: 'none',
+                    borderRadius: '12px',
+                    width: '40px',
+                    height: '40px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <X style={{ width: '20px', height: '20px', color: '#64748b' }} />
+                </motion.button>
+              </div>
+
+              <h2 style={{
+                fontSize: isMobile ? '22px' : '26px',
+                fontWeight: '800',
+                color: '#1e293b',
+                margin: '0 0 12px 0'
+              }}>
+                Confirm Save & Sync
+              </h2>
+
+              <p style={{
+                fontSize: '15px',
+                color: '#64748b',
+                lineHeight: '1.6',
+                margin: '0 0 24px 0'
+              }}>
+                You are about to save and sync evaluations for <strong style={{ color: '#1e293b' }}>Chapter {selectedChapter}</strong>.
+              </p>
+
+              <div style={{
+                background: '#f8fafc',
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '24px'
+              }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: '12px'
+                }}>
+                  <div>
+                    <div style={{
+                      fontSize: '12px',
+                      color: '#64748b',
+                      fontWeight: '600',
+                      marginBottom: '4px'
+                    }}>
+                      Students Evaluated
+                    </div>
+                    <div style={{
+                      fontSize: '24px',
+                      fontWeight: '800',
+                      color: '#3b82f6'
+                    }}>
+                      {getEvaluatedStudentsCount()}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{
+                      fontSize: '12px',
+                      color: '#64748b',
+                      fontWeight: '600',
+                      marginBottom: '4px'
+                    }}>
+                      Total Evaluations
+                    </div>
+                    <div style={{
+                      fontSize: '24px',
+                      fontWeight: '800',
+                      color: '#10b981'
+                    }}>
+                      {stats.evaluated}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                gap: '12px'
+              }}>
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowConfirmation(false)}
+                  style={{
+                    flex: 1,
+                    background: '#f1f5f9',
+                    border: 'none',
+                    borderRadius: '12px',
+                    padding: '14px 24px',
+                    fontSize: '15px',
+                    fontWeight: '700',
+                    color: '#64748b',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={saveEvaluations}
+                  style={{
+                    flex: 1,
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    padding: '14px 24px',
+                    fontSize: '15px',
+                    fontWeight: '700',
+                    color: 'white',
+                    cursor: 'pointer',
+                    boxShadow: '0 8px 24px rgba(16, 185, 129, 0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <Check style={{ width: '18px', height: '18px' }} />
+                  Confirm
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Header */}
       <motion.div
@@ -333,31 +562,45 @@ const EvaluationPage = () => {
           <div style={{ width: '44px' }} />
         </div>
 
-        <input
-          type="date"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-          max="2026-06-30"
-          min="2025-09-01"
-          style={{
-            width: '100%',
-            padding: '14px 16px',
-            borderRadius: '12px',
-            border: '2px solid #e2e8f0',
-            fontSize: '15px',
+        {/* Chapter Selector */}
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{
+            display: 'block',
+            fontSize: '13px',
             fontWeight: '600',
-            color: '#334155',
-            background: 'white',
-            cursor: 'pointer'
-          }}
-        />
+            color: '#475569',
+            marginBottom: '8px'
+          }}>
+            Select Lesson Chapter
+          </label>
+          <select
+            value={selectedChapter}
+            onChange={(e) => setSelectedChapter(parseInt(e.target.value))}
+            style={{
+              width: '100%',
+              padding: '14px 16px',
+              borderRadius: '12px',
+              border: '2px solid #e2e8f0',
+              fontSize: '15px',
+              fontWeight: '600',
+              color: '#334155',
+              background: 'white',
+              cursor: 'pointer'
+            }}
+          >
+            {chapterOptions.map(chapter => (
+              <option key={chapter} value={chapter}>
+                Chapter {chapter}
+              </option>
+            ))}
+          </select>
+        </div>
 
         {/* Stats */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: isMobile ? '8px' : '12px',
-          marginTop: '16px'
+          gap: isMobile ? '8px' : '12px'
         }}>
           {[
             { label: 'Students', value: stats.total, color: '#64748b', icon: Users },
@@ -471,11 +714,11 @@ const EvaluationPage = () => {
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(2, 1fr)',
-                  gap: isMobile ? '6px' : '8px'
+                  gap: isMobile ? '6px' : '8px',
+                  marginBottom: '10px'
                 }}>
                   {categories.map((category) => {
                     const currentRating = studentEvals[category.key]?.rating;
-                    const Icon = category.icon;
                     
                     return (
                       <div key={category.key} style={{
@@ -540,6 +783,47 @@ const EvaluationPage = () => {
                     );
                   })}
                 </div>
+
+                {/* Notes Field */}
+                <div style={{
+                  background: '#fef3c7',
+                  border: '1.5px solid #f59e0b25',
+                  borderRadius: '10px',
+                  padding: '8px'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    marginBottom: '6px'
+                  }}>
+                    <FileText style={{ width: '14px', height: '14px', color: '#f59e0b' }} />
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      color: '#92400e'
+                    }}>
+                      Teacher Notes
+                    </span>
+                  </div>
+                  <textarea
+                    value={studentNotes[student.id] || ''}
+                    onChange={(e) => handleNotesChange(student.id, e.target.value)}
+                    placeholder="Add notes about this student..."
+                    style={{
+                      width: '100%',
+                      minHeight: '60px',
+                      padding: '8px',
+                      border: '1.5px solid #fde68a',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontFamily: 'inherit',
+                      color: '#78350f',
+                      background: 'white',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
               </motion.div>
             );
           })}
@@ -560,7 +844,7 @@ const EvaluationPage = () => {
       >
         <motion.button
           whileTap={{ scale: 0.98 }}
-          onClick={saveEvaluations}
+          onClick={handleSaveClick}
           disabled={saving || stats.evaluated === 0}
           style={{
             width: '100%',
