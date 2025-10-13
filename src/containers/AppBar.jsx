@@ -76,7 +76,7 @@ function ResponsiveAppBar() {
 
   return (
     <div style={{
-      position: 'sticky',
+      position: 'fixed',
       top: 0,
       left: 0,
       right: 0,
@@ -96,15 +96,18 @@ function ResponsiveAppBar() {
         padding: '12px 24px',
         minHeight: '64px',
         width: '100%',
-        boxSizing: 'border-box'
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+        margin: 0
       }}>
-        {/* Logo and App Name */}
+        {/* Logo and App Name - Left Side */}
         <div 
           style={{
             display: 'flex',
             alignItems: 'center',
             cursor: 'pointer',
-            gap: '12px'
+            gap: '12px',
+            flexShrink: 0
           }}
           onClick={() => handleNavigation(profile?.role === 'admin' ? '/admin' : '/teacher')}
         >
@@ -141,7 +144,7 @@ function ResponsiveAppBar() {
           </div>
         </div>
 
-        {/* User Menu */}
+        {/* User Menu - Right Side */}
         {user && profile ? (
           <div style={{ position: 'relative' }}>
             <button

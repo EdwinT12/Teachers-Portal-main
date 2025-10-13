@@ -2,8 +2,19 @@ import { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import supabase from '../../utils/supabase';
 import toast from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 import BulkStudentImport from '../../components/BulkStudentImport';
 import UnifiedEvaluationSetup from '../../components/UnifiedEvaluationSetup';
+import { 
+  Users, 
+  Clock, 
+  CheckCircle, 
+  BookOpen,
+  AlertTriangle,
+  Trash2,
+  Check,
+  X
+} from 'lucide-react';
  
 const AdminDashboard = () => {
   const { user } = useContext(AuthContext);
@@ -12,6 +23,14 @@ const AdminDashboard = () => {
   const [classes, setClasses] = useState([]);
   const [assigningTeacher, setAssigningTeacher] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -22,7 +41,6 @@ const AdminDashboard = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Load all teachers
       const { data: teachersData, error: teachersError } = await supabase
         .from('profiles')
         .select(`
@@ -39,7 +57,6 @@ const AdminDashboard = () => {
       if (teachersError) throw teachersError;
       setTeachers(teachersData || []);
 
-      // Load all classes
       const { data: classesData, error: classesError } = await supabase
         .from('classes')
         .select('*')
@@ -102,29 +119,33 @@ const AdminDashboard = () => {
 
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '60vh'
-      }}>
-        <div style={{
-          width: '50px',
-          height: '50px',
-          border: '3px solid #f3f3f3',
-          borderTop: '3px solid #4CAF50',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        <style>
-          {`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}
-        </style>
-      </div>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+        }}
+      >
+        <div style={{ textAlign: 'center', color: 'white' }}>
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            style={{
+              width: '60px',
+              height: '60px',
+              border: '4px solid rgba(255,255,255,0.3)',
+              borderTop: '4px solid white',
+              borderRadius: '50%',
+              margin: '0 auto 20px'
+            }}
+          />
+          <h3 style={{ fontSize: '20px', fontWeight: '600', margin: 0 }}>Loading Dashboard...</h3>
+        </div>
+      </motion.div>
     );
   }
 
@@ -136,493 +157,463 @@ const AdminDashboard = () => {
       {/* Stats Cards */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '20px',
-        marginBottom: '32px'
+        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+        gap: isMobile ? '10px' : '16px',
+        marginBottom: isMobile ? '20px' : '24px'
       }}>
-        <div style={{
-          backgroundColor: 'white',
-          padding: '24px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          border: '1px solid #e5e7eb'
-        }}>
-          <div style={{
-            fontSize: '14px',
-            color: '#666',
-            marginBottom: '8px'
-          }}>
-            Total Teachers
-          </div>
-          <div style={{
-            fontSize: '32px',
-            fontWeight: '700',
-            color: '#1a1a1a'
-          }}>
-            {teachers.length}
-          </div>
-        </div>
-
-        <div style={{
-          backgroundColor: 'white',
-          padding: '24px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          border: '1px solid #e5e7eb'
-        }}>
-          <div style={{
-            fontSize: '14px',
-            color: '#666',
-            marginBottom: '8px'
-          }}>
-            Pending Approval
-          </div>
-          <div style={{
-            fontSize: '32px',
-            fontWeight: '700',
-            color: '#ff9800'
-          }}>
-            {unapprovedTeachers.length}
-          </div>
-        </div>
-
-        <div style={{
-          backgroundColor: 'white',
-          padding: '24px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          border: '1px solid #e5e7eb'
-        }}>
-          <div style={{
-            fontSize: '14px',
-            color: '#666',
-            marginBottom: '8px'
-          }}>
-            Approved Teachers
-          </div>
-          <div style={{
-            fontSize: '32px',
-            fontWeight: '700',
-            color: '#4CAF50'
-          }}>
-            {approvedTeachers.length}
-          </div>
-        </div>
-
-        <div style={{
-          backgroundColor: 'white',
-          padding: '24px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          border: '1px solid #e5e7eb'
-        }}>
-          <div style={{
-            fontSize: '14px',
-            color: '#666',
-            marginBottom: '8px'
-          }}>
-            Total Classes
-          </div>
-          <div style={{
-            fontSize: '32px',
-            fontWeight: '700',
-            color: '#2196F3'
-          }}>
-            {classes.length}
-          </div>
-        </div>
+        {[
+          { label: 'Total Teachers', value: teachers.length, color: '#3b82f6', icon: Users },
+          { label: 'Pending', value: unapprovedTeachers.length, color: '#f59e0b', icon: Clock },
+          { label: 'Approved', value: approvedTeachers.length, color: '#10b981', icon: CheckCircle },
+          { label: 'Total Classes', value: classes.length, color: '#8b5cf6', icon: BookOpen }
+        ].map((stat) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              background: 'rgba(255,255,255,0.95)',
+              backdropFilter: 'blur(20px)',
+              padding: isMobile ? '16px 12px' : '20px',
+              borderRadius: '16px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+              border: '2px solid #f1f5f9',
+              textAlign: 'center'
+            }}
+          >
+            <div style={{
+              width: isMobile ? '40px' : '48px',
+              height: isMobile ? '40px' : '48px',
+              borderRadius: '12px',
+              background: `${stat.color}15`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 12px'
+            }}>
+              <stat.icon style={{ width: isMobile ? '20px' : '24px', height: isMobile ? '20px' : '24px', color: stat.color }} />
+            </div>
+            <div style={{
+              fontSize: isMobile ? '24px' : '32px',
+              fontWeight: '800',
+              color: stat.color,
+              marginBottom: '4px',
+              lineHeight: 1
+            }}>
+              {stat.value}
+            </div>
+            <div style={{
+              fontSize: isMobile ? '11px' : '13px',
+              color: '#64748b',
+              fontWeight: '600',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              {stat.label}
+            </div>
+          </motion.div>
+        ))}
       </div>
 
-      {/* Unapproved Teachers */}
+      {/* Pending Teachers */}
       {unapprovedTeachers.length > 0 && (
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          marginBottom: '32px',
-          overflow: 'hidden'
-        }}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{
+            background: 'rgba(255,255,255,0.95)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '16px',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+            marginBottom: isMobile ? '16px' : '24px',
+            overflow: 'hidden',
+            border: '2px solid #fbbf24'
+          }}
+        >
           <div style={{
-            padding: '20px 24px',
-            backgroundColor: '#fff3cd',
-            borderBottom: '1px solid #ffc107'
+            padding: isMobile ? '16px' : '20px',
+            background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+            borderBottom: '2px solid #fbbf24',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
           }}>
+            <AlertTriangle style={{ width: isMobile ? '20px' : '24px', height: isMobile ? '20px' : '24px', color: '#92400e' }} />
             <h2 style={{
-              fontSize: '20px',
-              fontWeight: '600',
-              color: '#856404',
+              fontSize: isMobile ? '16px' : '18px',
+              fontWeight: '700',
+              color: '#92400e',
               margin: 0
             }}>
-              ⚠️ Pending Teacher Approvals ({unapprovedTeachers.length})
+              Pending Approvals ({unapprovedTeachers.length})
             </h2>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{
-              width: '100%',
-              borderCollapse: 'collapse'
-            }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f8f9fa' }}>
-                  <th style={{
-                    padding: '16px 24px',
-                    textAlign: 'left',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#333'
+          <div style={{ padding: isMobile ? '12px' : '16px' }}>
+            {unapprovedTeachers.map((teacher, index) => (
+              <motion.div
+                key={teacher.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+                style={{
+                  background: 'white',
+                  padding: isMobile ? '12px' : '16px',
+                  borderRadius: '12px',
+                  marginBottom: '12px',
+                  border: '1.5px solid #e2e8f0',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                }}
+              >
+                <div style={{
+                  marginBottom: '12px'
+                }}>
+                  <div style={{
+                    fontSize: isMobile ? '14px' : '15px',
+                    fontWeight: '700',
+                    color: '#1e293b',
+                    marginBottom: '4px'
                   }}>
-                    Teacher Name
-                  </th>
-                  <th style={{
-                    padding: '16px 24px',
-                    textAlign: 'left',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#333'
+                    {teacher.full_name || 'N/A'}
+                  </div>
+                  <div style={{
+                    fontSize: isMobile ? '12px' : '13px',
+                    color: '#64748b',
+                    marginBottom: '2px'
                   }}>
-                    Email
-                  </th>
-                  <th style={{
-                    padding: '16px 24px',
-                    textAlign: 'left',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#333'
+                    {teacher.email}
+                  </div>
+                  <div style={{
+                    fontSize: '11px',
+                    color: '#94a3b8'
                   }}>
-                    Joined
-                  </th>
-                  <th style={{
-                    padding: '16px 24px',
-                    textAlign: 'left',
-                    fontSize: '14px',
+                    Joined {new Date(teacher.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+
+                <select
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      assignTeacherToClass(teacher.id, e.target.value);
+                    }
+                  }}
+                  disabled={assigningTeacher === teacher.id}
+                  style={{
+                    width: '100%',
+                    padding: isMobile ? '10px 12px' : '12px 14px',
+                    borderRadius: '10px',
+                    border: '2px solid #e2e8f0',
+                    fontSize: isMobile ? '13px' : '14px',
                     fontWeight: '600',
-                    color: '#333'
-                  }}>
-                    Assign to Class
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {unapprovedTeachers.map((teacher, index) => (
-                  <tr
-                    key={teacher.id}
-                    style={{
-                      backgroundColor: index % 2 === 0 ? 'white' : '#f8f9fa',
-                      borderBottom: '1px solid #e5e7eb'
-                    }}
-                  >
-                    <td style={{
-                      padding: '16px 24px',
-                      fontSize: '14px',
-                      color: '#1a1a1a',
-                      fontWeight: '500'
-                    }}>
-                      {teacher.full_name || 'N/A'}
-                    </td>
-                    <td style={{
-                      padding: '16px 24px',
-                      fontSize: '14px',
-                      color: '#666'
-                    }}>
-                      {teacher.email}
-                    </td>
-                    <td style={{
-                      padding: '16px 24px',
-                      fontSize: '14px',
-                      color: '#666'
-                    }}>
-                      {new Date(teacher.created_at).toLocaleDateString()}
-                    </td>
-                    <td style={{
-                      padding: '16px 24px'
-                    }}>
-                      <select
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            assignTeacherToClass(teacher.id, e.target.value);
-                          }
-                        }}
-                        disabled={assigningTeacher === teacher.id}
-                        style={{
-                          padding: '8px 12px',
-                          borderRadius: '6px',
-                          border: '1px solid #ddd',
-                          fontSize: '14px',
-                          cursor: 'pointer',
-                          backgroundColor: 'white'
-                        }}
-                      >
-                        <option value="">Select a class...</option>
-                        {classes.map(cls => (
-                          <option key={cls.id} value={cls.id}>
-                            {cls.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    cursor: 'pointer',
+                    background: assigningTeacher === teacher.id ? '#f1f5f9' : 'white',
+                    color: '#334155'
+                  }}
+                >
+                  <option value="">
+                    {assigningTeacher === teacher.id ? 'Assigning...' : 'Select a class...'}
+                  </option>
+                  {classes.map(cls => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.name}
+                    </option>
+                  ))}
+                </select>
+              </motion.div>
+            ))}
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Approved Teachers */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        overflow: 'hidden'
-      }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        style={{
+          background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '16px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+          overflow: 'hidden',
+          border: '2px solid #10b981'
+        }}
+      >
         <div style={{
-          padding: '20px 24px',
-          borderBottom: '1px solid #e5e7eb'
+          padding: isMobile ? '16px' : '20px',
+          background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)',
+          borderBottom: '2px solid #10b981',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
         }}>
+          <CheckCircle style={{ width: isMobile ? '20px' : '24px', height: isMobile ? '20px' : '24px', color: '#065f46' }} />
           <h2 style={{
-            fontSize: '20px',
-            fontWeight: '600',
-            color: '#1a1a1a',
+            fontSize: isMobile ? '16px' : '18px',
+            fontWeight: '700',
+            color: '#065f46',
             margin: 0
           }}>
-            ✅ Approved Teachers ({approvedTeachers.length})
+            Approved Teachers ({approvedTeachers.length})
           </h2>
         </div>
 
         {approvedTeachers.length === 0 ? (
           <div style={{
-            padding: '48px 24px',
+            padding: isMobile ? '32px 16px' : '48px 24px',
             textAlign: 'center',
-            color: '#999'
+            color: '#94a3b8',
+            fontSize: isMobile ? '13px' : '14px'
           }}>
             No approved teachers yet
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{
-              width: '100%',
-              borderCollapse: 'collapse'
-            }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f8f9fa' }}>
-                  <th style={{
-                    padding: '16px 24px',
-                    textAlign: 'left',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#333'
-                  }}>
-                    Teacher Name
-                  </th>
-                  <th style={{
-                    padding: '16px 24px',
-                    textAlign: 'left',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#333'
-                  }}>
-                    Email
-                  </th>
-                  <th style={{
-                    padding: '16px 24px',
-                    textAlign: 'left',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#333'
-                  }}>
-                    Assigned Class
-                  </th>
-                  <th style={{
-                    padding: '16px 24px',
-                    textAlign: 'left',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#333'
-                  }}>
-                    Status
-                  </th>
-                  <th style={{
-                    padding: '16px 24px',
-                    textAlign: 'center',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#333'
-                  }}>
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {approvedTeachers.map((teacher, index) => (
-                  <tr
-                    key={teacher.id}
-                    style={{
-                      backgroundColor: index % 2 === 0 ? 'white' : '#f8f9fa',
-                      borderBottom: '1px solid #e5e7eb'
-                    }}
-                  >
-                    <td style={{
-                      padding: '16px 24px',
-                      fontSize: '14px',
-                      color: '#1a1a1a',
-                      fontWeight: '500'
+          <div style={{ padding: isMobile ? '12px' : '16px' }}>
+            {approvedTeachers.map((teacher, index) => (
+              <motion.div
+                key={teacher.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+                style={{
+                  background: 'white',
+                  padding: isMobile ? '12px' : '16px',
+                  borderRadius: '12px',
+                  marginBottom: '12px',
+                  border: '1.5px solid #e2e8f0',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  marginBottom: '12px'
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: isMobile ? '14px' : '15px',
+                      fontWeight: '700',
+                      color: '#1e293b',
+                      marginBottom: '4px'
                     }}>
                       {teacher.full_name || 'N/A'}
-                    </td>
-                    <td style={{
-                      padding: '16px 24px',
-                      fontSize: '14px',
-                      color: '#666'
+                    </div>
+                    <div style={{
+                      fontSize: isMobile ? '12px' : '13px',
+                      color: '#64748b',
+                      marginBottom: '6px'
                     }}>
                       {teacher.email}
-                    </td>
-                    <td style={{
-                      padding: '16px 24px',
-                      fontSize: '14px',
-                      color: '#1a1a1a',
-                      fontWeight: '500'
+                    </div>
+                    <div style={{
+                      display: 'inline-block',
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      background: '#d1fae5',
+                      color: '#065f46',
+                      border: '1px solid #10b981'
                     }}>
                       {teacher.classes?.name || 'N/A'}
-                    </td>
-                    <td style={{
-                      padding: '16px 24px'
-                    }}>
-                      <span style={{
-                        padding: '4px 12px',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        backgroundColor: teacher.status === 'active' ? '#d4edda' : '#f8d7da',
-                        color: teacher.status === 'active' ? '#155724' : '#721c24'
-                      }}>
-                        {teacher.status}
-                      </span>
-                    </td>
-                    <td style={{
-                      padding: '16px 24px',
-                      textAlign: 'center'
-                    }}>
-                      <button
-                        onClick={() => removeTeacherAssignment(teacher.id)}
-                        disabled={assigningTeacher === teacher.id}
-                        style={{
-                          padding: '6px 16px',
-                          backgroundColor: '#dc2626',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '13px',
-                          cursor: 'pointer',
-                          fontWeight: '500',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.target.style.backgroundColor = '#b91c1c'}
-                        onMouseLeave={(e) => e.target.style.backgroundColor = '#dc2626'}
-                      >
-                        Remove Class
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => removeTeacherAssignment(teacher.id)}
+                    disabled={assigningTeacher === teacher.id}
+                    style={{
+                      padding: isMobile ? '8px' : '10px',
+                      background: '#fee2e2',
+                      border: '1.5px solid #ef4444',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}
+                  >
+                    <Trash2 style={{ width: isMobile ? '16px' : '18px', height: isMobile ? '16px' : '18px', color: '#dc2626' }} />
+                  </motion.button>
+                </div>
+
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 10px',
+                  background: teacher.status === 'active' ? '#d1fae5' : '#fee2e2',
+                  borderRadius: '8px',
+                  border: `1px solid ${teacher.status === 'active' ? '#10b981' : '#ef4444'}`
+                }}>
+                  {teacher.status === 'active' ? (
+                    <Check style={{ width: '14px', height: '14px', color: '#065f46' }} />
+                  ) : (
+                    <X style={{ width: '14px', height: '14px', color: '#dc2626' }} />
+                  )}
+                  <span style={{
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    color: teacher.status === 'active' ? '#065f46' : '#dc2626',
+                    textTransform: 'capitalize'
+                  }}>
+                    {teacher.status}
+                  </span>
+                </div>
+              </motion.div>
+            ))}
           </div>
         )}
-      </div>
+      </motion.div>
     </>
   );
 
   return (
     <div style={{
-      maxWidth: '1200px',
-      margin: '0 auto',
-      padding: '32px 20px'
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      paddingTop: isMobile ? '80px' : '100px',
+      paddingBottom: isMobile ? '100px' : '60px',
+      paddingLeft: isMobile ? '16px' : '60px',
+      paddingRight: isMobile ? '16px' : '60px',
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+      boxSizing: 'border-box'
     }}>
-      {/* Header */}
-      <div style={{
-        marginBottom: '32px'
-      }}>
-        <h1 style={{
-          fontSize: '32px',
-          fontWeight: '700',
-          color: '#1a1a1a',
-          margin: '0 0 8px 0'
-        }}>
-          Admin Dashboard
-        </h1>
-        <p style={{
-          fontSize: '16px',
-          color: '#666',
-          margin: 0
-        }}>
-          Manage teachers, import students, and configure evaluation system
-        </p>
-      </div>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        * { 
+          box-sizing: border-box;
+          -webkit-tap-highlight-color: transparent;
+        }
+        body {
+          overscroll-behavior: none;
+          overflow-x: hidden;
+          margin: 0;
+          padding: 0;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
 
-      {/* Tabs - ONLY 3 TABS */}
       <div style={{
-        display: 'flex',
-        gap: '8px',
-        marginBottom: '32px',
-        borderBottom: '2px solid #e5e7eb',
-        flexWrap: 'wrap'
+        width: '100%',
+        margin: '0 auto'
       }}>
-        <button
-          onClick={() => setActiveTab('overview')}
+        {/* Header */}
+        <motion.div
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
           style={{
-            padding: '12px 24px',
-            backgroundColor: activeTab === 'overview' ? '#4CAF50' : 'transparent',
-            color: activeTab === 'overview' ? 'white' : '#666',
-            border: 'none',
-            borderRadius: '8px 8px 0 0',
-            cursor: 'pointer',
-            fontSize: '15px',
-            fontWeight: '600',
-            transition: 'all 0.2s'
+            marginBottom: isMobile ? '20px' : '32px'
           }}
         >
-          📊 Overview
-        </button>
-        
-        <button
-          onClick={() => setActiveTab('import-attendance')}
-          style={{
-            padding: '12px 24px',
-            backgroundColor: activeTab === 'import-attendance' ? '#4CAF50' : 'transparent',
-            color: activeTab === 'import-attendance' ? 'white' : '#666',
-            border: 'none',
-            borderRadius: '8px 8px 0 0',
-            cursor: 'pointer',
-            fontSize: '15px',
-            fontWeight: '600',
-            transition: 'all 0.2s'
-          }}
-        >
-          📥 Attendance Students
-        </button>
-        
-        <button
-          onClick={() => setActiveTab('evaluation-setup')}
-          style={{
-            padding: '12px 24px',
-            backgroundColor: activeTab === 'evaluation-setup' ? '#4CAF50' : 'transparent',
-            color: activeTab === 'evaluation-setup' ? 'white' : '#666',
-            border: 'none',
-            borderRadius: '8px 8px 0 0',
-            cursor: 'pointer',
-            fontSize: '15px',
-            fontWeight: '600',
-            transition: 'all 0.2s'
-          }}
-        >
-          ⭐ Evaluation Setup
-        </button>
-      </div>
+          <h1 style={{
+            fontSize: isMobile ? '28px' : '36px',
+            fontWeight: '800',
+            color: 'white',
+            margin: '0 0 8px 0',
+            textAlign: 'center',
+            textShadow: '0 2px 10px rgba(0,0,0,0.2)'
+          }}>
+            Admin Dashboard
+          </h1>
+          <p style={{
+            fontSize: isMobile ? '14px' : '16px',
+            color: 'rgba(255,255,255,0.9)',
+            margin: 0,
+            textAlign: 'center',
+            fontWeight: '500'
+          }}>
+            Manage teachers, students, and evaluation system
+          </p>
+        </motion.div>
 
-      {/* Tab Content */}
-      {activeTab === 'overview' && renderOverviewTab()}
-      {activeTab === 'import-attendance' && <BulkStudentImport />}
-      {activeTab === 'evaluation-setup' && <UnifiedEvaluationSetup />}
+        {/* Tabs */}
+        <motion.div
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          style={{
+            display: 'flex',
+            gap: isMobile ? '6px' : '8px',
+            marginBottom: isMobile ? '20px' : '24px',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            paddingBottom: '8px'
+          }}
+        >
+          {[
+            { id: 'overview', label: '📊 Overview' },
+            { id: 'import-attendance', label: '📥 Attendance' },
+            { id: 'evaluation-setup', label: '⭐ Evaluation' }
+          ].map((tab) => (
+            <motion.button
+              key={tab.id}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: isMobile ? '12px 20px' : '14px 24px',
+                background: activeTab === tab.id 
+                  ? 'rgba(255,255,255,0.95)' 
+                  : 'rgba(255,255,255,0.2)',
+                backdropFilter: 'blur(20px)',
+                color: activeTab === tab.id ? '#1e293b' : 'white',
+                border: activeTab === tab.id ? '2px solid white' : '2px solid rgba(255,255,255,0.3)',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                fontSize: isMobile ? '13px' : '15px',
+                fontWeight: '700',
+                transition: 'all 0.2s ease',
+                whiteSpace: 'nowrap',
+                boxShadow: activeTab === tab.id ? '0 4px 16px rgba(0,0,0,0.1)' : 'none'
+              }}
+            >
+              {tab.label}
+            </motion.button>
+          ))}
+        </motion.div>
+
+        {/* Tab Content */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            {activeTab === 'overview' && renderOverviewTab()}
+            {activeTab === 'import-attendance' && (
+              <div style={{
+                background: 'rgba(255,255,255,0.95)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: '16px',
+                padding: isMobile ? '16px' : '24px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                border: '2px solid #f1f5f9'
+              }}>
+                <BulkStudentImport />
+              </div>
+            )}
+            {activeTab === 'evaluation-setup' && (
+              <div style={{
+                background: 'rgba(255,255,255,0.95)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: '16px',
+                padding: isMobile ? '16px' : '24px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                border: '2px solid #f1f5f9'
+              }}>
+                <UnifiedEvaluationSetup />
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </div>
   );
 };

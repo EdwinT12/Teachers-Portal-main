@@ -10,6 +10,14 @@ const TeacherDashboard = () => {
   
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -37,7 +45,6 @@ const TeacherDashboard = () => {
       if (profileError) throw profileError;
       setProfile(profileData);
 
-      // Check if teacher has no class assigned
       if (!profileData.default_class_id) {
         toast.error('Your account is pending approval. Please contact an administrator.', {
           duration: 5000
@@ -82,13 +89,15 @@ const TeacherDashboard = () => {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        minHeight: '80vh'
+        minHeight: '100vh',
+        width: '100%',
+        backgroundColor: '#f8f9fa'
       }}>
         <div style={{
-          width: '50px',
-          height: '50px',
-          border: '3px solid #f3f3f3',
-          borderTop: '3px solid #4CAF50',
+          width: '56px',
+          height: '56px',
+          border: '4px solid #f3f3f3',
+          borderTop: '4px solid #4CAF50',
           borderRadius: '50%',
           animation: 'spin 1s linear infinite'
         }}></div>
@@ -106,51 +115,62 @@ const TeacherDashboard = () => {
 
   return (
     <div style={{
-      minHeight: '80vh',
+      minHeight: '100vh',
+      width: '100%',
+      backgroundColor: '#f8f9fa',
+      paddingTop: isMobile ? '100px' : '120px',
+      paddingBottom: isMobile ? '80px' : '60px',
+      paddingLeft: isMobile ? '16px' : '60px',
+      paddingRight: isMobile ? '16px' : '60px',
+      boxSizing: 'border-box',
       display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
       justifyContent: 'center',
-      padding: '40px 20px',
-      backgroundColor: '#f8f9fa'
+      alignItems: 'flex-start'
     }}>
+      <div style={{
+        maxWidth: isMobile ? '100%' : '900px',
+        margin: '0 auto',
+        width: '100%'
+      }}>
       {/* Welcome Message */}
       <div style={{
         textAlign: 'center',
-        marginBottom: '48px'
+        marginBottom: isMobile ? '40px' : '48px'
       }}>
         <h1 style={{
-          fontSize: '36px',
-          fontWeight: '700',
+          fontSize: isMobile ? '32px' : '40px',
+          fontWeight: '800',
           color: '#1a1a1a',
-          margin: '0 0 12px 0'
+          margin: '0 0 16px 0',
+          lineHeight: 1.2
         }}>
           Welcome, {profile?.full_name || 'Teacher'}
         </h1>
         {profile?.classes && (
           <p style={{
-            fontSize: '18px',
+            fontSize: isMobile ? '17px' : '20px',
             color: '#666',
-            margin: 0
+            margin: 0,
+            fontWeight: '500'
           }}>
             {profile.classes.name} Teacher
           </p>
         )}
         {!profile?.default_class_id && (
           <div style={{
-            marginTop: '20px',
-            padding: '16px 24px',
+            marginTop: isMobile ? '28px' : '32px',
+            padding: isMobile ? '18px 20px' : '20px 24px',
             backgroundColor: '#fff3cd',
-            border: '1px solid #ffc107',
-            borderRadius: '8px',
-            maxWidth: '500px',
-            margin: '20px auto 0'
+            border: '2px solid #ffc107',
+            borderRadius: '16px',
+            maxWidth: '100%'
           }}>
             <p style={{
               color: '#856404',
-              fontSize: '14px',
+              fontSize: isMobile ? '15px' : '15px',
               margin: 0,
-              lineHeight: '1.5'
+              lineHeight: '1.6',
+              fontWeight: '500'
             }}>
               ⚠️ Your account is pending approval. You will be able to access the system once an administrator assigns you to a class.
             </p>
@@ -162,41 +182,42 @@ const TeacherDashboard = () => {
       <div style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '24px',
-        width: '100%',
-        maxWidth: '400px'
+        gap: isMobile ? '20px' : '24px',
+        width: '100%'
       }}>
         <button
           onClick={handleTakeAttendance}
           disabled={!profile?.default_class_id}
           style={{
-            padding: '24px 32px',
+            padding: isMobile ? '20px 24px' : '24px 32px',
             backgroundColor: profile?.default_class_id ? '#4CAF50' : '#ccc',
             color: 'white',
             border: 'none',
-            borderRadius: '12px',
+            borderRadius: '16px',
             cursor: profile?.default_class_id ? 'pointer' : 'not-allowed',
-            fontSize: '20px',
-            fontWeight: '600',
-            boxShadow: profile?.default_class_id ? '0 4px 12px rgba(76, 175, 80, 0.3)' : 'none',
+            fontSize: isMobile ? '18px' : '20px',
+            fontWeight: '700',
+            boxShadow: profile?.default_class_id ? '0 4px 16px rgba(76, 175, 80, 0.3)' : 'none',
             transition: 'all 0.3s ease',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '12px'
+            gap: '12px',
+            minHeight: isMobile ? '68px' : '72px',
+            width: '100%'
           }}
           onMouseEnter={(e) => {
             if (profile?.default_class_id) {
               e.target.style.transform = 'translateY(-2px)';
-              e.target.style.boxShadow = '0 6px 16px rgba(76, 175, 80, 0.4)';
+              e.target.style.boxShadow = '0 8px 24px rgba(76, 175, 80, 0.4)';
             }
           }}
           onMouseLeave={(e) => {
             e.target.style.transform = 'translateY(0)';
-            e.target.style.boxShadow = profile?.default_class_id ? '0 4px 12px rgba(76, 175, 80, 0.3)' : 'none';
+            e.target.style.boxShadow = profile?.default_class_id ? '0 4px 16px rgba(76, 175, 80, 0.3)' : 'none';
           }}
         >
-          <span style={{ fontSize: '24px' }}>📋</span>
+          <span style={{ fontSize: isMobile ? '26px' : '28px' }}>📋</span>
           Take Attendance
         </button>
 
@@ -204,33 +225,35 @@ const TeacherDashboard = () => {
           onClick={handleEvaluation}
           disabled={!profile?.default_class_id}
           style={{
-            padding: '24px 32px',
+            padding: isMobile ? '20px 24px' : '24px 32px',
             backgroundColor: profile?.default_class_id ? '#9C27B0' : '#ccc',
             color: 'white',
             border: 'none',
-            borderRadius: '12px',
+            borderRadius: '16px',
             cursor: profile?.default_class_id ? 'pointer' : 'not-allowed',
-            fontSize: '20px',
-            fontWeight: '600',
-            boxShadow: profile?.default_class_id ? '0 4px 12px rgba(156, 39, 176, 0.3)' : 'none',
+            fontSize: isMobile ? '18px' : '20px',
+            fontWeight: '700',
+            boxShadow: profile?.default_class_id ? '0 4px 16px rgba(156, 39, 176, 0.3)' : 'none',
             transition: 'all 0.3s ease',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '12px'
+            gap: '12px',
+            minHeight: isMobile ? '68px' : '72px',
+            width: '100%'
           }}
           onMouseEnter={(e) => {
             if (profile?.default_class_id) {
               e.target.style.transform = 'translateY(-2px)';
-              e.target.style.boxShadow = '0 6px 16px rgba(156, 39, 176, 0.4)';
+              e.target.style.boxShadow = '0 8px 24px rgba(156, 39, 176, 0.4)';
             }
           }}
           onMouseLeave={(e) => {
             e.target.style.transform = 'translateY(0)';
-            e.target.style.boxShadow = profile?.default_class_id ? '0 4px 12px rgba(156, 39, 176, 0.3)' : 'none';
+            e.target.style.boxShadow = profile?.default_class_id ? '0 4px 16px rgba(156, 39, 176, 0.3)' : 'none';
           }}
         >
-          <span style={{ fontSize: '24px' }}>⭐</span>
+          <span style={{ fontSize: isMobile ? '26px' : '28px' }}>⭐</span>
           Lesson Evaluation
         </button>
 
@@ -238,50 +261,77 @@ const TeacherDashboard = () => {
           onClick={handlePublishResults}
           disabled={!profile?.default_class_id}
           style={{
-            padding: '24px 32px',
+            padding: isMobile ? '20px 24px' : '24px 32px',
             backgroundColor: profile?.default_class_id ? '#2196F3' : '#ccc',
             color: 'white',
             border: 'none',
-            borderRadius: '12px',
+            borderRadius: '16px',
             cursor: profile?.default_class_id ? 'pointer' : 'not-allowed',
-            fontSize: '20px',
-            fontWeight: '600',
-            boxShadow: profile?.default_class_id ? '0 4px 12px rgba(33, 150, 243, 0.3)' : 'none',
+            fontSize: isMobile ? '18px' : '20px',
+            fontWeight: '700',
+            boxShadow: profile?.default_class_id ? '0 4px 16px rgba(33, 150, 243, 0.3)' : 'none',
             transition: 'all 0.3s ease',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '12px'
+            gap: '12px',
+            minHeight: isMobile ? '68px' : '72px',
+            width: '100%'
           }}
           onMouseEnter={(e) => {
             if (profile?.default_class_id) {
               e.target.style.transform = 'translateY(-2px)';
-              e.target.style.boxShadow = '0 6px 16px rgba(33, 150, 243, 0.4)';
+              e.target.style.boxShadow = '0 8px 24px rgba(33, 150, 243, 0.4)';
             }
           }}
           onMouseLeave={(e) => {
             e.target.style.transform = 'translateY(0)';
-            e.target.style.boxShadow = profile?.default_class_id ? '0 4px 12px rgba(33, 150, 243, 0.3)' : 'none';
+            e.target.style.boxShadow = profile?.default_class_id ? '0 4px 16px rgba(33, 150, 243, 0.3)' : 'none';
           }}
         >
-          <span style={{ fontSize: '24px' }}>📊</span>
+          <span style={{ fontSize: isMobile ? '26px' : '28px' }}>📊</span>
           Publish Results
         </button>
       </div>
 
+      {/* Warning Message */}
+      {!profile?.default_class_id && (
+        <div style={{
+          marginTop: isMobile ? '28px' : '32px',
+          padding: isMobile ? '18px 20px' : '20px 24px',
+          backgroundColor: '#fff3cd',
+          border: '2px solid #ffc107',
+          borderRadius: '16px',
+          width: '100%'
+        }}>
+          <p style={{
+            color: '#856404',
+            fontSize: isMobile ? '15px' : '15px',
+            margin: 0,
+            lineHeight: '1.6',
+            fontWeight: '500',
+            textAlign: 'center'
+          }}>
+            ⚠️ Your account is pending approval. You will be able to access the system once an administrator assigns you to a class.
+          </p>
+        </div>
+      )}
+
       {/* Help Text */}
       {profile?.default_class_id && (
         <div style={{
-          marginTop: '48px',
+          marginTop: isMobile ? '40px' : '48px',
           textAlign: 'center',
-          color: '#999',
-          fontSize: '14px'
+          color: '#94a3b8',
+          fontSize: isMobile ? '14px' : '15px',
+          fontWeight: '500'
         }}>
           <p style={{ margin: 0 }}>
             Click a button above to get started
           </p>
         </div>
       )}
+      </div>
     </div>
   );
 };
