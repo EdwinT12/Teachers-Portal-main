@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router";
 import { AuthContext } from "../context/AuthContext";
 import supabase from "../utils/supabase";
 import toast from "react-hot-toast";
-import { User, LogOut, Home, Shield, ChevronDown } from 'lucide-react';
+import { User, LogOut, Home, Shield, ChevronDown, ClipboardList, Star } from 'lucide-react';
 
 function ResponsiveAppBar() {
   const { user } = useContext(AuthContext);
@@ -19,7 +19,7 @@ function ResponsiveAppBar() {
       try {
         const { data: profileData, error } = await supabase
           .from('profiles')
-          .select('id, email, full_name, role, status')
+          .select('id, email, full_name, role, status, default_class_id')
           .eq('id', user.id)
           .single();
 
@@ -70,9 +70,32 @@ function ResponsiveAppBar() {
     handleCloseUserMenu();
   };
 
+  const handleAttendanceClick = () => {
+    if (profile?.role === 'teacher' && profile?.default_class_id) {
+      navigate(`/teacher/attendance/${profile.default_class_id}`);
+    } else if (profile?.role === 'teacher') {
+      toast.error('You have not been assigned to a class yet.');
+    } else {
+      toast.info('Attendance is for teachers only.');
+    }
+  };
+
+  const handleEvaluationClick = () => {
+    if (profile?.role === 'teacher' && profile?.default_class_id) {
+      navigate(`/teacher/evaluation/${profile.default_class_id}`);
+    } else if (profile?.role === 'teacher') {
+      toast.error('You have not been assigned to a class yet.');
+    } else {
+      toast.info('Evaluation is for teachers only.');
+    }
+  };
+
   if (location.pathname.startsWith('/auth')) {
     return null;
   }
+
+  const isAttendancePage = location.pathname.includes('/attendance');
+  const isEvaluationPage = location.pathname.includes('/evaluation');
 
   return (
     <div style={{
@@ -101,47 +124,145 @@ function ResponsiveAppBar() {
         margin: 0
       }}>
         {/* Logo and App Name - Left Side */}
-        <div 
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            cursor: 'pointer',
-            gap: '12px',
-            flexShrink: 0
-          }}
-          onClick={() => handleNavigation(profile?.role === 'admin' ? '/admin' : '/teacher')}
-        >
-          <div style={{
-            width: '40px',
-            height: '40px',
-            backgroundColor: '#4CAF50',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '20px',
-            flexShrink: 0
-          }}>
-            📚
-          </div>
-          <div>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '24px'
+        }}>
+          <div 
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer',
+              gap: '12px',
+              flexShrink: 0
+            }}
+            onClick={() => handleNavigation(profile?.role === 'admin' ? '/admin' : '/teacher')}
+          >
             <div style={{
-              fontSize: '20px',
-              fontWeight: '700',
-              color: '#1a1a1a',
-              lineHeight: '1.2',
-              marginBottom: '2px'
+              width: '56px',
+              height: '56px',
+              backgroundColor: '#ffffff',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              overflow: 'hidden',
+              border: '1px solid #e5e7eb',
+              padding: '4px'
             }}>
-              School Attendance
+              <img 
+                src="/churchlogo.jpg" 
+                alt="Church Logo" 
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain'
+                }}
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.parentElement.innerHTML = '📚';
+                  e.target.parentElement.style.fontSize = '28px';
+                }}
+              />
             </div>
-            <div style={{
-              fontSize: '12px',
-              color: '#666',
-              lineHeight: '1.2'
-            }}>
-              Management System
+            <div style={{ display: window.innerWidth < 768 ? 'none' : 'block' }}>
+              <div style={{
+                fontSize: '20px',
+                fontWeight: '700',
+                color: '#1a1a1a',
+                lineHeight: '1.2',
+                marginBottom: '2px'
+              }}>
+                School Attendance
+              </div>
+              <div style={{
+                fontSize: '12px',
+                color: '#666',
+                lineHeight: '1.2'
+              }}>
+                Management System
+              </div>
             </div>
           </div>
+
+          {/* Navigation Links - Attendance & Evaluation Buttons */}
+          {user && profile?.role === 'teacher' && profile?.default_class_id && (
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              alignItems: 'center'
+            }}>
+              <button
+                onClick={handleAttendanceClick}
+                style={{
+                  padding: '10px 18px',
+                  backgroundColor: isAttendancePage ? '#4CAF50' : 'transparent',
+                  color: isAttendancePage ? 'white' : '#1a1a1a',
+                  border: isAttendancePage ? 'none' : '1.5px solid #e5e7eb',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s ease',
+                  boxShadow: isAttendancePage ? '0 2px 8px rgba(76, 175, 80, 0.3)' : 'none'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isAttendancePage) {
+                    e.currentTarget.style.backgroundColor = '#f3f4f6';
+                    e.currentTarget.style.borderColor = '#d1d5db';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isAttendancePage) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                  }
+                }}
+              >
+                <ClipboardList style={{ width: '18px', height: '18px' }} />
+                <span>Attendance</span>
+              </button>
+
+              <button
+                onClick={handleEvaluationClick}
+                style={{
+                  padding: '10px 18px',
+                  backgroundColor: isEvaluationPage ? '#9C27B0' : 'transparent',
+                  color: isEvaluationPage ? 'white' : '#1a1a1a',
+                  border: isEvaluationPage ? 'none' : '1.5px solid #e5e7eb',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s ease',
+                  boxShadow: isEvaluationPage ? '0 2px 8px rgba(156, 39, 176, 0.3)' : 'none'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isEvaluationPage) {
+                    e.currentTarget.style.backgroundColor = '#f3f4f6';
+                    e.currentTarget.style.borderColor = '#d1d5db';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isEvaluationPage) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                  }
+                }}
+              >
+                <Star style={{ width: '18px', height: '18px' }} />
+                <span>Evaluation</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* User Menu - Right Side */}
