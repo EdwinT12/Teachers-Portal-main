@@ -311,10 +311,10 @@ const AttendancePage = () => {
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       paddingTop: isMobile ? '80px' : '100px',
       paddingBottom: isMobile ? '100px' : '60px',
-      paddingLeft: isMobile ? '16px' : '60px',
-      paddingRight: isMobile ? '16px' : '60px',
       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-      boxSizing: 'border-box'
+      boxSizing: 'border-box',
+      display: 'flex',
+      justifyContent: 'center'
     }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -335,8 +335,9 @@ const AttendancePage = () => {
       `}</style>
 
       <div style={{
-        width: '100%',
-        margin: '0 auto'
+        width: isMobile ? '100%' : '600px',
+        padding: isMobile ? '0 16px' : '0 20px',
+        boxSizing: 'border-box'
       }}>
         {/* Confirmation Modal */}
         <AnimatePresence>
@@ -628,7 +629,7 @@ const AttendancePage = () => {
         <div style={{
           width: '100%',
           display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(450px, 1fr))',
+          gridTemplateColumns: '1fr',
           gap: isMobile ? '12px' : '20px'
         }}>
           <AnimatePresence>
@@ -807,14 +808,14 @@ const AttendancePage = () => {
 
       {/* Floating Legend Button */}
       <motion.button
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => setShowLegend(!showLegend)}
-        style={{
-          position: 'fixed',
-          bottom: isMobile ? '20px' : '30px',
-          right: isMobile ? '20px' : '30px',
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setShowLegend(!showLegend)}
+          style={{
+            position: 'fixed',
+            bottom: isMobile ? '20px' : '30px',
+            right: isMobile ? '20px' : '30px',
           width: isMobile ? '56px' : '60px',
           height: isMobile ? '56px' : '60px',
           borderRadius: '50%',
@@ -863,7 +864,7 @@ const AttendancePage = () => {
             style={{
               position: 'fixed',
               bottom: isMobile ? '78px' : '100px',
-              right: isMobile ? '12px' : '30px',
+              right: isMobile ? '12px' : '12px',
               background: 'rgba(255,255,255,0.98)',
               backdropFilter: 'blur(20px)',
               borderRadius: isMobile ? '16px' : '20px',
@@ -934,7 +935,8 @@ const AttendancePage = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+      </div>
+
   );
 };
 
