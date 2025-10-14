@@ -18,13 +18,18 @@ import {
   Loader,
   HelpCircle,
   Church,
-  X
+  X,
+  ChevronDown
 } from 'lucide-react';
 
 const AttendancePage = () => {
   const { classId } = useParams();
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+  
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [allClasses, setAllClasses] = useState([]);
+  const [selectedClassId, setSelectedClassId] = useState(classId);
   
   const getNearestSunday = (dateString) => {
     const date = new Date(dateString + 'T12:00:00');
@@ -96,13 +101,52 @@ const AttendancePage = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Check if user is admin and load all classes if they are
   useEffect(() => {
-    if (classId && user) {
+    const checkAdminAndLoadClasses = async () => {
+      if (!user) return;
+      
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+        
+        const isUserAdmin = profile.role === 'admin';
+        setIsAdmin(isUserAdmin);
+
+        if (isUserAdmin) {
+          const { data: classesData, error: classesError } = await supabase
+            .from('classes')
+            .select('*')
+            .order('year_level');
+
+          if (classesError) throw classesError;
+          setAllClasses(classesData || []);
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+    };
+
+    checkAdminAndLoadClasses();
+  }, [user]);
+
+  useEffect(() => {
+    if (selectedClassId && user) {
       loadClassAndStudents();
-    } else if (!classId && user) {
+    } else if (!selectedClassId && user) {
       navigate('/teacher');
     }
-  }, [classId, user, selectedDate]);
+  }, [selectedClassId, user, selectedDate]);
+
+  const handleClassChange = (newClassId) => {
+    setSelectedClassId(newClassId);
+    setAttendance({});
+  };
 
   const loadClassAndStudents = async () => {
     setLoading(true);
@@ -110,7 +154,7 @@ const AttendancePage = () => {
       const { data: classData, error: classError } = await supabase
         .from('classes')
         .select('*')
-        .eq('id', classId)
+        .eq('id', selectedClassId)
         .single();
 
       if (classError) throw classError;
@@ -119,7 +163,7 @@ const AttendancePage = () => {
       const { data: studentsData, error: studentsError } = await supabase
         .from('students')
         .select('*')
-        .eq('class_id', classId)
+        .eq('class_id', selectedClassId)
         .order('row_number');
 
       if (studentsError) throw studentsError;
@@ -130,7 +174,7 @@ const AttendancePage = () => {
       const { data: attendanceData, error: attendanceError } = await supabase
         .from('attendance_records')
         .select('student_id, status, synced_to_sheets')
-        .eq('class_id', classId)
+        .eq('class_id', selectedClassId)
         .eq('attendance_date', selectedDate);
 
       if (attendanceError && attendanceError.code !== 'PGRST116') {
@@ -196,7 +240,7 @@ const AttendancePage = () => {
           records.push({
             student_id: student.id,
             teacher_id: user.id,
-            class_id: classId,
+            class_id: selectedClassId,
             attendance_date: selectedDate,
             status: attendanceStatus.status,
             column_identifier: formatDateForSheet(selectedDate),
@@ -560,6 +604,53 @@ const AttendancePage = () => {
 
             <div style={{ width: isMobile ? '44px' : '52px', flexShrink: 0 }} />
           </div>
+
+          {/* Admin Class Selector */}
+          {isAdmin && allClasses.length > 0 && (
+            <div style={{ marginBottom: isMobile ? '16px' : '20px', position: 'relative' }}>
+              <select
+                value={selectedClassId}
+                onChange={(e) => handleClassChange(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: isMobile ? '14px 40px 14px 16px' : '16px 44px 16px 16px',
+                  borderRadius: '12px',
+                  border: '2px solid #e2e8f0',
+                  fontSize: isMobile ? '15px' : '16px',
+                  fontWeight: '600',
+                  color: '#334155',
+                  background: 'white',
+                  cursor: 'pointer',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  MozAppearance: 'none',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+                }}
+              >
+                {allClasses
+                  .filter((cls, index, self) => 
+                    index === self.findIndex((c) => c.name === cls.name)
+                  )
+                  .map((cls) => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.name}
+                    </option>
+                  ))}
+              </select>
+              <ChevronDown 
+                style={{
+                  position: 'absolute',
+                  right: '16px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '20px',
+                  height: '20px',
+                  color: '#64748b',
+                  pointerEvents: 'none'
+                }}
+              />
+            </div>
+          )}
 
           <input
             type="date"

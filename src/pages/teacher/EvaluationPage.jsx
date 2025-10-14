@@ -18,13 +18,18 @@ import {
   Zap,
   FileText,
   X,
-  AlertCircle
+  AlertCircle,
+  ChevronDown
 } from 'lucide-react';
 
 const EvaluationPage = () => {
   const { classId } = useParams();
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+  
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [allClasses, setAllClasses] = useState([]);
+  const [selectedClassId, setSelectedClassId] = useState(classId);
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -58,13 +63,53 @@ const EvaluationPage = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Check if user is admin and load all classes if they are
   useEffect(() => {
-    if (classId && user) {
+    const checkAdminAndLoadClasses = async () => {
+      if (!user) return;
+      
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+        
+        const isUserAdmin = profile.role === 'admin';
+        setIsAdmin(isUserAdmin);
+
+        if (isUserAdmin) {
+          const { data: classesData, error: classesError } = await supabase
+            .from('classes')
+            .select('*')
+            .order('year_level');
+
+          if (classesError) throw classesError;
+          setAllClasses(classesData || []);
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+    };
+
+    checkAdminAndLoadClasses();
+  }, [user]);
+
+  useEffect(() => {
+    if (selectedClassId && user) {
       loadClassAndStudents();
-    } else if (!classId && user) {
+    } else if (!selectedClassId && user) {
       navigate('/teacher');
     }
-  }, [classId, user, selectedChapter]);
+  }, [selectedClassId, user, selectedChapter]);
+
+  const handleClassChange = (newClassId) => {
+    setSelectedClassId(newClassId);
+    setEvaluations({});
+    setStudentNotes({});
+  };
 
   const loadClassAndStudents = async () => {
     setLoading(true);
@@ -72,7 +117,7 @@ const EvaluationPage = () => {
       const { data: classData, error: classError } = await supabase
         .from('classes')
         .select('*')
-        .eq('id', classId)
+        .eq('id', selectedClassId)
         .single();
 
       if (classError) throw classError;
@@ -81,7 +126,7 @@ const EvaluationPage = () => {
       const { data: evalStudentsData, error: studentsError } = await supabase
         .from('eval_students')
         .select('*')
-        .eq('class_id', classId)
+        .eq('class_id', selectedClassId)
         .order('row_number');
 
       if (studentsError) throw studentsError;
@@ -94,7 +139,7 @@ const EvaluationPage = () => {
       const { data: evaluationsData, error: evaluationsError } = await supabase
         .from('lesson_evaluations')
         .select('eval_student_id, category, rating, synced_to_sheets, teacher_notes')
-        .eq('class_id', classId)
+        .eq('class_id', selectedClassId)
         .eq('chapter_number', selectedChapter);
 
       if (evaluationsError && evaluationsError.code !== 'PGRST116') {
@@ -195,7 +240,7 @@ const EvaluationPage = () => {
               records.push({
                 eval_student_id: evalStudent.id,
                 teacher_id: user.id,
-                class_id: classId,
+                class_id: selectedClassId,
                 chapter_number: selectedChapter,
                 category: category.key,
                 rating: evaluation.rating,
@@ -599,6 +644,63 @@ const EvaluationPage = () => {
 
             <div style={{ width: isMobile ? '44px' : '52px' }} />
           </div>
+
+          {/* Admin Class Selector */}
+          {isAdmin && allClasses.length > 0 && (
+            <div style={{ marginBottom: '16px', position: 'relative' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '13px',
+                fontWeight: '600',
+                color: '#475569',
+                marginBottom: '8px'
+              }}>
+                Select Class
+              </label>
+              <select
+                value={selectedClassId}
+                onChange={(e) => handleClassChange(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: isMobile ? '14px 40px 14px 16px' : '16px 44px 16px 16px',
+                  borderRadius: '12px',
+                  border: '2px solid #e2e8f0',
+                  fontSize: isMobile ? '15px' : '16px',
+                  fontWeight: '600',
+                  color: '#334155',
+                  background: 'white',
+                  cursor: 'pointer',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  MozAppearance: 'none',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+                }}
+              >
+                {allClasses
+                  .filter((cls, index, self) => 
+                    index === self.findIndex((c) => c.name === cls.name)
+                  )
+                  .map((cls) => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.name}
+                    </option>
+                  ))}
+              </select>
+              <ChevronDown 
+                style={{
+                  position: 'absolute',
+                  right: '16px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  marginTop: '12px',
+                  width: '20px',
+                  height: '20px',
+                  color: '#64748b',
+                  pointerEvents: 'none'
+                }}
+              />
+            </div>
+          )}
 
           {/* Chapter Selector */}
           <div style={{ marginBottom: '16px' }}>
