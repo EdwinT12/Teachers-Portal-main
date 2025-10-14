@@ -569,15 +569,19 @@ const AttendancePage = () => {
             min="2025-09-01"
             style={{
               width: '100%',
-              padding: isMobile ? '14px' : '16px',
+              padding: isMobile ? '14px 16px' : '16px',
               borderRadius: '12px',
               border: '2px solid #e2e8f0',
-              fontSize: isMobile ? '15px' : '16px',
+              fontSize: isMobile ? '16px' : '16px',
               fontWeight: '600',
               color: '#334155',
               background: 'white',
               cursor: 'pointer',
-              textAlign: 'center'
+              textAlign: 'center',
+              WebkitAppearance: 'none',
+              MozAppearance: 'none',
+              appearance: 'none',
+              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
             }}
           />
 
@@ -930,7 +934,7 @@ const AttendancePage = () => {
               marginBottom: 0,
               fontWeight: '500'
             }}>
-              ðŸ’¡ Tip: Click the same status again to deselect
+              💡 Tip: Click the same status again to deselect
             </p>
           </motion.div>
         )}
