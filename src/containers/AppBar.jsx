@@ -116,173 +116,178 @@ function ResponsiveAppBar() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '12px 24px',
-        minHeight: '64px',
+        padding: '16px 32px',
+        minHeight: '72px',
         width: '100%',
         maxWidth: '100%',
         boxSizing: 'border-box',
-        margin: 0
+        margin: 0,
+        gap: '24px'
       }}>
         {/* Logo and App Name - Left Side */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '24px'
-        }}>
-          <div 
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              cursor: 'pointer',
-              gap: '12px',
-              flexShrink: 0
-            }}
-            onClick={() => handleNavigation('/teacher')}
-          >
+        <div 
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            cursor: 'pointer',
+            gap: '12px',
+            flexShrink: 0,
+            minWidth: 'fit-content'
+          }}
+          onClick={() => handleNavigation('/teacher')}
+        >
+          <div style={{
+            width: '48px',
+            height: '48px',
+            backgroundColor: '#ffffff',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            overflow: 'hidden',
+            border: '1px solid #e5e7eb',
+            padding: '4px'
+          }}>
+            <img 
+              src="/churchlogo.jpg" 
+              alt="Church Logo" 
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain'
+              }}
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.parentElement.innerHTML = '📚';
+                e.target.parentElement.style.fontSize = '24px';
+              }}
+            />
+          </div>
+          <div style={{ display: window.innerWidth < 768 ? 'none' : 'block' }}>
             <div style={{
-              width: '56px',
-              height: '56px',
-              backgroundColor: '#ffffff',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              overflow: 'hidden',
-              border: '1px solid #e5e7eb',
-              padding: '4px'
+              fontSize: '18px',
+              fontWeight: '700',
+              color: '#1a1a1a',
+              lineHeight: '1.3',
+              whiteSpace: 'nowrap'
             }}>
-              <img 
-                src="/churchlogo.jpg" 
-                alt="Church Logo" 
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'contain'
-                }}
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.parentElement.innerHTML = '📚';
-                  e.target.parentElement.style.fontSize = '28px';
-                }}
-              />
+              School Attendance
             </div>
-            <div style={{ display: window.innerWidth < 768 ? 'none' : 'block' }}>
-              <div style={{
-                fontSize: '20px',
-                fontWeight: '700',
-                color: '#1a1a1a',
-                lineHeight: '1.2',
-                marginBottom: '2px'
-              }}>
-                School Attendance
-              </div>
-              <div style={{
-                fontSize: '12px',
-                color: '#666',
-                lineHeight: '1.2'
-              }}>
-                Management System
-              </div>
+            <div style={{
+              fontSize: '12px',
+              color: '#666',
+              lineHeight: '1.3',
+              whiteSpace: 'nowrap'
+            }}>
+              Management System
             </div>
           </div>
-
-          {/* Navigation Links - Attendance & Evaluation Buttons */}
-          {user && profile?.role === 'teacher' && profile?.default_class_id && (
-            <div style={{
-              display: 'flex',
-              gap: '8px',
-              alignItems: 'center'
-            }}>
-              <button
-                onClick={handleAttendanceClick}
-                style={{
-                  padding: '10px 18px',
-                  backgroundColor: isAttendancePage ? '#4CAF50' : 'transparent',
-                  color: isAttendancePage ? 'white' : '#1a1a1a',
-                  border: isAttendancePage ? 'none' : '1.5px solid #e5e7eb',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  transition: 'all 0.2s ease',
-                  boxShadow: isAttendancePage ? '0 2px 8px rgba(76, 175, 80, 0.3)' : 'none'
-                }}
-                onMouseEnter={(e) => {
-                  if (!isAttendancePage) {
-                    e.currentTarget.style.backgroundColor = '#f3f4f6';
-                    e.currentTarget.style.borderColor = '#d1d5db';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isAttendancePage) {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.borderColor = '#e5e7eb';
-                  }
-                }}
-              >
-                <ClipboardList style={{ width: '18px', height: '18px' }} />
-                <span>Attendance</span>
-              </button>
-
-              <button
-                onClick={handleEvaluationClick}
-                style={{
-                  padding: '10px 18px',
-                  backgroundColor: isEvaluationPage ? '#9C27B0' : 'transparent',
-                  color: isEvaluationPage ? 'white' : '#1a1a1a',
-                  border: isEvaluationPage ? 'none' : '1.5px solid #e5e7eb',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  transition: 'all 0.2s ease',
-                  boxShadow: isEvaluationPage ? '0 2px 8px rgba(156, 39, 176, 0.3)' : 'none'
-                }}
-                onMouseEnter={(e) => {
-                  if (!isEvaluationPage) {
-                    e.currentTarget.style.backgroundColor = '#f3f4f6';
-                    e.currentTarget.style.borderColor = '#d1d5db';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isEvaluationPage) {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.borderColor = '#e5e7eb';
-                  }
-                }}
-              >
-                <Star style={{ width: '18px', height: '18px' }} />
-                <span>Evaluation</span>
-              </button>
-            </div>
-          )}
         </div>
+
+        {/* Navigation Links - Centered */}
+        {user && profile?.role === 'teacher' && profile?.default_class_id && (
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flex: '1',
+            maxWidth: '600px'
+          }}>
+            <button
+              onClick={handleAttendanceClick}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: isAttendancePage ? '#4CAF50' : 'transparent',
+                color: isAttendancePage ? 'white' : '#1a1a1a',
+                border: isAttendancePage ? 'none' : '1.5px solid #e5e7eb',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.2s ease',
+                boxShadow: isAttendancePage ? '0 2px 8px rgba(76, 175, 80, 0.3)' : 'none',
+                minWidth: '140px',
+                justifyContent: 'center'
+              }}
+              onMouseEnter={(e) => {
+                if (!isAttendancePage) {
+                  e.currentTarget.style.backgroundColor = '#f3f4f6';
+                  e.currentTarget.style.borderColor = '#d1d5db';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isAttendancePage) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.borderColor = '#e5e7eb';
+                }
+              }}
+            >
+              <ClipboardList style={{ width: '18px', height: '18px' }} />
+              <span>Attendance</span>
+            </button>
+
+            <button
+              onClick={handleEvaluationClick}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: isEvaluationPage ? '#9C27B0' : 'transparent',
+                color: isEvaluationPage ? 'white' : '#1a1a1a',
+                border: isEvaluationPage ? 'none' : '1.5px solid #e5e7eb',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.2s ease',
+                boxShadow: isEvaluationPage ? '0 2px 8px rgba(156, 39, 176, 0.3)' : 'none',
+                minWidth: '140px',
+                justifyContent: 'center'
+              }}
+              onMouseEnter={(e) => {
+                if (!isEvaluationPage) {
+                  e.currentTarget.style.backgroundColor = '#f3f4f6';
+                  e.currentTarget.style.borderColor = '#d1d5db';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isEvaluationPage) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.borderColor = '#e5e7eb';
+                }
+              }}
+            >
+              <Star style={{ width: '18px', height: '18px' }} />
+              <span>Evaluation</span>
+            </button>
+          </div>
+        )}
 
         {/* User Menu - Right Side */}
         {user && profile ? (
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', flexShrink: 0, marginLeft: 'auto' }}>
             <button
               onClick={handleOpenUserMenu}
               style={{
                 backgroundColor: '#f8f9fa',
                 border: '1px solid #e5e7eb',
                 borderRadius: '8px',
-                padding: '6px 12px',
+                padding: '8px 14px',
                 cursor: 'pointer',
                 color: '#1a1a1a',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px',
+                gap: '10px',
                 transition: 'all 0.2s ease',
                 fontSize: '14px',
-                fontWeight: '500'
+                fontWeight: '500',
+                minWidth: 'fit-content'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = '#e9ecef';
@@ -478,7 +483,9 @@ function ResponsiveAppBar() {
               padding: '10px 24px',
               cursor: 'pointer',
               fontSize: '14px',
-              transition: 'background-color 0.2s ease'
+              transition: 'background-color 0.2s ease',
+              flexShrink: 0,
+              marginLeft: 'auto'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = '#45a049';
