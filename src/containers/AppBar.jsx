@@ -137,7 +137,7 @@ function ResponsiveAppBar() {
               gap: '12px',
               flexShrink: 0
             }}
-            onClick={() => handleNavigation(profile?.role === 'admin' ? '/admin' : '/teacher')}
+            onClick={() => handleNavigation('/teacher')}
           >
             <div style={{
               width: '56px',

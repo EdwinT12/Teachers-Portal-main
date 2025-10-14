@@ -336,7 +336,7 @@ const AttendancePage = () => {
 
       <div style={{
         width: isMobile ? '100%' : '600px',
-        padding: isMobile ? '0 16px' : '0 20px',
+        padding: isMobile ? '0 30px' : '0 20px',
         boxSizing: 'border-box'
       }}>
         {/* Confirmation Modal */}
@@ -930,7 +930,7 @@ const AttendancePage = () => {
               marginBottom: 0,
               fontWeight: '500'
             }}>
-              💡 Tip: Click the same status again to deselect
+              ðŸ’¡ Tip: Click the same status again to deselect
             </p>
           </motion.div>
         )}
