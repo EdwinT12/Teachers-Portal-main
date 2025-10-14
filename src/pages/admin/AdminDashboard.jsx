@@ -84,14 +84,37 @@ const AdminDashboard = () => {
   const assignTeacherToClass = async (teacherId, classId) => {
     setAssigningTeacher(teacherId);
     try {
+      // Get the current teacher data to check if sheet IDs are already set
+      const { data: teacherData, error: fetchError } = await supabase
+        .from('profiles')
+        .select('google_sheets_id, evaluation_sheets_id')
+        .eq('id', teacherId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Prepare update object with class assignment
+      const updateData = {
+        default_class_id: classId
+      };
+
+      // Set default sheet IDs if they're not already set
+      if (!teacherData.google_sheets_id) {
+        updateData.google_sheets_id = '1kTbE3-JeukrhPMg46eEPqOagEK82olcLIUExqmKWhAs';
+      }
+      if (!teacherData.evaluation_sheets_id) {
+        updateData.evaluation_sheets_id = '1tVWRqyYrTHbYFPh4Yo8NVijrxE3ZRYesceonwT0mcDc';
+      }
+
+      // Update the profile with class and sheet IDs
       const { error } = await supabase
         .from('profiles')
-        .update({ default_class_id: classId })
+        .update(updateData)
         .eq('id', teacherId);
 
       if (error) throw error;
 
-      toast.success('Teacher assigned successfully!');
+      toast.success('Teacher assigned successfully with sheet IDs!');
       loadData();
     } catch (error) {
       console.error('Error assigning teacher:', error);
