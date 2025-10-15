@@ -2,7 +2,7 @@
 import supabase from './supabase';
 
 /**
- * Get the Google OAuth access token for the current user
+ * Get and refresh Google OAuth access token if needed
  */
 export const getGoogleAccessToken = async () => {
   try {
@@ -12,12 +12,36 @@ export const getGoogleAccessToken = async () => {
       throw new Error('No active session');
     }
 
-    // Get the provider token (Google OAuth token)
     const providerToken = session.provider_token;
     const providerRefreshToken = session.provider_refresh_token;
 
     if (!providerToken) {
       throw new Error('No Google access token available');
+    }
+
+    // Check if token is expired or about to expire
+    const expiresAt = session.expires_at;
+    const now = Math.floor(Date.now() / 1000);
+    const bufferTime = 300; // Refresh 5 minutes before expiry
+
+    // If token is expired or about to expire, refresh the session
+    if (expiresAt && (expiresAt - now) < bufferTime) {
+      console.log('🔄 Token expired or expiring soon, refreshing session...');
+      
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      
+      if (refreshError) {
+        console.error('Failed to refresh session:', refreshError);
+        throw new Error('SESSION_EXPIRED');
+      }
+
+      if (refreshData?.session) {
+        console.log('✅ Session refreshed successfully');
+        return {
+          accessToken: refreshData.session.provider_token,
+          refreshToken: refreshData.session.provider_refresh_token
+        };
+      }
     }
 
     return {
@@ -26,6 +50,48 @@ export const getGoogleAccessToken = async () => {
     };
   } catch (error) {
     console.error('Error getting Google access token:', error);
+    throw error;
+  }
+};
+
+/**
+ * Retry a Google Sheets API call with token refresh
+ */
+export const retryWithTokenRefresh = async (apiCall, retryCount = 0) => {
+  try {
+    return await apiCall();
+  } catch (error) {
+    // Check if it's an auth error (401 or 403)
+    const isAuthError = 
+      error.message?.includes('401') || 
+      error.message?.includes('403') ||
+      error.message?.includes('unauthorized') ||
+      error.message?.includes('Invalid Credentials');
+    
+    if (isAuthError && retryCount < 2) {
+      console.log('🔄 Auth error detected, refreshing token and retrying...', retryCount + 1);
+      
+      try {
+        // Force refresh the session
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        
+        if (refreshError || !refreshData?.session) {
+          throw new Error('SESSION_EXPIRED');
+        }
+
+        console.log('✅ Token refreshed, retrying API call...');
+        
+        // Wait a moment for token to propagate
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Retry the API call with refreshed token
+        return await retryWithTokenRefresh(apiCall, retryCount + 1);
+      } catch (refreshError) {
+        console.error('Failed to refresh and retry:', refreshError);
+        throw new Error('SESSION_EXPIRED');
+      }
+    }
+    
     throw error;
   }
 };
@@ -61,10 +127,9 @@ export const getColumnNumber = (letter) => {
  * Update a single cell in Google Sheets
  */
 export const updateSheetCell = async (spreadsheetId, sheetName, row, column, value) => {
-  try {
+  return retryWithTokenRefresh(async () => {
     const { accessToken } = await getGoogleAccessToken();
     
-    // Convert column number to letter (e.g., 1 = A, 2 = B, etc.)
     const columnLetter = getColumnLetter(column);
     const range = `${sheetName}!${columnLetter}${row}`;
 
@@ -88,20 +153,16 @@ export const updateSheetCell = async (spreadsheetId, sheetName, row, column, val
     }
 
     return await response.json();
-  } catch (error) {
-    console.error('Error updating sheet cell:', error);
-    throw error;
-  }
+  });
 };
 
 /**
  * Update multiple cells in Google Sheets at once (batch update)
  */
 export const batchUpdateSheetCells = async (spreadsheetId, sheetName, updates) => {
-  try {
+  return retryWithTokenRefresh(async () => {
     const { accessToken } = await getGoogleAccessToken();
     
-    // Format updates for batch request
     const data = updates.map(update => ({
       range: `${sheetName}!${getColumnLetter(update.column)}${update.row}`,
       values: [[update.value]]
@@ -128,17 +189,14 @@ export const batchUpdateSheetCells = async (spreadsheetId, sheetName, updates) =
     }
 
     return await response.json();
-  } catch (error) {
-    console.error('Error batch updating sheet:', error);
-    throw error;
-  }
+  });
 };
 
 /**
  * Read data from Google Sheets
  */
 export const readSheetData = async (spreadsheetId, sheetName, range) => {
-  try {
+  return retryWithTokenRefresh(async () => {
     const { accessToken } = await getGoogleAccessToken();
     
     const fullRange = `${sheetName}!${range}`;
@@ -159,17 +217,14 @@ export const readSheetData = async (spreadsheetId, sheetName, range) => {
 
     const data = await response.json();
     return data.values || [];
-  } catch (error) {
-    console.error('Error reading sheet data:', error);
-    throw error;
-  }
+  });
 };
 
 /**
  * Get spreadsheet metadata (sheet names, etc.)
  */
 export const getSpreadsheetMetadata = async (spreadsheetId) => {
-  try {
+  return retryWithTokenRefresh(async () => {
     const { accessToken } = await getGoogleAccessToken();
     
     const response = await fetch(
@@ -193,26 +248,19 @@ export const getSpreadsheetMetadata = async (spreadsheetId) => {
       title: sheet.properties.title,
       index: sheet.properties.index
     }));
-  } catch (error) {
-    console.error('Error getting spreadsheet metadata:', error);
-    throw error;
-  }
+  });
 };
 
 /**
  * Helper function to get column number from date
- * This needs to be customized based on your sheet structure
  */
 export const getDateColumn = (date) => {
-  // Your sheet has Sep/07/2025 in column D (4)
-  const startDate = new Date('2025-09-07'); // Changed from 2024
+  const startDate = new Date('2025-09-07');
   const targetDate = new Date(date);
   
-  // Calculate weeks difference
   const daysDiff = Math.floor((targetDate - startDate) / (1000 * 60 * 60 * 24));
   const weeksDiff = Math.floor(daysDiff / 7);
   
-  // Column D is 4, add weeks
   return 4 + weeksDiff;
 };
 
@@ -231,7 +279,6 @@ export const formatDateForSheet = (dateString) => {
  */
 export const syncAttendanceToSheet = async (attendanceRecord) => {
   try {
-    // Get the teacher's spreadsheet ID
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('google_sheets_id')
@@ -244,7 +291,6 @@ export const syncAttendanceToSheet = async (attendanceRecord) => {
       throw new Error('No Google Sheets ID configured for this teacher');
     }
 
-    // Get student information
     const { data: student, error: studentError } = await supabase
       .from('students')
       .select(`
@@ -262,10 +308,8 @@ export const syncAttendanceToSheet = async (attendanceRecord) => {
       throw new Error('Student not found');
     }
 
-    // Calculate the column based on the date
     const dateColumn = getDateColumn(attendanceRecord.attendance_date);
 
-    // Update the cell in Google Sheets
     await updateSheetCell(
       profile.google_sheets_id,
       student.classes.sheet_name,
@@ -274,7 +318,6 @@ export const syncAttendanceToSheet = async (attendanceRecord) => {
       attendanceRecord.status
     );
 
-    // Mark as synced in the database
     await supabase
       .from('attendance_records')
       .update({ 
@@ -287,7 +330,6 @@ export const syncAttendanceToSheet = async (attendanceRecord) => {
   } catch (error) {
     console.error('Error syncing to sheets:', error);
     
-    // Log the error in the database
     await supabase
       .from('attendance_records')
       .update({ 
@@ -309,7 +351,6 @@ export const batchSyncAttendance = async (attendanceRecords) => {
       throw new Error('No records to sync');
     }
 
-    // Get the teacher's spreadsheet ID from the first record
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('google_sheets_id')
@@ -322,11 +363,9 @@ export const batchSyncAttendance = async (attendanceRecords) => {
       throw new Error('No Google Sheets ID configured');
     }
 
-    // Prepare all updates
     const updates = [];
     
     for (const record of attendanceRecords) {
-      // Get student information
       const { data: student, error: studentError } = await supabase
         .from('students')
         .select(`
@@ -359,7 +398,6 @@ export const batchSyncAttendance = async (attendanceRecords) => {
       throw new Error('No valid records to sync');
     }
 
-    // Group updates by sheet name
     const updatesBySheet = updates.reduce((acc, update) => {
       if (!acc[update.sheetName]) {
         acc[update.sheetName] = [];
@@ -368,7 +406,6 @@ export const batchSyncAttendance = async (attendanceRecords) => {
       return acc;
     }, {});
 
-    // Batch update each sheet
     for (const [sheetName, sheetUpdates] of Object.entries(updatesBySheet)) {
       await batchUpdateSheetCells(
         profile.google_sheets_id, 
@@ -377,7 +414,6 @@ export const batchSyncAttendance = async (attendanceRecords) => {
       );
     }
 
-    // Mark all as synced in the database
     const recordIds = updates.map(u => u.recordId);
     const { error: updateError } = await supabase
       .from('attendance_records')
@@ -399,13 +435,12 @@ export const batchSyncAttendance = async (attendanceRecords) => {
   } catch (error) {
     console.error('Error batch syncing:', error);
     
-    // Mark all as failed with error message
     const recordIds = attendanceRecords.map(r => r.id);
     await supabase
       .from('attendance_records')
       .update({ 
         synced_to_sheets: false,
-        sync_error: error.message 
+        sync_error: error.message === 'SESSION_EXPIRED' ? 'Session expired - please sign in again' : error.message
       })
       .in('id', recordIds);
 
@@ -415,11 +450,9 @@ export const batchSyncAttendance = async (attendanceRecords) => {
 
 /**
  * Import students from Google Sheets to database
- * Useful for initial setup
  */
 export const importStudentsFromSheet = async (spreadsheetId, sheetName, classId, startRow = 4, endRow = 20) => {
   try {
-    // Read student data from sheet (columns A, B, C)
     const range = `${sheetName}!A${startRow}:C${endRow}`;
     const studentData = await readSheetData(spreadsheetId, sheetName, range);
 
@@ -429,7 +462,7 @@ export const importStudentsFromSheet = async (spreadsheetId, sheetName, classId,
       const row = studentData[i];
       const rowNumber = startRow + i;
       
-      if (row[1]) { // Check if student name exists (column B)
+      if (row[1]) {
         students.push({
           class_id: classId,
           house: row[0] || '',
@@ -440,7 +473,6 @@ export const importStudentsFromSheet = async (spreadsheetId, sheetName, classId,
       }
     }
 
-    // Insert into database
     const { data, error } = await supabase
       .from('students')
       .insert(students)
@@ -461,18 +493,16 @@ export const importStudentsFromSheet = async (spreadsheetId, sheetName, classId,
 
 /**
  * Retry failed syncs
- * Call this periodically or on-demand
  */
 export const retryFailedSyncs = async (teacherId) => {
   try {
-    // Get all unsynced records for this teacher
     const { data: unsyncedRecords, error } = await supabase
       .from('attendance_records')
       .select('*')
       .eq('teacher_id', teacherId)
       .eq('synced_to_sheets', false)
       .order('created_at', { ascending: true })
-      .limit(50); // Process in batches
+      .limit(50);
 
     if (error) throw error;
 
@@ -480,7 +510,6 @@ export const retryFailedSyncs = async (teacherId) => {
       return { success: true, syncedCount: 0, message: 'No failed syncs to retry' };
     }
 
-    // Attempt to sync
     const result = await batchSyncAttendance(unsyncedRecords);
     
     return result;
