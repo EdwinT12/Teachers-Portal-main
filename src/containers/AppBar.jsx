@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router";
 import { AuthContext } from "../context/AuthContext";
 import supabase from "../utils/supabase";
 import toast from "react-hot-toast";
-import { User, LogOut, Home, Shield, ChevronDown, ClipboardList, Star } from 'lucide-react';
+import { User, LogOut, Home, Shield, ChevronDown } from 'lucide-react';
 
 function ResponsiveAppBar() {
   const { user } = useContext(AuthContext);
@@ -116,13 +116,13 @@ function ResponsiveAppBar() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '16px 32px',
-        minHeight: '72px',
+        padding: '12px 24px',
+        minHeight: '64px',
         width: '100%',
         maxWidth: '100%',
         boxSizing: 'border-box',
         margin: 0,
-        gap: '24px'
+        gap: '16px'
       }}>
         {/* Logo and App Name - Left Side */}
         <div 
@@ -130,15 +130,15 @@ function ResponsiveAppBar() {
             display: 'flex',
             alignItems: 'center',
             cursor: 'pointer',
-            gap: '12px',
+            gap: '10px',
             flexShrink: 0,
             minWidth: 'fit-content'
           }}
           onClick={() => handleNavigation('/teacher')}
         >
           <div style={{
-            width: '48px',
-            height: '48px',
+            width: '52px',
+            height: '52px',
             backgroundColor: '#ffffff',
             borderRadius: '8px',
             display: 'flex',
@@ -166,7 +166,7 @@ function ResponsiveAppBar() {
           </div>
           <div style={{ display: window.innerWidth < 768 ? 'none' : 'block' }}>
             <div style={{
-              fontSize: '18px',
+              fontSize: '16px',
               fontWeight: '700',
               color: '#1a1a1a',
               lineHeight: '1.3',
@@ -175,7 +175,7 @@ function ResponsiveAppBar() {
               School Attendance
             </div>
             <div style={{
-              fontSize: '12px',
+              fontSize: '11px',
               color: '#666',
               lineHeight: '1.3',
               whiteSpace: 'nowrap'
@@ -189,30 +189,29 @@ function ResponsiveAppBar() {
         {user && profile?.role === 'teacher' && profile?.default_class_id && (
           <div style={{
             display: 'flex',
-            gap: '12px',
+            gap: '10px',
             alignItems: 'center',
             justifyContent: 'center',
             flex: '1',
-            maxWidth: '600px'
+            maxWidth: '500px'
           }}>
             <button
               onClick={handleAttendanceClick}
               style={{
-                padding: '10px 20px',
+                padding: '8px 16px',
                 backgroundColor: isAttendancePage ? '#4CAF50' : 'transparent',
                 color: isAttendancePage ? 'white' : '#1a1a1a',
                 border: isAttendancePage ? 'none' : '1.5px solid #e5e7eb',
                 borderRadius: '8px',
                 cursor: 'pointer',
-                fontSize: '14px',
+                fontSize: '13px',
                 fontWeight: '600',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
+                justifyContent: 'center',
                 transition: 'all 0.2s ease',
                 boxShadow: isAttendancePage ? '0 2px 8px rgba(76, 175, 80, 0.3)' : 'none',
-                minWidth: '140px',
-                justifyContent: 'center'
+                minWidth: '100px'
               }}
               onMouseEnter={(e) => {
                 if (!isAttendancePage) {
@@ -227,28 +226,26 @@ function ResponsiveAppBar() {
                 }
               }}
             >
-              <ClipboardList style={{ width: '18px', height: '18px' }} />
-              <span>Attendance</span>
+              Attendance
             </button>
 
             <button
               onClick={handleEvaluationClick}
               style={{
-                padding: '10px 20px',
+                padding: '8px 16px',
                 backgroundColor: isEvaluationPage ? '#9C27B0' : 'transparent',
                 color: isEvaluationPage ? 'white' : '#1a1a1a',
                 border: isEvaluationPage ? 'none' : '1.5px solid #e5e7eb',
                 borderRadius: '8px',
                 cursor: 'pointer',
-                fontSize: '14px',
+                fontSize: '13px',
                 fontWeight: '600',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
+                justifyContent: 'center',
                 transition: 'all 0.2s ease',
                 boxShadow: isEvaluationPage ? '0 2px 8px rgba(156, 39, 176, 0.3)' : 'none',
-                minWidth: '140px',
-                justifyContent: 'center'
+                minWidth: '100px'
               }}
               onMouseEnter={(e) => {
                 if (!isEvaluationPage) {
@@ -263,29 +260,28 @@ function ResponsiveAppBar() {
                 }
               }}
             >
-              <Star style={{ width: '18px', height: '18px' }} />
-              <span>Evaluation</span>
+              Evaluation
             </button>
           </div>
         )}
 
         {/* User Menu - Right Side */}
         {user && profile ? (
-          <div style={{ position: 'relative', flexShrink: 0, marginLeft: 'auto' }}>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
             <button
               onClick={handleOpenUserMenu}
               style={{
                 backgroundColor: '#f8f9fa',
                 border: '1px solid #e5e7eb',
                 borderRadius: '8px',
-                padding: '8px 14px',
+                padding: '6px 10px',
                 cursor: 'pointer',
                 color: '#1a1a1a',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '10px',
+                gap: '8px',
                 transition: 'all 0.2s ease',
-                fontSize: '14px',
+                fontSize: '13px',
                 fontWeight: '500',
                 minWidth: 'fit-content'
               }}
@@ -297,14 +293,14 @@ function ResponsiveAppBar() {
               }}
             >
               <div style={{
-                width: '36px',
-                height: '36px',
+                width: '32px',
+                height: '32px',
                 borderRadius: '50%',
                 backgroundColor: profile.role === 'admin' ? '#ff9800' : '#4CAF50',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '16px',
+                fontSize: '14px',
                 fontWeight: '600',
                 color: 'white',
                 flexShrink: 0
@@ -313,23 +309,23 @@ function ResponsiveAppBar() {
               </div>
               
               <div style={{ textAlign: 'left', display: window.innerWidth < 640 ? 'none' : 'block' }}>
-                <div style={{ fontSize: '14px', fontWeight: '600', lineHeight: '1.2' }}>
+                <div style={{ fontSize: '13px', fontWeight: '600', lineHeight: '1.2' }}>
                   {profile.full_name || 'User'}
                 </div>
                 <div style={{
-                  fontSize: '12px',
+                  fontSize: '11px',
                   color: '#666',
                   textTransform: 'capitalize',
                   lineHeight: '1.2',
-                  marginTop: '4px'
+                  marginTop: '2px'
                 }}>
                   {profile.role}
                 </div>
               </div>
 
               <ChevronDown style={{
-                width: '16px',
-                height: '16px',
+                width: '14px',
+                height: '14px',
                 color: '#666',
                 transform: anchorElUser ? 'rotate(180deg)' : 'rotate(0deg)',
                 transition: 'transform 0.2s ease'
@@ -355,7 +351,7 @@ function ResponsiveAppBar() {
                   position: 'absolute',
                   top: 'calc(100% + 8px)',
                   right: 0,
-                  minWidth: '220px',
+                  minWidth: '280px',
                   backgroundColor: 'white',
                   borderRadius: '8px',
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
@@ -376,7 +372,9 @@ function ResponsiveAppBar() {
                       fontSize: '14px',
                       fontWeight: '600',
                       color: '#1a1a1a',
-                      wordBreak: 'break-all'
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
                     }}>
                       {profile.email}
                     </div>
@@ -480,12 +478,11 @@ function ResponsiveAppBar() {
               fontWeight: '600',
               border: 'none',
               borderRadius: '8px',
-              padding: '10px 24px',
+              padding: '8px 20px',
               cursor: 'pointer',
-              fontSize: '14px',
+              fontSize: '13px',
               transition: 'background-color 0.2s ease',
-              flexShrink: 0,
-              marginLeft: 'auto'
+              flexShrink: 0
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = '#45a049';
