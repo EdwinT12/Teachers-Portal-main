@@ -19,7 +19,8 @@ import {
   FileText,
   X,
   AlertCircle,
-  ChevronDown
+  ChevronDown,
+  LogOut
 } from 'lucide-react';
 
 const EvaluationPage = () => {
@@ -30,6 +31,7 @@ const EvaluationPage = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [allClasses, setAllClasses] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState(classId);
+  const [showSyncErrorModal, setShowSyncErrorModal] = useState(false);
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -109,6 +111,16 @@ const EvaluationPage = () => {
     setSelectedClassId(newClassId);
     setEvaluations({});
     setStudentNotes({});
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Failed to logout');
+    }
   };
 
   const loadClassAndStudents = async () => {
@@ -284,7 +296,7 @@ const EvaluationPage = () => {
         
       } catch (syncError) {
         console.error('Sync error:', syncError);
-        toast.error('Saved locally. Sync failed.');
+        setShowSyncErrorModal(true);
       }
 
     } catch (error) {
@@ -394,6 +406,181 @@ const EvaluationPage = () => {
         width: '100%',
         margin: '0 auto'
       }}>
+        {/* Sync Error Modal */}
+        <AnimatePresence>
+          {showSyncErrorModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0, 0, 0, 0.6)',
+                backdropFilter: 'blur(4px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 9999,
+                padding: '20px'
+              }}
+              onClick={() => setShowSyncErrorModal(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: 'white',
+                  borderRadius: '24px',
+                  padding: isMobile ? '24px' : '32px',
+                  maxWidth: '480px',
+                  width: '100%',
+                  boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)'
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '20px'
+                }}>
+                  <div style={{
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '16px',
+                    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <AlertCircle style={{ width: '28px', height: '28px', color: 'white' }} />
+                  </div>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowSyncErrorModal(false)}
+                    style={{
+                      background: '#f1f5f9',
+                      border: 'none',
+                      borderRadius: '12px',
+                      width: '40px',
+                      height: '40px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <X style={{ width: '20px', height: '20px', color: '#64748b' }} />
+                  </motion.button>
+                </div>
+
+                <h2 style={{
+                  fontSize: isMobile ? '22px' : '26px',
+                  fontWeight: '800',
+                  color: '#1e293b',
+                  margin: '0 0 12px 0'
+                }}>
+                  Google Sheets Sync Failed
+                </h2>
+
+                <p style={{
+                  fontSize: '15px',
+                  color: '#64748b',
+                  lineHeight: '1.6',
+                  margin: '0 0 24px 0'
+                }}>
+                  Your evaluation data has been saved locally, but we couldn't sync it to Google Sheets. This might be due to an authentication issue.
+                </p>
+
+                <div style={{
+                  background: '#fef3c7',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  marginBottom: '24px',
+                  border: '1px solid #fcd34d'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'start',
+                    gap: '12px'
+                  }}>
+                    <AlertCircle style={{ width: '20px', height: '20px', color: '#f59e0b', flexShrink: 0, marginTop: '2px' }} />
+                    <div>
+                      <p style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#92400e',
+                        margin: '0 0 4px 0'
+                      }}>
+                        Recommended Action
+                      </p>
+                      <p style={{
+                        fontSize: '13px',
+                        color: '#78350f',
+                        margin: 0,
+                        lineHeight: '1.5'
+                      }}>
+                        Try logging out and logging back in to refresh your Google authentication.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  display: 'flex',
+                  gap: '12px'
+                }}>
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setShowSyncErrorModal(false)}
+                    style={{
+                      flex: 1,
+                      background: '#f1f5f9',
+                      border: 'none',
+                      borderRadius: '12px',
+                      padding: '14px 24px',
+                      fontSize: '15px',
+                      fontWeight: '700',
+                      color: '#64748b',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Dismiss
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleLogout}
+                    style={{
+                      flex: 1,
+                      background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                      border: 'none',
+                      borderRadius: '12px',
+                      padding: '14px 24px',
+                      fontSize: '15px',
+                      fontWeight: '700',
+                      color: 'white',
+                      cursor: 'pointer',
+                      boxShadow: '0 8px 24px rgba(239, 68, 68, 0.4)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <LogOut style={{ width: '18px', height: '18px' }} />
+                    Logout & Retry
+                  </motion.button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Confirmation Modal */}
         <AnimatePresence>
           {showConfirmation && (
