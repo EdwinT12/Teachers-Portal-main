@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import BulkStudentImport from '../../components/BulkStudentImport';
 import UnifiedEvaluationSetup from '../../components/UnifiedEvaluationSetup';
+import CatechismLessonTracker from './CatechismLessonTracker'; // ADD THIS IMPORT
 import { 
   Users, 
   Clock, 
@@ -84,7 +85,6 @@ const AdminDashboard = () => {
   const assignTeacherToClass = async (teacherId, classId) => {
     setAssigningTeacher(teacherId);
     try {
-      // Get the current teacher data to check if sheet IDs are already set
       const { data: teacherData, error: fetchError } = await supabase
         .from('profiles')
         .select('google_sheets_id, evaluation_sheets_id')
@@ -93,12 +93,10 @@ const AdminDashboard = () => {
 
       if (fetchError) throw fetchError;
 
-      // Prepare update object with class assignment
       const updateData = {
         default_class_id: classId
       };
 
-      // Set default sheet IDs if they're not already set
       if (!teacherData.google_sheets_id) {
         updateData.google_sheets_id = '1kTbE3-JeukrhPMg46eEPqOagEK82olcLIUExqmKWhAs';
       }
@@ -106,7 +104,6 @@ const AdminDashboard = () => {
         updateData.evaluation_sheets_id = '1tVWRqyYrTHbYFPh4Yo8NVijrxE3ZRYesceonwT0mcDc';
       }
 
-      // Update the profile with class and sheet IDs
       const { error } = await supabase
         .from('profiles')
         .update(updateData)
@@ -864,11 +861,11 @@ const AdminDashboard = () => {
             textAlign: 'center',
             fontWeight: '500'
           }}>
-            Manage teachers, students, and evaluation system
+            Manage teachers, students, evaluation system, and catechism lessons
           </p>
         </motion.div>
 
-        {/* Tabs */}
+        {/* Tabs - UPDATED WITH CATECHISM TAB */}
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -884,7 +881,8 @@ const AdminDashboard = () => {
           {[
             { id: 'overview', label: '📊 Overview' },
             { id: 'import-attendance', label: '📥 Attendance' },
-            { id: 'evaluation-setup', label: '⭐ Evaluation' }
+            { id: 'evaluation-setup', label: '⭐ Evaluation' },
+            { id: 'catechism-tracker', label: '📖 Catechism' }  // NEW TAB
           ].map((tab) => (
             <motion.button
               key={tab.id}
@@ -912,7 +910,7 @@ const AdminDashboard = () => {
           ))}
         </motion.div>
 
-        {/* Tab Content */}
+        {/* Tab Content - UPDATED WITH CATECHISM CONTENT */}
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -944,6 +942,19 @@ const AdminDashboard = () => {
                 border: '2px solid #f1f5f9'
               }}>
                 <UnifiedEvaluationSetup />
+              </div>
+            )}
+            {/* NEW CATECHISM TAB CONTENT */}
+            {activeTab === 'catechism-tracker' && (
+              <div style={{
+                background: 'rgba(255,255,255,0.95)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: '16px',
+                padding: isMobile ? '16px' : '20px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                border: '2px solid #f1f5f9'
+              }}>
+                <CatechismLessonTracker />
               </div>
             )}
           </motion.div>

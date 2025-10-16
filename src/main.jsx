@@ -9,7 +9,6 @@ import AppBar from "./containers/AppBar";
 import AuthProvider from "./context/AuthContext.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import RoleBasedRoute from "./components/RoleBasedRoute.jsx"; 
-import githubLogo from "/github.svg";
 
 // Auth pages
 import GoogleAuthLanding from "./pages/auth/GoogleAuthLanding.jsx";
@@ -20,6 +19,9 @@ import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
 import AttendancePage from "./pages/teacher/AttendancePage.jsx";
 import EvaluationPage from "./pages/teacher/EvaluationPage.jsx";
 import EvaluationDiagnostic from "./components/EvaluationDiagnostic.jsx";
+
+// Catechism pages
+import CatechismLessonTracker from "./pages/admin/CatechismLessonTracker.jsx";
 
 createRoot(document.getElementById("root")).render(
   <div
@@ -45,7 +47,7 @@ createRoot(document.getElementById("root")).render(
               {/* Public route - Google OAuth landing page */}
               <Route path="/auth" element={<GoogleAuthLanding />} />
               
-              {/* Protected routes */}
+              {/* Protected routes - Main App */}
               <Route path="/" element={
                 <ProtectedRoute>
                   <RoleBasedRoute>
@@ -54,6 +56,7 @@ createRoot(document.getElementById("root")).render(
                 </ProtectedRoute>
               } />
               
+              {/* Teacher Dashboard */}
               <Route path="/teacher" element={
                 <ProtectedRoute>
                   <RoleBasedRoute>
@@ -62,6 +65,7 @@ createRoot(document.getElementById("root")).render(
                 </ProtectedRoute>
               } />
               
+              {/* Attendance Page */}
               <Route path="/teacher/attendance/:classId?" element={
                 <ProtectedRoute>
                   <RoleBasedRoute>
@@ -70,7 +74,7 @@ createRoot(document.getElementById("root")).render(
                 </ProtectedRoute>
               } />
 
-              // Add this route inside your Routes component:
+              {/* Evaluation Page */}
               <Route path="/teacher/evaluation/:classId?" element={
                 <ProtectedRoute>
                   <RoleBasedRoute>
@@ -79,15 +83,16 @@ createRoot(document.getElementById("root")).render(
                 </ProtectedRoute>
               } />
 
-              // Add this route:
-<Route path="/admin/diagnostic" element={
-  <ProtectedRoute>
-    <RoleBasedRoute>
-      <EvaluationDiagnostic />
-    </RoleBasedRoute>
-  </ProtectedRoute>
-} />
+              {/* Evaluation Diagnostic */}
+              <Route path="/admin/diagnostic" element={
+                <ProtectedRoute>
+                  <RoleBasedRoute>
+                    <EvaluationDiagnostic />
+                  </RoleBasedRoute>
+                </ProtectedRoute>
+              } />
               
+              {/* Admin Dashboard */}
               <Route path="/admin" element={
                 <ProtectedRoute>
                   <RoleBasedRoute>
@@ -95,11 +100,46 @@ createRoot(document.getElementById("root")).render(
                   </RoleBasedRoute>
                 </ProtectedRoute>
               } />
+
+              {/* Catechism Lesson Tracker - Standalone Route (Optional) */}
+              <Route path="/admin/catechism" element={
+                <ProtectedRoute>
+                  <RoleBasedRoute>
+                    <CatechismLessonTracker />
+                  </RoleBasedRoute>
+                </ProtectedRoute>
+              } />
             </Routes>
           </BrowserRouter>
         </AuthProvider>
 
-        <Toaster />
+        <Toaster 
+          position="top-center"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+              fontWeight: '600',
+              borderRadius: '10px',
+              padding: '16px',
+            },
+            success: {
+              duration: 3000,
+              iconTheme: {
+                primary: '#10b981',
+                secondary: '#fff',
+              },
+            },
+            error: {
+              duration: 4000,
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
       </StrictMode>
     </div>
   </div>
