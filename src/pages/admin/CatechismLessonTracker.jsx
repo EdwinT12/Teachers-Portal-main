@@ -769,7 +769,6 @@ const CatechismLessonTracker = () => {
                 margin: 0,
                 lineHeight: '1.4'
               }}>
-                Track and manage catechism lesson attendance
                 {academicYear && (
                   <span>
                     {' • '}Academic Year: {academicYear.year_name}
@@ -947,7 +946,7 @@ const CatechismLessonTracker = () => {
               color: '#374151',
               marginBottom: '6px'
             }}>
-              🔍 Search by Date
+              Search by Date
             </label>
             <input
               type="date"
@@ -976,7 +975,7 @@ const CatechismLessonTracker = () => {
               color: '#374151',
               marginBottom: '6px'
             }}>
-              👥 Group Type
+              Group Type
             </label>
             <select
               value={groupFilter}
@@ -1009,7 +1008,7 @@ const CatechismLessonTracker = () => {
               color: '#374151',
               marginBottom: '6px'
             }}>
-              👨‍🏫 Teacher
+              Teacher
             </label>
             <select
               value={teacherFilter}
@@ -1042,7 +1041,7 @@ const CatechismLessonTracker = () => {
               color: '#374151',
               marginBottom: '6px'
             }}>
-              📅 Month
+              Month
             </label>
             <select
               value={advancedFilters.month}
@@ -1075,7 +1074,7 @@ const CatechismLessonTracker = () => {
               color: '#374151',
               marginBottom: '6px'
             }}>
-              📆 Year
+              Year
             </label>
             <select
               value={advancedFilters.year}
@@ -1108,7 +1107,7 @@ const CatechismLessonTracker = () => {
               color: '#374151',
               marginBottom: '6px'
             }}>
-              📊 Quarter
+              Quarter
             </label>
             <select
               value={advancedFilters.quarter}
@@ -1142,7 +1141,7 @@ const CatechismLessonTracker = () => {
               color: '#374151',
               marginBottom: '6px'
             }}>
-              🗓️ Day of Week
+              Day of Week
             </label>
             <select
               value={advancedFilters.dayOfWeek}
@@ -1179,7 +1178,7 @@ const CatechismLessonTracker = () => {
               color: '#374151',
               marginBottom: '6px'
             }}>
-              📍 Start Date
+              Start Date
             </label>
             <input
               type="date"
@@ -1207,7 +1206,7 @@ const CatechismLessonTracker = () => {
               color: '#374151',
               marginBottom: '6px'
             }}>
-              🏁 End Date
+              End Date
             </label>
             <input
               type="date"
@@ -1808,7 +1807,7 @@ const CatechismLessonTracker = () => {
             color: '#1e293b',
             margin: '0 0 16px 0'
           }}>
-            📋 Lesson Records ({filteredLogs.length} of {lessonLogs.length})
+            Lesson Records ({filteredLogs.length} of {lessonLogs.length})
           </h2>
         </div>
 
