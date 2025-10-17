@@ -103,7 +103,7 @@ function ResponsiveAppBar() {
       top: 0,
       left: 0,
       right: 0,
-      width: '100vw',
+      width: '100%',
       background: '#ffffff',
       color: '#374151',
       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
@@ -113,17 +113,17 @@ function ResponsiveAppBar() {
       borderBottom: '1px solid #e5e7eb'
     }}>
       <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '12px 24px',
-        minHeight: '64px',
-        width: '100%',
-        maxWidth: '100%',
-        boxSizing: 'border-box',
-        margin: 0,
-        gap: '16px'
-      }}>
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: window.innerWidth < 768 ? '8px 16px' : '12px 24px',
+  minHeight: window.innerWidth < 768 ? '56px' : '64px',
+  width: '100%',
+  maxWidth: '100%',
+  boxSizing: 'border-box',
+  margin: 0,
+  gap: window.innerWidth < 768 ? '8px' : '16px'
+}}>
         {/* Logo and App Name - Left Side */}
         <div 
           style={{

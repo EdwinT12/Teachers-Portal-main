@@ -4,9 +4,41 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/jpeg" href="/churchlogo.jpg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <title>SJMV - Teacher's Portal</title>
   <meta name="description" content="SJMV Catechism Portal for Teachers!" />
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100vh;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-text-size-adjust: 100%;
+      -moz-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+    
+    #root {
+      width: 100%;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    
+    /* Prevent iOS Safari from zooming on input focus */
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+  </style>
 </head>
 
 <body>

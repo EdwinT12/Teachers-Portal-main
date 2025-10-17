@@ -927,7 +927,7 @@ const EvaluationPage = () => {
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: isMobile ? '8px' : '12px'
+            gap: isMobile ? '6px' : '12px'
           }}>
             {[
               { label: 'Students', value: stats.total, color: '#64748b', icon: Users },
@@ -937,25 +937,27 @@ const EvaluationPage = () => {
             ].map((stat) => (
               <div key={stat.label} style={{
                 background: 'white',
-                borderRadius: '12px',
-                padding: isMobile ? '10px 8px' : '12px',
+                borderRadius: isMobile ? '8px' : '12px',
+                padding: isMobile ? '8px 4px' : '12px',
                 textAlign: 'center',
                 border: '2px solid #f1f5f9'
               }}>
                 <div style={{
-                  fontSize: isMobile ? '20px' : '24px',
+                  fontSize: isMobile ? '18px' : '24px',
                   fontWeight: '800',
                   color: stat.color,
-                  marginBottom: '2px'
+                  marginBottom: '2px',
+                  lineHeight: 1
                 }}>
                   {stat.value}
                 </div>
                 <div style={{
-                  fontSize: isMobile ? '10px' : '11px',
+                  fontSize: isMobile ? '9px' : '11px',
                   color: '#94a3b8',
                   fontWeight: '600',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
+                  letterSpacing: '0.3px',
+                  lineHeight: 1.1
                 }}>
                   {stat.label}
                 </div>
