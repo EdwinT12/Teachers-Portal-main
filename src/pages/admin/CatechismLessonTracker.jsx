@@ -22,7 +22,9 @@ import {
   FileSpreadsheet,
   X,
   Printer,
-  Mail
+  Mail,
+  Info,
+  Eye
 } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
 import supabase from '../../utils/supabase';
@@ -43,6 +45,10 @@ const CatechismLessonTracker = () => {
   const [showReportModal, setShowReportModal] = useState(false);
   const [teacherFilter, setTeacherFilter] = useState('All');
   const [uniqueTeachers, setUniqueTeachers] = useState([]);
+  const [textSearch, setTextSearch] = useState('');
+  const [viewingLog, setViewingLog] = useState(null);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Advanced filters
   const [advancedFilters, setAdvancedFilters] = useState({
@@ -52,21 +58,24 @@ const CatechismLessonTracker = () => {
     dayOfWeek: ''
   });
 
-  // Report settings
-  const [reportSettings, setReportSettings] = useState({
-    reportType: 'summary',
-    includeNotes: true,
-    includeStatistics: true,
-    groupBy: 'date',
-    sortBy: 'date_desc'
-  });
-
   // Form state
   const [formData, setFormData] = useState({
     lesson_date: '',
     group_type: 'Junior',
     notes: ''
   });
+
+  // Check if mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Load data on component mount
   useEffect(() => {
@@ -77,7 +86,7 @@ const CatechismLessonTracker = () => {
   // Filter logs when search/filter changes
   useEffect(() => {
     filterLogs();
-  }, [lessonLogs, searchDate, groupFilter, dateRange, teacherFilter, advancedFilters]);
+  }, [lessonLogs, searchDate, groupFilter, dateRange, teacherFilter, advancedFilters, textSearch]);
 
   // Calculate statistics when logs change
   useEffect(() => {
@@ -129,6 +138,17 @@ const CatechismLessonTracker = () => {
 
   const filterLogs = () => {
     let filtered = [...lessonLogs];
+
+    // Text search - searches through notes, date, and group
+    if (textSearch) {
+      const searchLower = textSearch.toLowerCase();
+      filtered = filtered.filter(log => 
+        (log.notes && log.notes.toLowerCase().includes(searchLower)) ||
+        log.lesson_date.toLowerCase().includes(searchLower) ||
+        log.group_type.toLowerCase().includes(searchLower) ||
+        (log.created_by_email && log.created_by_email.toLowerCase().includes(searchLower))
+      );
+    }
 
     // Date search
     if (searchDate) {
@@ -302,6 +322,11 @@ const CatechismLessonTracker = () => {
       console.error('Error deleting lesson log:', error);
       alert('Error deleting lesson log: ' + error.message);
     }
+  };
+
+  const handleViewInfo = (log) => {
+    setViewingLog(log);
+    setShowInfoModal(true);
   };
 
   const exportToCSV = () => {
@@ -553,7 +578,6 @@ const CatechismLessonTracker = () => {
   const exportToExcel = () => {
     const report = generateDetailedReport();
     
-    // Create detailed Excel-compatible CSV with multiple sheets worth of data
     const summaryHeaders = ['Metric', 'Value'];
     const summaryData = [
       ['Generated Date', report.generatedDate],
@@ -582,7 +606,6 @@ const CatechismLessonTracker = () => {
       lesson.createdAt
     ]);
 
-    // Combine all sections
     const excelContent = [
       ['CATECHISM LESSON REPORT'],
       [''],
@@ -637,6 +660,7 @@ const CatechismLessonTracker = () => {
     setSearchDate('');
     setGroupFilter('All');
     setTeacherFilter('All');
+    setTextSearch('');
     setAdvancedFilters({
       month: '',
       year: '',
@@ -723,13 +747,18 @@ const CatechismLessonTracker = () => {
   }
 
   return (
-    <div style={{ maxWidth: '100%', margin: '0 auto', padding: '0' }}>
+    <div style={{ 
+      maxWidth: '100%', 
+      margin: '0 auto', 
+      padding: isMobile ? '12px' : '0',
+      boxSizing: 'border-box'
+    }}>
       {/* Header */}
       <div style={{
         background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-        borderRadius: '20px',
-        padding: '24px',
-        marginBottom: '24px',
+        borderRadius: isMobile ? '16px' : '20px',
+        padding: isMobile ? '16px' : '24px',
+        marginBottom: isMobile ? '16px' : '24px',
         boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
         border: '1px solid rgba(30, 58, 138, 0.1)'
       }}>
@@ -737,43 +766,39 @@ const CatechismLessonTracker = () => {
           display: 'flex', 
           alignItems: 'flex-start', 
           justifyContent: 'space-between', 
-          marginBottom: '20px',
+          marginBottom: isMobile ? '16px' : '20px',
           flexWrap: 'wrap',
           gap: '16px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: '1', minWidth: '300px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '12px' : '16px', flex: '1', minWidth: '200px' }}>
             <div style={{
               background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
               borderRadius: '12px',
-              padding: '12px',
+              padding: isMobile ? '10px' : '12px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0
             }}>
-              <Calendar className="h-8 w-8 text-blue-600" />
+              <Calendar className={isMobile ? "h-6 w-6 text-blue-600" : "h-8 w-8 text-blue-600"} />
             </div>
             <div style={{ minWidth: 0 }}>
               <h1 style={{
-                fontSize: 'clamp(20px, 5vw, 28px)',
+                fontSize: isMobile ? '18px' : 'clamp(20px, 5vw, 28px)',
                 fontWeight: '800',
                 color: '#1e293b',
                 margin: '0 0 4px 0',
                 lineHeight: '1.2'
               }}>
-                Catechism Lesson Tracker
+                Lesson Tracker
               </h1>
               <p style={{
                 color: '#64748b',
-                fontSize: 'clamp(14px, 3vw, 16px)',
+                fontSize: isMobile ? '12px' : 'clamp(14px, 3vw, 16px)',
                 margin: 0,
                 lineHeight: '1.4'
               }}>
-                {academicYear && (
-                  <span>
-                    {' • '}Academic Year: {academicYear.year_name}
-                  </span>
-                )}
+                {academicYear ? `${academicYear.year_name}` : 'Track lessons'}
               </p>
             </div>
           </div>
@@ -783,13 +808,13 @@ const CatechismLessonTracker = () => {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
-              padding: 'clamp(12px, 2vw, 16px) clamp(16px, 3vw, 24px)',
+              gap: isMobile ? '8px' : '12px',
+              padding: isMobile ? '10px 16px' : 'clamp(12px, 2vw, 16px) clamp(16px, 3vw, 24px)',
               background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
               color: 'white',
               border: 'none',
-              borderRadius: '16px',
-              fontSize: 'clamp(14px, 2.5vw, 16px)',
+              borderRadius: isMobile ? '12px' : '16px',
+              fontSize: isMobile ? '13px' : 'clamp(14px, 2.5vw, 16px)',
               fontWeight: '700',
               cursor: 'pointer',
               transition: 'all 0.3s',
@@ -807,79 +832,107 @@ const CatechismLessonTracker = () => {
               e.target.style.boxShadow = '0 4px 12px rgba(5, 150, 105, 0.3)';
             }}
           >
-            <PlusCircle className="h-5 w-5" />
-            Log Today's Lesson
+            <PlusCircle className={isMobile ? "h-4 w-4" : "h-5 w-5"} />
+            {!isMobile && 'Log Today'}
           </button>
         </div>
 
-        {/* Enhanced Statistics Cards */}
+        {/* Statistics Cards */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: 'clamp(12px, 2vw, 16px)',
-          marginTop: '24px'
+          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(140px, 1fr))',
+          gap: isMobile ? '10px' : 'clamp(12px, 2vw, 16px)',
+          marginTop: isMobile ? '16px' : '24px'
         }}>
           {[
-            { label: 'Total Lessons', count: statistics.totalLessons, icon: BookOpen, type: 'total', color: '#6366f1' },
-            { label: 'Junior Lessons', count: statistics.Junior, icon: Baby, type: 'Junior', subtitle: `${statistics.groupPercentages.Junior}% of total` },
-            { label: 'Senior Lessons', count: statistics.Senior, icon: GraduationCap, type: 'Senior', subtitle: `${statistics.groupPercentages.Senior}% of total` },
-            { label: 'Combined Lessons', count: statistics.Both, icon: Users, type: 'Both', subtitle: `${statistics.groupPercentages.Both}% of total` }
+            { label: 'Total', count: statistics.totalLessons, icon: BookOpen, type: 'total', color: '#6366f1' },
+            { label: 'Junior', count: statistics.Junior, icon: Baby, type: 'Junior' },
+            { label: 'Senior', count: statistics.Senior, icon: GraduationCap, type: 'Senior' },
+            { label: 'Combined', count: statistics.Both, icon: Users, type: 'Both' }
           ].map((stat) => {
             const Icon = stat.icon;
             const color = stat.color || getStatCardColor(stat.type);
             return (
               <div key={stat.label} style={{
                 background: `linear-gradient(135deg, ${color} 0%, ${color}cc 100%)`,
-                borderRadius: 'clamp(12px, 2vw, 16px)',
-                padding: 'clamp(16px, 3vw, 20px)',
+                borderRadius: isMobile ? '10px' : 'clamp(12px, 2vw, 16px)',
+                padding: isMobile ? '12px 10px' : 'clamp(16px, 3vw, 20px)',
                 color: 'white',
                 display: 'flex',
                 flexDirection: 'column',
-                minHeight: '100px',
-                position: 'relative',
-                overflow: 'hidden'
+                alignItems: 'center',
+                minHeight: isMobile ? '70px' : '100px',
+                textAlign: 'center'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                  <Icon className="h-6 w-6 sm:h-7 sm:w-7 flex-shrink-0" />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ 
-                      fontSize: 'clamp(24px, 5vw, 32px)', 
-                      fontWeight: '700',
-                      lineHeight: '1'
-                    }}>
-                      {stat.count}
-                    </div>
-                  </div>
+                <Icon className={isMobile ? "h-5 w-5 mb-1" : "h-6 w-6 sm:h-7 sm:w-7 mb-2"} />
+                <div style={{ 
+                  fontSize: isMobile ? '20px' : 'clamp(24px, 5vw, 32px)', 
+                  fontWeight: '700',
+                  lineHeight: '1'
+                }}>
+                  {stat.count}
                 </div>
                 <div style={{ 
-                  fontSize: 'clamp(12px, 2.5vw, 13px)', 
+                  fontSize: isMobile ? '10px' : 'clamp(12px, 2.5vw, 13px)', 
                   opacity: 0.95,
                   fontWeight: '600',
-                  lineHeight: '1.2'
+                  marginTop: '4px'
                 }}>
                   {stat.label}
                 </div>
-                {stat.subtitle && (
-                  <div style={{
-                    fontSize: 'clamp(10px, 2vw, 11px)',
-                    opacity: 0.85,
-                    marginTop: '4px'
-                  }}>
-                    {stat.subtitle}
-                  </div>
-                )}
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Advanced Filters & Controls */}
+      {/* Quick Search Bar */}
       <div style={{
         background: 'white',
-        borderRadius: 'clamp(12px, 2vw, 16px)',
-        padding: 'clamp(16px, 3vw, 24px)',
-        marginBottom: '24px',
+        borderRadius: isMobile ? '12px' : 'clamp(12px, 2vw, 16px)',
+        padding: isMobile ? '12px' : 'clamp(16px, 3vw, 20px)',
+        marginBottom: isMobile ? '16px' : '24px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+        border: '1px solid rgba(30, 58, 138, 0.1)'
+      }}>
+        <div style={{ position: 'relative' }}>
+          <Search className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'} absolute ${isMobile ? 'left-3 top-3' : 'left-3 top-1/2 transform -translate-y-1/2'} text-gray-400`} />
+          <input
+            type="text"
+            value={textSearch}
+            onChange={(e) => setTextSearch(e.target.value)}
+            placeholder="🔍 Search notes, dates, groups, teachers..."
+            style={{
+              width: '100%',
+              padding: isMobile ? '10px 10px 10px 36px' : 'clamp(12px, 2vw, 14px) clamp(12px, 2vw, 14px) clamp(12px, 2vw, 14px) clamp(40px, 6vw, 44px)',
+              border: '2px solid #e5e7eb',
+              borderRadius: '10px',
+              fontSize: isMobile ? '14px' : 'clamp(14px, 2.5vw, 16px)',
+              transition: 'border-color 0.2s',
+              outline: 'none'
+            }}
+            onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+            onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+          />
+        </div>
+        {textSearch && (
+          <div style={{
+            marginTop: '8px',
+            fontSize: isMobile ? '11px' : '12px',
+            color: '#3b82f6',
+            fontWeight: '600'
+          }}>
+            🎯 Found {filteredLogs.length} result{filteredLogs.length !== 1 ? 's' : ''}
+          </div>
+        )}
+      </div>
+
+      {/* Advanced Filters - Collapsible on Mobile */}
+      <div style={{
+        background: 'white',
+        borderRadius: isMobile ? '12px' : 'clamp(12px, 2vw, 16px)',
+        padding: isMobile ? '12px' : 'clamp(16px, 3vw, 24px)',
+        marginBottom: isMobile ? '16px' : '24px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
         border: '1px solid rgba(30, 58, 138, 0.1)'
       }}>
@@ -887,12 +940,12 @@ const CatechismLessonTracker = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: '20px',
+          marginBottom: isMobile ? '12px' : '20px',
           flexWrap: 'wrap',
           gap: '12px'
         }}>
           <h3 style={{
-            fontSize: 'clamp(16px, 3vw, 18px)',
+            fontSize: isMobile ? '14px' : 'clamp(16px, 3vw, 18px)',
             fontWeight: '700',
             color: '#1e293b',
             margin: 0,
@@ -900,461 +953,447 @@ const CatechismLessonTracker = () => {
             alignItems: 'center',
             gap: '8px'
           }}>
-            <Filter className="h-5 w-5" />
-            Advanced Filters & Search
+            <Filter className={isMobile ? "h-4 w-4" : "h-5 w-5"} />
+            Filters
           </h3>
           
-          <button
-            onClick={() => setShowReportModal(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 20px',
-              background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '10px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'transform 0.2s',
-              outline: 'none',
-              boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)'
-            }}
-            onMouseEnter={(e) => e.target.style.transform = 'translateY(-2px)'}
-            onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
-          >
-            <FileText className="h-4 w-4" />
-            Generate Report
-          </button>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              onClick={resetFilters}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: isMobile ? '8px 12px' : '10px 16px',
+                background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: isMobile ? '12px' : '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              🔄 Reset
+            </button>
+
+            <button
+              onClick={() => setShowReportModal(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: isMobile ? '8px 12px' : '10px 16px',
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: isMobile ? '12px' : '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <FileText className={isMobile ? "h-3 w-3" : "h-4 w-4"} />
+              Report
+            </button>
+          </div>
         </div>
 
         {/* Filter Grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: 'clamp(12px, 2vw, 16px)',
-          marginBottom: '16px'
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: isMobile ? '10px' : 'clamp(12px, 2vw, 16px)'
         }}>
-          {/* Search by Date */}
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: 'clamp(12px, 2.5vw, 13px)',
-              fontWeight: '600',
-              color: '#374151',
-              marginBottom: '6px'
-            }}>
-              Search by Date
-            </label>
-            <input
-              type="date"
-              value={searchDate}
-              onChange={(e) => setSearchDate(e.target.value)}
-              style={{
-                width: '100%',
-                padding: 'clamp(10px, 2vw, 12px)',
-                border: '2px solid #e5e7eb',
-                borderRadius: '10px',
-                fontSize: 'clamp(13px, 2.5vw, 14px)',
-                transition: 'border-color 0.2s',
-                outline: 'none'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-            />
-          </div>
-
           {/* Group Filter */}
           <div>
             <label style={{
               display: 'block',
-              fontSize: 'clamp(12px, 2.5vw, 13px)',
+              fontSize: isMobile ? '11px' : 'clamp(12px, 2.5vw, 13px)',
               fontWeight: '600',
               color: '#374151',
               marginBottom: '6px'
             }}>
-              Group Type
+              👥 Group
             </label>
             <select
               value={groupFilter}
               onChange={(e) => setGroupFilter(e.target.value)}
               style={{
                 width: '100%',
-                padding: 'clamp(10px, 2vw, 12px)',
+                padding: isMobile ? '10px' : 'clamp(10px, 2vw, 12px)',
                 border: '2px solid #e5e7eb',
                 borderRadius: '10px',
-                fontSize: 'clamp(13px, 2.5vw, 14px)',
+                fontSize: isMobile ? '13px' : 'clamp(13px, 2.5vw, 14px)',
                 backgroundColor: 'white',
                 outline: 'none'
               }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
             >
               <option value="All">All Groups</option>
-              <option value="Junior">Junior Only</option>
-              <option value="Senior">Senior Only</option>
-              <option value="Both">Both Groups</option>
+              <option value="Junior">Junior</option>
+              <option value="Senior">Senior</option>
+              <option value="Both">Both</option>
             </select>
           </div>
 
-          {/* Teacher Filter */}
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: 'clamp(12px, 2.5vw, 13px)',
-              fontWeight: '600',
-              color: '#374151',
-              marginBottom: '6px'
-            }}>
-              Teacher
-            </label>
-            <select
-              value={teacherFilter}
-              onChange={(e) => setTeacherFilter(e.target.value)}
-              style={{
-                width: '100%',
-                padding: 'clamp(10px, 2vw, 12px)',
-                border: '2px solid #e5e7eb',
-                borderRadius: '10px',
-                fontSize: 'clamp(13px, 2.5vw, 14px)',
-                backgroundColor: 'white',
-                outline: 'none'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-            >
-              <option value="All">All Teachers</option>
-              {uniqueTeachers.map(teacher => (
-                <option key={teacher} value={teacher}>{teacher}</option>
-              ))}
-            </select>
-          </div>
+          {!isMobile && (
+            <>
+              {/* Teacher Filter */}
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: 'clamp(12px, 2.5vw, 13px)',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  👨‍🏫 Teacher
+                </label>
+                <select
+                  value={teacherFilter}
+                  onChange={(e) => setTeacherFilter(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: 'clamp(10px, 2vw, 12px)',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '10px',
+                    fontSize: 'clamp(13px, 2.5vw, 14px)',
+                    backgroundColor: 'white',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="All">All Teachers</option>
+                  {uniqueTeachers.map(teacher => (
+                    <option key={teacher} value={teacher}>{teacher}</option>
+                  ))}
+                </select>
+              </div>
 
-          {/* Month Filter */}
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: 'clamp(12px, 2.5vw, 13px)',
-              fontWeight: '600',
-              color: '#374151',
-              marginBottom: '6px'
-            }}>
-              Month
-            </label>
-            <select
-              value={advancedFilters.month}
-              onChange={(e) => setAdvancedFilters(prev => ({ ...prev, month: e.target.value }))}
-              style={{
-                width: '100%',
-                padding: 'clamp(10px, 2vw, 12px)',
-                border: '2px solid #e5e7eb',
-                borderRadius: '10px',
-                fontSize: 'clamp(13px, 2.5vw, 14px)',
-                backgroundColor: 'white',
-                outline: 'none'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-            >
-              <option value="">All Months</option>
-              {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((month, idx) => (
-                <option key={month} value={idx + 1}>{month}</option>
-              ))}
-            </select>
-          </div>
+              {/* Month Filter */}
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: 'clamp(12px, 2.5vw, 13px)',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  📅 Month
+                </label>
+                <select
+                  value={advancedFilters.month}
+                  onChange={(e) => setAdvancedFilters(prev => ({ ...prev, month: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: 'clamp(10px, 2vw, 12px)',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '10px',
+                    fontSize: 'clamp(13px, 2.5vw, 14px)',
+                    backgroundColor: 'white',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="">All Months</option>
+                  {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((month, idx) => (
+                    <option key={month} value={idx + 1}>{month}</option>
+                  ))}
+                </select>
+              </div>
 
-          {/* Year Filter */}
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: 'clamp(12px, 2.5vw, 13px)',
-              fontWeight: '600',
-              color: '#374151',
-              marginBottom: '6px'
-            }}>
-              Year
-            </label>
-            <select
-              value={advancedFilters.year}
-              onChange={(e) => setAdvancedFilters(prev => ({ ...prev, year: e.target.value }))}
-              style={{
-                width: '100%',
-                padding: 'clamp(10px, 2vw, 12px)',
-                border: '2px solid #e5e7eb',
-                borderRadius: '10px',
-                fontSize: 'clamp(13px, 2.5vw, 14px)',
-                backgroundColor: 'white',
-                outline: 'none'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-            >
-              <option value="">All Years</option>
-              {getAvailableYears().map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Quarter Filter */}
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: 'clamp(12px, 2.5vw, 13px)',
-              fontWeight: '600',
-              color: '#374151',
-              marginBottom: '6px'
-            }}>
-              Quarter
-            </label>
-            <select
-              value={advancedFilters.quarter}
-              onChange={(e) => setAdvancedFilters(prev => ({ ...prev, quarter: e.target.value }))}
-              style={{
-                width: '100%',
-                padding: 'clamp(10px, 2vw, 12px)',
-                border: '2px solid #e5e7eb',
-                borderRadius: '10px',
-                fontSize: 'clamp(13px, 2.5vw, 14px)',
-                backgroundColor: 'white',
-                outline: 'none'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-            >
-              <option value="">All Quarters</option>
-              <option value="1">Q1 (Jan-Mar)</option>
-              <option value="2">Q2 (Apr-Jun)</option>
-              <option value="3">Q3 (Jul-Sep)</option>
-              <option value="4">Q4 (Oct-Dec)</option>
-            </select>
-          </div>
-
-          {/* Day of Week Filter */}
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: 'clamp(12px, 2.5vw, 13px)',
-              fontWeight: '600',
-              color: '#374151',
-              marginBottom: '6px'
-            }}>
-              Day of Week
-            </label>
-            <select
-              value={advancedFilters.dayOfWeek}
-              onChange={(e) => setAdvancedFilters(prev => ({ ...prev, dayOfWeek: e.target.value }))}
-              style={{
-                width: '100%',
-                padding: 'clamp(10px, 2vw, 12px)',
-                border: '2px solid #e5e7eb',
-                borderRadius: '10px',
-                fontSize: 'clamp(13px, 2.5vw, 14px)',
-                backgroundColor: 'white',
-                outline: 'none'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-            >
-              <option value="">All Days</option>
-              <option value="0">Sunday</option>
-              <option value="1">Monday</option>
-              <option value="2">Tuesday</option>
-              <option value="3">Wednesday</option>
-              <option value="4">Thursday</option>
-              <option value="5">Friday</option>
-              <option value="6">Saturday</option>
-            </select>
-          </div>
-
-          {/* Date Range Start */}
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: 'clamp(12px, 2.5vw, 13px)',
-              fontWeight: '600',
-              color: '#374151',
-              marginBottom: '6px'
-            }}>
-              Start Date
-            </label>
-            <input
-              type="date"
-              value={dateRange.start}
-              onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-              style={{
-                width: '100%',
-                padding: 'clamp(10px, 2vw, 12px)',
-                border: '2px solid #e5e7eb',
-                borderRadius: '10px',
-                fontSize: 'clamp(13px, 2.5vw, 14px)',
-                outline: 'none'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-            />
-          </div>
-
-          {/* Date Range End */}
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: 'clamp(12px, 2.5vw, 13px)',
-              fontWeight: '600',
-              color: '#374151',
-              marginBottom: '6px'
-            }}>
-              End Date
-            </label>
-            <input
-              type="date"
-              value={dateRange.end}
-              onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-              style={{
-                width: '100%',
-                padding: 'clamp(10px, 2vw, 12px)',
-                border: '2px solid #e5e7eb',
-                borderRadius: '10px',
-                fontSize: 'clamp(13px, 2.5vw, 14px)',
-                outline: 'none'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-            />
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          flexWrap: 'wrap',
-          marginTop: '16px',
-          paddingTop: '16px',
-          borderTop: '1px solid #e5e7eb'
-        }}>
-          <button
-            onClick={resetFilters}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 16px',
-              background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '10px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'transform 0.2s',
-              outline: 'none'
-            }}
-            onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
-            onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
-          >
-            🔄 Reset All Filters
-          </button>
-
-          <button
-            onClick={() => setShowAddForm(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 16px',
-              background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '10px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'transform 0.2s',
-              outline: 'none'
-            }}
-            onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
-            onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
-          >
-            <Plus className="h-4 w-4" />
-            Add Lesson
-          </button>
-
-          <button
-            onClick={exportToCSV}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 16px',
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '10px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'transform 0.2s',
-              outline: 'none'
-            }}
-            onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
-            onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
-          >
-            <Download className="h-4 w-4" />
-            Export CSV
-          </button>
-
-          <button
-            onClick={exportToExcel}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 16px',
-              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '10px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'transform 0.2s',
-              outline: 'none'
-            }}
-            onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
-            onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
-          >
-            <FileSpreadsheet className="h-4 w-4" />
-            Export Detailed Report
-          </button>
-
-          <button
-            onClick={printReport}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 16px',
-              background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '10px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'transform 0.2s',
-              outline: 'none'
-            }}
-            onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
-            onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
-          >
-            <Printer className="h-4 w-4" />
-            Print Report
-          </button>
+              {/* Year Filter */}
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: 'clamp(12px, 2.5vw, 13px)',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  📆 Year
+                </label>
+                <select
+                  value={advancedFilters.year}
+                  onChange={(e) => setAdvancedFilters(prev => ({ ...prev, year: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: 'clamp(10px, 2vw, 12px)',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '10px',
+                    fontSize: 'clamp(13px, 2.5vw, 14px)',
+                    backgroundColor: 'white',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="">All Years</option>
+                  {getAvailableYears().map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Info Modal */}
+      {showInfoModal && viewingLog && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000,
+          padding: '20px',
+          backdropFilter: 'blur(4px)'
+        }}
+        onClick={() => setShowInfoModal(false)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+            background: 'white',
+            borderRadius: '20px',
+            padding: isMobile ? '24px' : '32px',
+            maxWidth: '600px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '24px'
+            }}>
+              <h2 style={{
+                fontSize: isMobile ? '20px' : '24px',
+                fontWeight: '700',
+                color: '#1e293b',
+                margin: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <Info className={isMobile ? "h-5 w-5 text-blue-600" : "h-6 w-6 text-blue-600"} />
+                Lesson Details
+              </h2>
+              <button
+                onClick={() => setShowInfoModal(false)}
+                style={{
+                  background: '#f1f5f9',
+                  border: 'none',
+                  borderRadius: '8px',
+                  width: '36px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+              >
+                <X className="h-5 w-5 text-gray-600" />
+              </button>
+            </div>
+
+            {/* Lesson Info */}
+            <div style={{
+              background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+              padding: isMobile ? '16px' : '20px',
+              borderRadius: '16px',
+              marginBottom: '20px'
+            }}>
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{
+                  fontSize: '12px',
+                  color: '#64748b',
+                  fontWeight: '600',
+                  marginBottom: '4px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  📅 Date
+                </div>
+                <div style={{
+                  fontSize: isMobile ? '18px' : '20px',
+                  fontWeight: '700',
+                  color: '#1e293b'
+                }}>
+                  {formatDate(viewingLog.lesson_date)}
+                </div>
+                <div style={{
+                  fontSize: '13px',
+                  color: '#64748b',
+                  marginTop: '2px'
+                }}>
+                  {viewingLog.lesson_date}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{
+                  fontSize: '12px',
+                  color: '#64748b',
+                  fontWeight: '600',
+                  marginBottom: '6px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  👥 Group Type
+                </div>
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  ...getGroupStyle(viewingLog.group_type)
+                }}>
+                  {getGroupIcon(viewingLog.group_type)}
+                  {viewingLog.group_type}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{
+                  fontSize: '12px',
+                  color: '#64748b',
+                  fontWeight: '600',
+                  marginBottom: '6px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  👨‍🏫 Teacher
+                </div>
+                <div style={{
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  color: '#3b82f6'
+                }}>
+                  {viewingLog.created_by_email || 'Unknown'}
+                </div>
+              </div>
+
+              <div>
+                <div style={{
+                  fontSize: '12px',
+                  color: '#64748b',
+                  fontWeight: '600',
+                  marginBottom: '6px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  🕐 Created At
+                </div>
+                <div style={{
+                  fontSize: '14px',
+                  color: '#64748b'
+                }}>
+                  {new Date(viewingLog.created_at).toLocaleString('en-GB')}
+                </div>
+              </div>
+            </div>
+
+            {/* Notes Section */}
+            <div style={{
+              background: 'white',
+              padding: isMobile ? '16px' : '20px',
+              borderRadius: '16px',
+              border: '2px solid #e5e7eb'
+            }}>
+              <div style={{
+                fontSize: '12px',
+                color: '#64748b',
+                fontWeight: '600',
+                marginBottom: '10px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <BookOpen className="h-4 w-4" />
+                Notes
+              </div>
+              <div style={{
+                fontSize: isMobile ? '14px' : '15px',
+                color: '#1e293b',
+                lineHeight: '1.6',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word'
+              }}>
+                {viewingLog.notes || (
+                  <span style={{ fontStyle: 'italic', color: '#9ca3af' }}>
+                    No notes recorded for this lesson.
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              marginTop: '20px'
+            }}>
+              <button
+                onClick={() => {
+                  setShowInfoModal(false);
+                  handleEdit(viewingLog);
+                }}
+                style={{
+                  flex: 1,
+                  padding: isMobile ? '12px' : '14px',
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  fontSize: isMobile ? '13px' : '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <Edit2 className="h-4 w-4" />
+                Edit
+              </button>
+              <button
+                onClick={() => {
+                  setShowInfoModal(false);
+                  handleDelete(viewingLog.id);
+                }}
+                style={{
+                  flex: 1,
+                  padding: isMobile ? '12px' : '14px',
+                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  fontSize: isMobile ? '13px' : '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Report Modal */}
       {showReportModal && (
@@ -1372,7 +1411,7 @@ const CatechismLessonTracker = () => {
           <div style={{
             background: 'white',
             borderRadius: '20px',
-            padding: '32px',
+            padding: isMobile ? '24px' : '32px',
             maxWidth: '800px',
             width: '100%',
             maxHeight: '90vh',
@@ -1386,7 +1425,7 @@ const CatechismLessonTracker = () => {
               marginBottom: '24px'
             }}>
               <h2 style={{
-                fontSize: '24px',
+                fontSize: isMobile ? '20px' : '24px',
                 fontWeight: '700',
                 color: '#1e293b',
                 margin: 0,
@@ -1394,8 +1433,8 @@ const CatechismLessonTracker = () => {
                 alignItems: 'center',
                 gap: '12px'
               }}>
-                <FileText className="h-6 w-6 text-purple-600" />
-                Generate Detailed Report
+                <FileText className={isMobile ? "h-5 w-5 text-purple-600" : "h-6 w-6 text-purple-600"} />
+                Generate Report
               </h2>
               <button
                 onClick={() => setShowReportModal(false)}
@@ -1418,13 +1457,13 @@ const CatechismLessonTracker = () => {
             {/* Report Statistics Preview */}
             <div style={{
               background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-              padding: '24px',
+              padding: isMobile ? '16px' : '24px',
               borderRadius: '16px',
               marginBottom: '24px',
               border: '2px solid #e5e7eb'
             }}>
               <h3 style={{
-                fontSize: '16px',
+                fontSize: isMobile ? '14px' : '16px',
                 fontWeight: '700',
                 color: '#1e293b',
                 marginBottom: '16px'
@@ -1434,88 +1473,71 @@ const CatechismLessonTracker = () => {
               
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                gap: '16px'
+                gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(120px, 1fr))',
+                gap: isMobile ? '12px' : '16px'
               }}>
                 <div style={{
                   background: 'white',
-                  padding: '16px',
+                  padding: isMobile ? '12px' : '16px',
                   borderRadius: '12px',
                   textAlign: 'center'
                 }}>
-                  <div style={{ fontSize: '28px', fontWeight: '700', color: '#3b82f6' }}>
+                  <div style={{ fontSize: isMobile ? '22px' : '28px', fontWeight: '700', color: '#3b82f6' }}>
                     {statistics.totalLessons}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                  <div style={{ fontSize: isMobile ? '10px' : '12px', color: '#64748b', marginTop: '4px' }}>
                     Total Lessons
                   </div>
                 </div>
 
                 <div style={{
                   background: 'white',
-                  padding: '16px',
+                  padding: isMobile ? '12px' : '16px',
                   borderRadius: '12px',
                   textAlign: 'center'
                 }}>
-                  <div style={{ fontSize: '28px', fontWeight: '700', color: '#10b981' }}>
+                  <div style={{ fontSize: isMobile ? '22px' : '28px', fontWeight: '700', color: '#10b981' }}>
                     {statistics.uniqueDates}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                  <div style={{ fontSize: isMobile ? '10px' : '12px', color: '#64748b', marginTop: '4px' }}>
                     Unique Dates
                   </div>
                 </div>
 
                 <div style={{
                   background: 'white',
-                  padding: '16px',
+                  padding: isMobile ? '12px' : '16px',
                   borderRadius: '12px',
                   textAlign: 'center'
                 }}>
-                  <div style={{ fontSize: '28px', fontWeight: '700', color: '#f59e0b' }}>
+                  <div style={{ fontSize: isMobile ? '22px' : '28px', fontWeight: '700', color: '#f59e0b' }}>
                     {Object.keys(statistics.teacherBreakdown).length}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                  <div style={{ fontSize: isMobile ? '10px' : '12px', color: '#64748b', marginTop: '4px' }}>
                     Teachers
                   </div>
                 </div>
 
                 <div style={{
                   background: 'white',
-                  padding: '16px',
+                  padding: isMobile ? '12px' : '16px',
                   borderRadius: '12px',
                   textAlign: 'center'
                 }}>
-                  <div style={{ fontSize: '28px', fontWeight: '700', color: '#8b5cf6' }}>
+                  <div style={{ fontSize: isMobile ? '22px' : '28px', fontWeight: '700', color: '#8b5cf6' }}>
                     {Object.keys(statistics.monthlyBreakdown).length}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                  <div style={{ fontSize: isMobile ? '10px' : '12px', color: '#64748b', marginTop: '4px' }}>
                     Months
                   </div>
                 </div>
-              </div>
-
-              {/* Quick Info */}
-              <div style={{
-                marginTop: '16px',
-                padding: '12px',
-                background: 'rgba(59, 130, 246, 0.1)',
-                borderRadius: '10px',
-                fontSize: '13px',
-                color: '#1e40af',
-                border: '1px solid rgba(59, 130, 246, 0.2)'
-              }}>
-                <strong>Active Filters:</strong> {groupFilter !== 'All' ? `Group: ${groupFilter}` : ''} 
-                {teacherFilter !== 'All' ? ` | Teacher: ${teacherFilter}` : ''}
-                {advancedFilters.month ? ` | Month: ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][advancedFilters.month-1]}` : ''}
-                {advancedFilters.year ? ` | Year: ${advancedFilters.year}` : ''}
-                {!groupFilter || (groupFilter === 'All' && teacherFilter === 'All' && !advancedFilters.month && !advancedFilters.year) ? 'None' : ''}
               </div>
             </div>
 
             {/* Export Options */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(180px, 1fr))',
               gap: '16px'
             }}>
               <button
@@ -1524,7 +1546,7 @@ const CatechismLessonTracker = () => {
                   setShowReportModal(false);
                 }}
                 style={{
-                  padding: '20px',
+                  padding: isMobile ? '16px' : '20px',
                   background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                   color: 'white',
                   border: 'none',
@@ -1537,13 +1559,13 @@ const CatechismLessonTracker = () => {
                   gap: '12px',
                   boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
                 }}
-                onMouseEnter={(e) => e.target.style.transform = 'translateY(-4px)'}
-                onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
+                onMouseEnter={(e) => !isMobile && (e.target.style.transform = 'translateY(-4px)')}
+                onMouseLeave={(e) => !isMobile && (e.target.style.transform = 'translateY(0)')}
               >
-                <FileSpreadsheet className="h-10 w-10" />
+                <FileSpreadsheet className={isMobile ? "h-8 w-8" : "h-10 w-10"} />
                 <div>
-                  <div style={{ fontSize: '16px', fontWeight: '700' }}>Excel Report</div>
-                  <div style={{ fontSize: '12px', opacity: 0.9 }}>Detailed spreadsheet with all data</div>
+                  <div style={{ fontSize: isMobile ? '14px' : '16px', fontWeight: '700' }}>Excel Report</div>
+                  <div style={{ fontSize: isMobile ? '11px' : '12px', opacity: 0.9 }}>Detailed spreadsheet</div>
                 </div>
               </button>
 
@@ -1553,7 +1575,7 @@ const CatechismLessonTracker = () => {
                   setShowReportModal(false);
                 }}
                 style={{
-                  padding: '20px',
+                  padding: isMobile ? '16px' : '20px',
                   background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
                   color: 'white',
                   border: 'none',
@@ -1566,13 +1588,13 @@ const CatechismLessonTracker = () => {
                   gap: '12px',
                   boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)'
                 }}
-                onMouseEnter={(e) => e.target.style.transform = 'translateY(-4px)'}
-                onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
+                onMouseEnter={(e) => !isMobile && (e.target.style.transform = 'translateY(-4px)')}
+                onMouseLeave={(e) => !isMobile && (e.target.style.transform = 'translateY(0)')}
               >
-                <Printer className="h-10 w-10" />
+                <Printer className={isMobile ? "h-8 w-8" : "h-10 w-10"} />
                 <div>
-                  <div style={{ fontSize: '16px', fontWeight: '700' }}>Print Report</div>
-                  <div style={{ fontSize: '12px', opacity: 0.9 }}>Formatted PDF-ready document</div>
+                  <div style={{ fontSize: isMobile ? '14px' : '16px', fontWeight: '700' }}>Print Report</div>
+                  <div style={{ fontSize: isMobile ? '11px' : '12px', opacity: 0.9 }}>PDF-ready document</div>
                 </div>
               </button>
 
@@ -1582,7 +1604,7 @@ const CatechismLessonTracker = () => {
                   setShowReportModal(false);
                 }}
                 style={{
-                  padding: '20px',
+                  padding: isMobile ? '16px' : '20px',
                   background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
                   color: 'white',
                   border: 'none',
@@ -1595,13 +1617,13 @@ const CatechismLessonTracker = () => {
                   gap: '12px',
                   boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
                 }}
-                onMouseEnter={(e) => e.target.style.transform = 'translateY(-4px)'}
-                onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
+                onMouseEnter={(e) => !isMobile && (e.target.style.transform = 'translateY(-4px)')}
+                onMouseLeave={(e) => !isMobile && (e.target.style.transform = 'translateY(0)')}
               >
-                <Download className="h-10 w-10" />
+                <Download className={isMobile ? "h-8 w-8" : "h-10 w-10"} />
                 <div>
-                  <div style={{ fontSize: '16px', fontWeight: '700' }}>Simple CSV</div>
-                  <div style={{ fontSize: '12px', opacity: 0.9 }}>Basic data export</div>
+                  <div style={{ fontSize: isMobile ? '14px' : '16px', fontWeight: '700' }}>Simple CSV</div>
+                  <div style={{ fontSize: isMobile ? '11px' : '12px', opacity: 0.9 }}>Basic data export</div>
                 </div>
               </button>
             </div>
@@ -1624,13 +1646,15 @@ const CatechismLessonTracker = () => {
           <div style={{
             background: 'white',
             borderRadius: '20px',
-            padding: '32px',
+            padding: isMobile ? '24px' : '32px',
             maxWidth: '500px',
             width: '100%',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
+            boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+            maxHeight: '90vh',
+            overflowY: 'auto'
           }}>
             <h2 style={{
-              fontSize: '24px',
+              fontSize: isMobile ? '20px' : '24px',
               fontWeight: '700',
               color: '#1e293b',
               marginBottom: '24px',
@@ -1657,7 +1681,7 @@ const CatechismLessonTracker = () => {
                   required
                   style={{
                     width: '100%',
-                    padding: '12px',
+                    padding: isMobile ? '10px' : '12px',
                     border: '2px solid #e5e7eb',
                     borderRadius: '10px',
                     fontSize: '14px',
@@ -1684,7 +1708,7 @@ const CatechismLessonTracker = () => {
                   required
                   style={{
                     width: '100%',
-                    padding: '12px',
+                    padding: isMobile ? '10px' : '12px',
                     border: '2px solid #e5e7eb',
                     borderRadius: '10px',
                     fontSize: '14px',
@@ -1714,10 +1738,10 @@ const CatechismLessonTracker = () => {
                   value={formData.notes}
                   onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                   placeholder="Any additional notes about this lesson..."
-                  rows={3}
+                  rows={isMobile ? 4 : 3}
                   style={{
                     width: '100%',
-                    padding: '12px',
+                    padding: isMobile ? '10px' : '12px',
                     border: '2px solid #e5e7eb',
                     borderRadius: '10px',
                     fontSize: '14px',
@@ -1742,7 +1766,7 @@ const CatechismLessonTracker = () => {
                     setFormData({ lesson_date: '', group_type: 'Junior', notes: '' });
                   }}
                   style={{
-                    padding: '12px 24px',
+                    padding: isMobile ? '10px 20px' : '12px 24px',
                     border: '2px solid #e5e7eb',
                     background: 'white',
                     color: '#374151',
@@ -1750,16 +1774,7 @@ const CatechismLessonTracker = () => {
                     fontSize: '14px',
                     fontWeight: '600',
                     cursor: 'pointer',
-                    transition: 'all 0.2s',
                     outline: 'none'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.borderColor = '#d1d5db';
-                    e.target.style.backgroundColor = '#f9fafb';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.borderColor = '#e5e7eb';
-                    e.target.style.backgroundColor = 'white';
                   }}
                 >
                   Cancel
@@ -1767,7 +1782,7 @@ const CatechismLessonTracker = () => {
                 <button
                   type="submit"
                   style={{
-                    padding: '12px 24px',
+                    padding: isMobile ? '10px 20px' : '12px 24px',
                     background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
                     color: 'white',
                     border: 'none',
@@ -1775,13 +1790,10 @@ const CatechismLessonTracker = () => {
                     fontSize: '14px',
                     fontWeight: '600',
                     cursor: 'pointer',
-                    transition: 'transform 0.2s',
                     outline: 'none'
                   }}
-                  onMouseEnter={(e) => e.target.style.transform = 'translateY(-1px)'}
-                  onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
                 >
-                  {editingLog ? 'Update Lesson' : 'Add Lesson'}
+                  {editingLog ? 'Update' : 'Add Lesson'}
                 </button>
               </div>
             </form>
@@ -1789,7 +1801,7 @@ const CatechismLessonTracker = () => {
         </div>
       )}
 
-      {/* Lesson Logs Table */}
+      {/* Lesson Logs Table/Cards */}
       <div style={{
         background: 'white',
         borderRadius: '16px',
@@ -1798,122 +1810,71 @@ const CatechismLessonTracker = () => {
         overflow: 'hidden'
       }}>
         <div style={{
-          padding: '24px 24px 0 24px',
+          padding: isMobile ? '16px' : '24px 24px 0 24px',
           borderBottom: '1px solid #e5e7eb'
         }}>
           <h2 style={{
-            fontSize: '20px',
+            fontSize: isMobile ? '16px' : '20px',
             fontWeight: '700',
             color: '#1e293b',
             margin: '0 0 16px 0'
           }}>
-            Lesson Records ({filteredLogs.length} of {lessonLogs.length})
+            📋 Lesson Records ({filteredLogs.length})
           </h2>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f8fafc' }}>
-                <th style={{
-                  padding: '16px 24px',
-                  textAlign: 'left',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  borderBottom: '1px solid #e5e7eb'
-                }}>
-                  Date
-                </th>
-                <th style={{
-                  padding: '16px 24px',
-                  textAlign: 'left',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  borderBottom: '1px solid #e5e7eb'
-                }}>
-                  Group
-                </th>
-                <th style={{
-                  padding: '16px 24px',
-                  textAlign: 'left',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  borderBottom: '1px solid #e5e7eb'
-                }}>
-                  Notes
-                </th>
-                <th style={{
-                  padding: '16px 24px',
-                  textAlign: 'left',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  borderBottom: '1px solid #e5e7eb'
-                }}>
-                  Created By
-                </th>
-                <th style={{
-                  padding: '16px 24px',
-                  textAlign: 'center',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  borderBottom: '1px solid #e5e7eb'
-                }}>
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredLogs.length === 0 ? (
-                <tr>
-                  <td colSpan={5} style={{
-                    padding: '48px 24px',
-                    textAlign: 'center',
-                    color: '#64748b',
-                    fontSize: '16px'
+        {/* Mobile Card View */}
+        {isMobile ? (
+          <div style={{ padding: '12px' }}>
+            {filteredLogs.length === 0 ? (
+              <div style={{
+                padding: '48px 24px',
+                textAlign: 'center',
+                color: '#64748b',
+                fontSize: '14px'
+              }}>
+                <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                No lesson logs found
+              </div>
+            ) : (
+              filteredLogs.map((log) => {
+                const groupStyle = getGroupStyle(log.group_type);
+                return (
+                  <div key={log.id} style={{
+                    background: 'white',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    marginBottom: '12px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.04)'
                   }}>
-                    <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    No lesson logs found for the selected criteria.
-                  </td>
-                </tr>
-              ) : (
-                filteredLogs.map((log) => {
-                  const groupStyle = getGroupStyle(log.group_type);
-                  return (
-                    <tr key={log.id} style={{
-                      borderBottom: '1px solid #f1f5f9',
-                      transition: 'background-color 0.2s'
-                    }}
-                    onMouseEnter={(e) => e.target.closest('tr').style.backgroundColor = '#f8fafc'}
-                    onMouseLeave={(e) => e.target.closest('tr').style.backgroundColor = 'transparent'}
-                    >
-                      <td style={{
-                        padding: '16px 24px',
-                        fontSize: '14px',
-                        color: '#1e293b',
-                        fontWeight: '500'
-                      }}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontWeight: '600' }}>
-                            {formatDate(log.lesson_date)}
-                          </span>
-                          <span style={{ fontSize: '12px', color: '#64748b' }}>
-                            {log.lesson_date}
-                          </span>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      marginBottom: '12px'
+                    }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          fontSize: '15px',
+                          fontWeight: '700',
+                          color: '#1e293b',
+                          marginBottom: '4px'
+                        }}>
+                          {new Date(log.lesson_date).toLocaleDateString('en-GB', { 
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
                         </div>
-                      </td>
-                      <td style={{ padding: '16px 24px' }}>
                         <div style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '8px',
-                          padding: '6px 12px',
-                          borderRadius: '20px',
-                          fontSize: '12px',
+                          gap: '6px',
+                          padding: '4px 10px',
+                          borderRadius: '16px',
+                          fontSize: '11px',
                           fontWeight: '600',
                           background: groupStyle.background,
                           color: groupStyle.color
@@ -1921,289 +1882,291 @@ const CatechismLessonTracker = () => {
                           {getGroupIcon(log.group_type)}
                           {log.group_type}
                         </div>
-                      </td>
-                      <td style={{
-                        padding: '16px 24px',
-                        fontSize: '14px',
-                        color: '#64748b',
-                        maxWidth: '200px'
-                      }}>
-                        {log.notes ? (
-                          <span style={{
-                            display: 'block',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }} title={log.notes}>
-                            {log.notes}
-                          </span>
-                        ) : (
-                          <span style={{ fontStyle: 'italic', color: '#9ca3af' }}>
-                            No notes
-                          </span>
-                        )}
-                      </td>
-                      <td style={{
-                        padding: '16px 24px',
-                        fontSize: '14px',
-                        color: '#64748b'
-                      }}>
-                        {log.created_by_email || 'Unknown'}
-                      </td>
-                      <td style={{ padding: '16px 24px' }}>
-                        <div style={{
+                      </div>
+
+                      <button
+                        onClick={() => handleViewInfo(log)}
+                        style={{
+                          padding: '8px',
+                          background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
                           display: 'flex',
-                          gap: '8px',
+                          alignItems: 'center',
                           justifyContent: 'center'
+                        }}
+                      >
+                        <Info className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {log.notes && (
+                      <div style={{
+                        fontSize: '13px',
+                        color: '#64748b',
+                        marginBottom: '12px',
+                        lineHeight: '1.5',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}>
+                        {log.notes}
+                      </div>
+                    )}
+
+                    <div style={{
+                      display: 'flex',
+                      gap: '8px',
+                      paddingTop: '12px',
+                      borderTop: '1px solid #f1f5f9'
+                    }}>
+                      <button
+                        onClick={() => handleEdit(log)}
+                        style={{
+                          flex: 1,
+                          padding: '8px',
+                          background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Edit2 className="h-3 w-3" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(log.id)}
+                        style={{
+                          flex: 1,
+                          padding: '8px',
+                          background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        ) : (
+          /* Desktop Table View */
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f8fafc' }}>
+                  <th style={{
+                    padding: '16px 24px',
+                    textAlign: 'left',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    borderBottom: '1px solid #e5e7eb'
+                  }}>
+                    Date
+                  </th>
+                  <th style={{
+                    padding: '16px 24px',
+                    textAlign: 'left',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    borderBottom: '1px solid #e5e7eb'
+                  }}>
+                    Group
+                  </th>
+                  <th style={{
+                    padding: '16px 24px',
+                    textAlign: 'left',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    borderBottom: '1px solid #e5e7eb'
+                  }}>
+                    Notes Preview
+                  </th>
+                  <th style={{
+                    padding: '16px 24px',
+                    textAlign: 'center',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#374151',
+                    borderBottom: '1px solid #e5e7eb'
+                  }}>
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} style={{
+                      padding: '48px 24px',
+                      textAlign: 'center',
+                      color: '#64748b',
+                      fontSize: '16px'
+                    }}>
+                      <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      No lesson logs found for the selected criteria.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredLogs.map((log) => {
+                    const groupStyle = getGroupStyle(log.group_type);
+                    return (
+                      <tr key={log.id} style={{
+                        borderBottom: '1px solid #f1f5f9',
+                        transition: 'background-color 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.target.closest('tr').style.backgroundColor = '#f8fafc'}
+                      onMouseLeave={(e) => e.target.closest('tr').style.backgroundColor = 'transparent'}
+                      >
+                        <td style={{
+                          padding: '16px 24px',
+                          fontSize: '14px',
+                          color: '#1e293b',
+                          fontWeight: '500'
                         }}>
-                          <button
-                            onClick={() => handleEdit(log)}
-                            style={{
-                              padding: '8px',
-                              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              transition: 'transform 0.2s',
-                              outline: 'none'
-                            }}
-                            onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
-                            onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-                            title="Edit lesson"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(log.id)}
-                            style={{
-                              padding: '8px',
-                              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              transition: 'transform 0.2s',
-                              outline: 'none'
-                            }}
-                            onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
-                            onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-                            title="Delete lesson"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Enhanced Summary Section */}
-        {filteredLogs.length > 0 && (
-          <div style={{
-            padding: '24px',
-            borderTop: '2px solid #e5e7eb',
-            background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)'
-          }}>
-            <h3 style={{
-              fontSize: '18px',
-              fontWeight: '700',
-              color: '#1e293b',
-              margin: '0 0 20px 0',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              <BarChart3 className="h-5 w-5" />
-              Advanced Analytics
-            </h3>
-            
-            {/* Main Stats Grid */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-              gap: '16px',
-              marginBottom: '20px'
-            }}>
-              <div style={{
-                background: 'white',
-                padding: '20px',
-                borderRadius: '12px',
-                textAlign: 'center',
-                border: '2px solid #3b82f6',
-                boxShadow: '0 2px 8px rgba(59, 130, 246, 0.1)'
-              }}>
-                <div style={{ fontSize: '32px', fontWeight: '800', color: '#3b82f6' }}>
-                  {statistics.Junior}
-                </div>
-                <div style={{ fontSize: '14px', color: '#64748b', fontWeight: '600', marginTop: '4px' }}>
-                  Junior Lessons
-                </div>
-                <div style={{ fontSize: '12px', color: '#3b82f6', fontWeight: '600', marginTop: '4px' }}>
-                  {statistics.groupPercentages.Junior}% of total
-                </div>
-              </div>
-              
-              <div style={{
-                background: 'white',
-                padding: '20px',
-                borderRadius: '12px',
-                textAlign: 'center',
-                border: '2px solid #10b981',
-                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.1)'
-              }}>
-                <div style={{ fontSize: '32px', fontWeight: '800', color: '#10b981' }}>
-                  {statistics.Senior}
-                </div>
-                <div style={{ fontSize: '14px', color: '#64748b', fontWeight: '600', marginTop: '4px' }}>
-                  Senior Lessons
-                </div>
-                <div style={{ fontSize: '12px', color: '#10b981', fontWeight: '600', marginTop: '4px' }}>
-                  {statistics.groupPercentages.Senior}% of total
-                </div>
-              </div>
-              
-              <div style={{
-                background: 'white',
-                padding: '20px',
-                borderRadius: '12px',
-                textAlign: 'center',
-                border: '2px solid #8b5cf6',
-                boxShadow: '0 2px 8px rgba(139, 92, 246, 0.1)'
-              }}>
-                <div style={{ fontSize: '32px', fontWeight: '800', color: '#8b5cf6' }}>
-                  {statistics.Both}
-                </div>
-                <div style={{ fontSize: '14px', color: '#64748b', fontWeight: '600', marginTop: '4px' }}>
-                  Combined
-                </div>
-                <div style={{ fontSize: '12px', color: '#8b5cf6', fontWeight: '600', marginTop: '4px' }}>
-                  {statistics.groupPercentages.Both}% of total
-                </div>
-              </div>
-              
-              <div style={{
-                background: 'white',
-                padding: '20px',
-                borderRadius: '12px',
-                textAlign: 'center',
-                border: '2px solid #6b7280',
-                boxShadow: '0 2px 8px rgba(107, 114, 128, 0.1)'
-              }}>
-                <div style={{ fontSize: '32px', fontWeight: '800', color: '#6b7280' }}>
-                  {filteredLogs.length}
-                </div>
-                <div style={{ fontSize: '14px', color: '#64748b', fontWeight: '600', marginTop: '4px' }}>
-                  Total Records
-                </div>
-                <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: '600', marginTop: '4px' }}>
-                  {statistics.uniqueDates} unique dates
-                </div>
-              </div>
-            </div>
-
-            {/* Teacher & Monthly Breakdown */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-              gap: '16px'
-            }}>
-              {/* Teacher Breakdown */}
-              <div style={{
-                background: 'white',
-                padding: '20px',
-                borderRadius: '12px',
-                border: '1px solid #e5e7eb'
-              }}>
-                <h4 style={{
-                  fontSize: '14px',
-                  fontWeight: '700',
-                  color: '#1e293b',
-                  marginBottom: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}>
-                  <Users className="h-4 w-4" />
-                  Teacher Breakdown
-                </h4>
-                <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                  {Object.entries(statistics.teacherBreakdown).map(([teacher, count]) => (
-                    <div key={teacher} style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '8px 0',
-                      borderBottom: '1px solid #f1f5f9'
-                    }}>
-                      <span style={{ fontSize: '13px', color: '#64748b' }}>
-                        {teacher}
-                      </span>
-                      <span style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '700', 
-                        color: '#3b82f6',
-                        background: 'rgba(59, 130, 246, 0.1)',
-                        padding: '4px 8px',
-                        borderRadius: '6px'
-                      }}>
-                        {count}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Monthly Breakdown */}
-              <div style={{
-                background: 'white',
-                padding: '20px',
-                borderRadius: '12px',
-                border: '1px solid #e5e7eb'
-              }}>
-                <h4 style={{
-                  fontSize: '14px',
-                  fontWeight: '700',
-                  color: '#1e293b',
-                  marginBottom: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}>
-                  <Calendar className="h-4 w-4" />
-                  Monthly Breakdown
-                </h4>
-                <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                  {Object.entries(statistics.monthlyBreakdown).map(([month, count]) => (
-                    <div key={month} style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '8px 0',
-                      borderBottom: '1px solid #f1f5f9'
-                    }}>
-                      <span style={{ fontSize: '13px', color: '#64748b' }}>
-                        {month}
-                      </span>
-                      <span style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '700', 
-                        color: '#10b981',
-                        background: 'rgba(16, 185, 129, 0.1)',
-                        padding: '4px 8px',
-                        borderRadius: '6px'
-                      }}>
-                        {count}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: '600' }}>
+                              {new Date(log.lesson_date).toLocaleDateString('en-GB', { 
+                                weekday: 'short',
+                                day: 'numeric',
+                                month: 'short'
+                              })}
+                            </span>
+                            <span style={{ fontSize: '12px', color: '#64748b' }}>
+                              {new Date(log.lesson_date).getFullYear()}
+                            </span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '16px 24px' }}>
+                          <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '6px 12px',
+                            borderRadius: '20px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            background: groupStyle.background,
+                            color: groupStyle.color
+                          }}>
+                            {getGroupIcon(log.group_type)}
+                            {log.group_type}
+                          </div>
+                        </td>
+                        <td style={{
+                          padding: '16px 24px',
+                          fontSize: '14px',
+                          color: '#64748b',
+                          maxWidth: '300px'
+                        }}>
+                          {log.notes ? (
+                            <span style={{
+                              display: 'block',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {log.notes}
+                            </span>
+                          ) : (
+                            <span style={{ fontStyle: 'italic', color: '#9ca3af' }}>
+                              No notes
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ padding: '16px 24px' }}>
+                          <div style={{
+                            display: 'flex',
+                            gap: '8px',
+                            justifyContent: 'center'
+                          }}>
+                            <button
+                              onClick={() => handleViewInfo(log)}
+                              style={{
+                                padding: '8px',
+                                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                transition: 'transform 0.2s',
+                                outline: 'none'
+                              }}
+                              onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+                              onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                              title="View details"
+                            >
+                              <Info className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleEdit(log)}
+                              style={{
+                                padding: '8px',
+                                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                transition: 'transform 0.2s',
+                                outline: 'none'
+                              }}
+                              onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+                              onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                              title="Edit lesson"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(log.id)}
+                              style={{
+                                padding: '8px',
+                                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                transition: 'transform 0.2s',
+                                outline: 'none'
+                              }}
+                              onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+                              onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                              title="Delete lesson"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
