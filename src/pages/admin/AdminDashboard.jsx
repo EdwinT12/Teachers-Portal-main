@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import BulkStudentImport from '../../components/BulkStudentImport';
 import UnifiedEvaluationSetup from '../../components/UnifiedEvaluationSetup';
-import CatechismLessonTracker from './CatechismLessonTracker'; // ADD THIS IMPORT
+import CatechismLessonTracker from './CatechismLessonTracker';
 import { 
   Users, 
   Clock, 
@@ -865,7 +865,7 @@ const AdminDashboard = () => {
           </p>
         </motion.div>
 
-        {/* Tabs - UPDATED WITH CATECHISM TAB */}
+        {/* Tabs - REORDERED: Overview, Catechism, Attendance, Evaluation */}
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -880,9 +880,9 @@ const AdminDashboard = () => {
         >
           {[
             { id: 'overview', label: '📊 Overview' },
+            { id: 'catechism-tracker', label: '📖 Log Catechism' },
             { id: 'import-attendance', label: '📥 Attendance' },
-            { id: 'evaluation-setup', label: '⭐ Evaluation' },
-            { id: 'catechism-tracker', label: '📖 Catechism' }  // NEW TAB
+            { id: 'evaluation-setup', label: '⭐ Evaluation' }
           ].map((tab) => (
             <motion.button
               key={tab.id}
@@ -910,7 +910,7 @@ const AdminDashboard = () => {
           ))}
         </motion.div>
 
-        {/* Tab Content - UPDATED WITH CATECHISM CONTENT */}
+        {/* Tab Content */}
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -920,6 +920,18 @@ const AdminDashboard = () => {
             transition={{ duration: 0.2 }}
           >
             {activeTab === 'overview' && renderOverviewTab()}
+            {activeTab === 'catechism-tracker' && (
+              <div style={{
+                background: 'rgba(255,255,255,0.95)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: '16px',
+                padding: isMobile ? '16px' : '20px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                border: '2px solid #f1f5f9'
+              }}>
+                <CatechismLessonTracker />
+              </div>
+            )}
             {activeTab === 'import-attendance' && (
               <div style={{
                 background: 'rgba(255,255,255,0.95)',
@@ -942,19 +954,6 @@ const AdminDashboard = () => {
                 border: '2px solid #f1f5f9'
               }}>
                 <UnifiedEvaluationSetup />
-              </div>
-            )}
-            {/* NEW CATECHISM TAB CONTENT */}
-            {activeTab === 'catechism-tracker' && (
-              <div style={{
-                background: 'rgba(255,255,255,0.95)',
-                backdropFilter: 'blur(20px)',
-                borderRadius: '16px',
-                padding: isMobile ? '16px' : '20px',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
-                border: '2px solid #f1f5f9'
-              }}>
-                <CatechismLessonTracker />
               </div>
             )}
           </motion.div>
