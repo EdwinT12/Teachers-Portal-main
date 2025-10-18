@@ -2,6 +2,36 @@
 import supabase from './supabase';
 
 /**
+ * Refresh Google OAuth token using the refresh token
+ */
+const refreshGoogleToken = async (refreshToken) => {
+  try {
+    // Use Google's token endpoint to refresh the access token
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: process.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID',
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to refresh Google token');
+    }
+
+    const data = await response.json();
+    return data.access_token;
+  } catch (error) {
+    console.error('Error refreshing Google token:', error);
+    throw error;
+  }
+};
+
+/**
  * Get and refresh Google OAuth access token if needed
  */
 export const getGoogleAccessToken = async () => {
@@ -12,35 +42,33 @@ export const getGoogleAccessToken = async () => {
       throw new Error('No active session');
     }
 
-    const providerToken = session.provider_token;
+    let providerToken = session.provider_token;
     const providerRefreshToken = session.provider_refresh_token;
+    const expiresAt = session.expires_at;
+    const now = Math.floor(Date.now() / 1000);
+    const bufferTime = 300; // Refresh 5 minutes before expiry
 
     if (!providerToken) {
       throw new Error('No Google access token available');
     }
 
     // Check if token is expired or about to expire
-    const expiresAt = session.expires_at;
-    const now = Math.floor(Date.now() / 1000);
-    const bufferTime = 300; // Refresh 5 minutes before expiry
-
-    // If token is expired or about to expire, refresh the session
     if (expiresAt && (expiresAt - now) < bufferTime) {
-      console.log('🔄 Token expired or expiring soon, refreshing session...');
+      console.log('🔄 Token expired or expiring soon, refreshing...');
       
+      // First try Supabase's refresh
       const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
       
-      if (refreshError) {
-        console.error('Failed to refresh session:', refreshError);
+      if (refreshData?.session?.provider_token) {
+        console.log('✅ Token refreshed via Supabase');
+        providerToken = refreshData.session.provider_token;
+      } else if (providerRefreshToken) {
+        // If Supabase refresh didn't provide new provider token, use Google's refresh
+        console.log('🔄 Refreshing token directly with Google...');
+        providerToken = await refreshGoogleToken(providerRefreshToken);
+        console.log('✅ Token refreshed via Google API');
+      } else {
         throw new Error('SESSION_EXPIRED');
-      }
-
-      if (refreshData?.session) {
-        console.log('✅ Session refreshed successfully');
-        return {
-          accessToken: refreshData.session.provider_token,
-          refreshToken: refreshData.session.provider_refresh_token
-        };
       }
     }
 
@@ -68,21 +96,27 @@ export const retryWithTokenRefresh = async (apiCall, retryCount = 0) => {
       error.message?.includes('unauthorized') ||
       error.message?.includes('Invalid Credentials');
     
-    if (isAuthError && retryCount < 2) {
-      console.log('🔄 Auth error detected, refreshing token and retrying...', retryCount + 1);
+    if (isAuthError && retryCount < 3) {
+      console.log('🔄 Auth error detected, attempting refresh...', retryCount + 1);
       
       try {
-        // Force refresh the session
+        // Force refresh both Supabase and Google tokens
         const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
         
         if (refreshError || !refreshData?.session) {
-          throw new Error('SESSION_EXPIRED');
+          // Try direct Google token refresh
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.provider_refresh_token) {
+            await refreshGoogleToken(session.provider_refresh_token);
+          } else {
+            throw new Error('SESSION_EXPIRED');
+          }
         }
 
         console.log('✅ Token refreshed, retrying API call...');
         
         // Wait a moment for token to propagate
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Retry the API call with refreshed token
         return await retryWithTokenRefresh(apiCall, retryCount + 1);
@@ -95,6 +129,44 @@ export const retryWithTokenRefresh = async (apiCall, retryCount = 0) => {
     throw error;
   }
 };
+
+/**
+ * Manually force refresh the session and tokens
+ * Can be called by a "Refresh Connection" button
+ */
+export const forceRefreshSession = async () => {
+  try {
+    console.log('🔄 Manually refreshing session...');
+    
+    // Get current session
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      throw new Error('No active session');
+    }
+
+    // Refresh Supabase session
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    
+    if (refreshError) {
+      throw refreshError;
+    }
+
+    // If we have a refresh token but no new provider token, refresh with Google
+    if (!refreshData?.session?.provider_token && session.provider_refresh_token) {
+      await refreshGoogleToken(session.provider_refresh_token);
+    }
+
+    console.log('✅ Session refreshed successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('Error refreshing session:', error);
+    throw error;
+  }
+};
+
+// ... rest of your existing functions (getColumnLetter, updateSheetCell, etc.)
+// Keep all your other functions as they are
 
 /**
  * Convert column number to letter (1 = A, 2 = B, 27 = AA, etc.)
