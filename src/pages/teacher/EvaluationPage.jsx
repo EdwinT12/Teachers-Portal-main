@@ -20,7 +20,10 @@ import {
   X,
   AlertCircle,
   ChevronDown,
-  LogOut
+  LogOut,
+  Database,
+  Cloud,
+  CheckCircle2
 } from 'lucide-react';
 
 const EvaluationPage = () => {
@@ -32,6 +35,8 @@ const EvaluationPage = () => {
   const [allClasses, setAllClasses] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState(classId);
   const [showSyncErrorModal, setShowSyncErrorModal] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(null); // 'saving', 'syncing', 'complete', null
+  const [syncStep, setSyncStep] = useState('');
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -58,6 +63,20 @@ const EvaluationPage = () => {
 
   const chapterOptions = Array.from({ length: 15 }, (_, i) => i + 1);
 
+  // Prevent window close during sync
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (syncStatus === 'saving' || syncStatus === 'syncing') {
+        e.preventDefault();
+        e.returnValue = 'Data is being saved and synced. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [syncStatus]);
+
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
@@ -65,7 +84,6 @@ const EvaluationPage = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Check if user is admin and load all classes if they are
   useEffect(() => {
     const checkAdminAndLoadClasses = async () => {
       if (!user) return;
@@ -144,7 +162,6 @@ const EvaluationPage = () => {
       if (studentsError) throw studentsError;
       setEvalStudents(evalStudentsData);
 
-      // Clear evaluations and notes state first to prevent showing old data
       setEvaluations({});
       setStudentNotes({});
 
@@ -192,12 +209,10 @@ const EvaluationPage = () => {
     setEvaluations(prev => {
       const currentRating = prev[evalStudentId]?.[category]?.rating;
       
-      // If clicking the same rating, deselect it
       if (currentRating === rating) {
         const newState = { ...prev };
         if (newState[evalStudentId]) {
           delete newState[evalStudentId][category];
-          // If no more categories for this student, remove the student entry
           if (Object.keys(newState[evalStudentId]).length === 0) {
             delete newState[evalStudentId];
           }
@@ -205,7 +220,6 @@ const EvaluationPage = () => {
         return newState;
       }
       
-      // Otherwise, set the new rating
       return {
         ...prev,
         [evalStudentId]: {
@@ -225,7 +239,6 @@ const EvaluationPage = () => {
 
   const handleChapterChange = (e) => {
     setSelectedChapter(parseInt(e.target.value));
-    // Don't call loadClassAndStudents here - let useEffect handle it
   };
 
   const handleSaveClick = () => {
@@ -240,6 +253,9 @@ const EvaluationPage = () => {
   const saveEvaluations = async () => {
     setShowConfirmation(false);
     setSaving(true);
+    setSyncStatus('saving');
+    setSyncStep('Saving evaluations to database...');
+    
     try {
       const records = [];
       
@@ -267,6 +283,7 @@ const EvaluationPage = () => {
       if (records.length === 0) {
         toast.error('Please evaluate at least one student in one category');
         setSaving(false);
+        setSyncStatus(null);
         return;
       }
 
@@ -280,10 +297,17 @@ const EvaluationPage = () => {
 
       if (saveError) throw saveError;
 
-      toast.success('Evaluations saved!');
+      toast.success('Evaluations saved to database!');
+
+      // Start sync phase
+      setSyncStatus('syncing');
+      setSyncStep('Syncing to Google Sheets...');
 
       try {
         await batchSyncEvaluations(savedRecords);
+        
+        setSyncStatus('complete');
+        setSyncStep('Successfully synced to Google Sheets!');
         toast.success('Synced to Google Sheets!');
         
         const updatedEvaluations = { ...evaluations };
@@ -294,14 +318,21 @@ const EvaluationPage = () => {
         });
         setEvaluations(updatedEvaluations);
         
+        // Auto-close success message after 2 seconds
+        setTimeout(() => {
+          setSyncStatus(null);
+        }, 2000);
+        
       } catch (syncError) {
         console.error('Sync error:', syncError);
+        setSyncStatus(null);
         setShowSyncErrorModal(true);
       }
 
     } catch (error) {
       console.error('Error saving evaluations:', error);
       toast.error('Failed to save evaluations');
+      setSyncStatus(null);
     } finally {
       setSaving(false);
     }
@@ -406,6 +437,160 @@ const EvaluationPage = () => {
         width: '100%',
         margin: '0 auto'
       }}>
+        {/* Sync Status Modal */}
+        <AnimatePresence>
+          {syncStatus && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0, 0, 0, 0.75)',
+                backdropFilter: 'blur(8px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 10000,
+                padding: '20px'
+              }}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                style={{
+                  background: 'white',
+                  borderRadius: '24px',
+                  padding: isMobile ? '32px 24px' : '40px 32px',
+                  maxWidth: '420px',
+                  width: '100%',
+                  boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{
+                  width: '80px',
+                  height: '80px',
+                  margin: '0 auto 24px',
+                  borderRadius: '50%',
+                  background: syncStatus === 'complete' 
+                    ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                    : syncStatus === 'syncing'
+                    ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                    : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 8px 24px rgba(102, 126, 234, 0.4)'
+                }}>
+                  {syncStatus === 'complete' ? (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 200, damping: 10 }}
+                    >
+                      <CheckCircle2 style={{ width: '40px', height: '40px', color: 'white' }} />
+                    </motion.div>
+                  ) : syncStatus === 'syncing' ? (
+                    <Cloud style={{ width: '40px', height: '40px', color: 'white' }} />
+                  ) : (
+                    <Database style={{ width: '40px', height: '40px', color: 'white' }} />
+                  )}
+                </div>
+
+                <h2 style={{
+                  fontSize: isMobile ? '24px' : '28px',
+                  fontWeight: '800',
+                  color: '#1e293b',
+                  margin: '0 0 12px 0'
+                }}>
+                  {syncStatus === 'complete' ? 'All Done!' : 
+                   syncStatus === 'syncing' ? 'Syncing Data' : 
+                   'Saving Data'}
+                </h2>
+
+                <p style={{
+                  fontSize: '16px',
+                  color: '#64748b',
+                  lineHeight: '1.6',
+                  margin: '0 0 24px 0',
+                  fontWeight: '500'
+                }}>
+                  {syncStep}
+                </p>
+
+                {syncStatus !== 'complete' && (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                      style={{
+                        width: '50px',
+                        height: '50px',
+                        border: '4px solid #e2e8f0',
+                        borderTop: '4px solid #667eea',
+                        borderRadius: '50%',
+                        margin: '0 auto 20px'
+                      }}
+                    />
+                    <div style={{
+                      background: '#fef3c7',
+                      borderRadius: '12px',
+                      padding: '14px 18px',
+                      border: '1px solid #fcd34d'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '10px'
+                      }}>
+                        <AlertCircle style={{ width: '18px', height: '18px', color: '#f59e0b', flexShrink: 0 }} />
+                        <p style={{
+                          fontSize: '13px',
+                          color: '#92400e',
+                          margin: 0,
+                          fontWeight: '600',
+                          textAlign: 'left'
+                        }}>
+                          Please don't close this window until sync completes
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {syncStatus === 'complete' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{
+                      background: '#d1fae5',
+                      borderRadius: '12px',
+                      padding: '14px 18px',
+                      border: '1px solid #6ee7b7'
+                    }}
+                  >
+                    <p style={{
+                      fontSize: '14px',
+                      color: '#065f46',
+                      margin: 0,
+                      fontWeight: '600'
+                    }}>
+                      ✓ Data saved and synced successfully
+                    </p>
+                  </motion.div>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Sync Error Modal */}
         <AnimatePresence>
           {showSyncErrorModal && (
@@ -770,6 +955,9 @@ const EvaluationPage = () => {
           )}
         </AnimatePresence>
 
+        {/* Rest of the component - Header, Students, Save Button, etc. remains unchanged */}
+        {/* I'll include the complete component below with all existing features */}
+        
         {/* Header */}
         <motion.div
           initial={{ y: -20, opacity: 0 }}
