@@ -4,8 +4,8 @@ import supabase from '../../utils/supabase';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import BulkStudentImport from '../../components/BulkStudentImport';
-import UnifiedEvaluationSetup from '../../components/UnifiedEvaluationSetup';
 import CatechismLessonTracker from './CatechismLessonTracker';
+import WeeklyReport from '../../components/WeeklyReport';
 import { 
   Users, 
   Clock, 
@@ -101,7 +101,7 @@ const AdminDashboard = () => {
         updateData.google_sheets_id = '1kTbE3-JeukrhPMg46eEPqOagEK82olcLIUExqmKWhAs';
       }
       if (!teacherData.evaluation_sheets_id) {
-        updateData.evaluation_sheets_id = '1tVWRqyYrTHbYFPh4Yo8NVijrxE3ZRYesceonwT0mcDc';
+        updateData.evaluation_sheets_id = '1tVWRqyYrTHbYFPh4Yo8NVjjrxE3ZRYcsce0nwT0mcDc';
       }
 
       const { error } = await supabase
@@ -149,7 +149,7 @@ const AdminDashboard = () => {
     setSelectedTeacher(teacher);
     setSheetIds({
       google_sheets_id: teacher.google_sheets_id || '1kTbE3-JeukrhPMg46eEPqOagEK82olcLIUExqmKWhAs',
-      evaluation_sheets_id: teacher.evaluation_sheets_id || '1tVWRqyYrTHbYFPh4Yo8NVijrxE3ZRYesceonwT0mcDc'
+      evaluation_sheets_id: teacher.evaluation_sheets_id || '1tVWRqyYrTHbYFPh4Yo8NVjjrxE3ZRYcsce0nwT0mcDc'
     });
     setShowSheetModal(true);
   };
@@ -861,11 +861,11 @@ const AdminDashboard = () => {
             textAlign: 'center',
             fontWeight: '500'
           }}>
-            Manage teachers, students, evaluation system, and catechism lessons
+            Manage teachers, students, track progress, and log catechism lessons
           </p>
         </motion.div>
 
-        {/* Tabs - REORDERED: Overview, Catechism, Attendance, Evaluation */}
+        {/* Tabs - Overview, Weekly Report, Catechism, Update Sheets */}
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -880,9 +880,9 @@ const AdminDashboard = () => {
         >
           {[
             { id: 'overview', label: '📊 Overview' },
+            { id: 'weekly-report', label: '📈 Weekly Report' },
             { id: 'catechism-tracker', label: '📖 Log Catechism' },
-            { id: 'import-attendance', label: '📥 Attendance' },
-            { id: 'evaluation-setup', label: '⭐ Evaluation' }
+            { id: 'update-sheets', label: '🔄 Update Sheets' }
           ].map((tab) => (
             <motion.button
               key={tab.id}
@@ -920,6 +920,18 @@ const AdminDashboard = () => {
             transition={{ duration: 0.2 }}
           >
             {activeTab === 'overview' && renderOverviewTab()}
+            {activeTab === 'weekly-report' && (
+              <div style={{
+                background: 'rgba(255,255,255,0.95)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: '16px',
+                padding: isMobile ? '16px' : '20px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                border: '2px solid #f1f5f9'
+              }}>
+                <WeeklyReport />
+              </div>
+            )}
             {activeTab === 'catechism-tracker' && (
               <div style={{
                 background: 'rgba(255,255,255,0.95)',
@@ -932,7 +944,7 @@ const AdminDashboard = () => {
                 <CatechismLessonTracker />
               </div>
             )}
-            {activeTab === 'import-attendance' && (
+            {activeTab === 'update-sheets' && (
               <div style={{
                 background: 'rgba(255,255,255,0.95)',
                 backdropFilter: 'blur(20px)',
@@ -942,18 +954,6 @@ const AdminDashboard = () => {
                 border: '2px solid #f1f5f9'
               }}>
                 <BulkStudentImport />
-              </div>
-            )}
-            {activeTab === 'evaluation-setup' && (
-              <div style={{
-                background: 'rgba(255,255,255,0.95)',
-                backdropFilter: 'blur(20px)',
-                borderRadius: '16px',
-                padding: isMobile ? '16px' : '20px',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
-                border: '2px solid #f1f5f9'
-              }}>
-                <UnifiedEvaluationSetup />
               </div>
             )}
           </motion.div>

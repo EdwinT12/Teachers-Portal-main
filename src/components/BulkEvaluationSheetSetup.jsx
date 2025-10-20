@@ -3,14 +3,34 @@ import { AuthContext } from '../context/AuthContext';
 import supabase from '../utils/supabase';
 import { readSheetData, getSpreadsheetMetadata } from '../utils/googleSheetsAPI';
 import toast from 'react-hot-toast';
- 
+import { Star, RefreshCw, AlertCircle } from 'lucide-react';
+
 const BulkEvalStudentImport = () => {
   const { user } = useContext(AuthContext);
-  const [spreadsheetId, setSpreadsheetId] = useState(''); 
+  const [spreadsheetId, setSpreadsheetId] = useState('1tVWRqyYrTHbYFPh4Yo8NVjjrxE3ZRYcsce0nwT0mcDc'); 
   const [importing, setImporting] = useState(false);
   const [classes, setClasses] = useState([]);
   const [sheets, setSheets] = useState([]);
   const [importResults, setImportResults] = useState(null);
+  const [evalStudentCount, setEvalStudentCount] = useState(0);
+
+  // Load eval student count
+  const loadEvalStudentCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('eval_students')
+        .select('*', { count: 'exact', head: true });
+
+      if (error) throw error;
+      setEvalStudentCount(count || 0);
+    } catch (error) {
+      console.error('Error loading eval student count:', error);
+    }
+  };
+
+  useState(() => {
+    loadEvalStudentCount();
+  }, []);
 
   // Load available classes from Supabase
   const loadClasses = async () => {
@@ -30,11 +50,6 @@ const BulkEvalStudentImport = () => {
 
   // Load sheet tabs from Google Sheets
   const loadSheetTabs = async () => {
-    if (!spreadsheetId) {
-      toast.error('Please enter a spreadsheet ID');
-      return;
-    }
-
     try {
       toast.loading('Loading sheet tabs...');
       const metadata = await getSpreadsheetMetadata(spreadsheetId);
@@ -53,7 +68,6 @@ const BulkEvalStudentImport = () => {
 
   // Import students from a specific sheet (EVALUATION SHEET STRUCTURE)
   const importFromSheet = async (sheetName, classId) => {
-    setImporting(true);
     try {
       console.log(`Importing from evaluation sheet: ${sheetName}`);
       
@@ -130,7 +144,6 @@ const BulkEvalStudentImport = () => {
       }
 
       console.log(`Successfully imported ${insertedData.length} eval students from ${sheetName}`);
-      toast.success(`${sheetName}: Imported ${insertedData.length} evaluation students`);
       
       return {
         sheetName,
@@ -140,7 +153,6 @@ const BulkEvalStudentImport = () => {
 
     } catch (error) {
       console.error(`Error importing from ${sheetName}:`, error);
-      toast.error(`${sheetName}: ${error.message}`);
       return {
         sheetName,
         success: false,
@@ -151,11 +163,6 @@ const BulkEvalStudentImport = () => {
 
   // Import all sheets
   const importAllSheets = async () => {
-    if (!spreadsheetId) {
-      toast.error('Please enter a spreadsheet ID');
-      return;
-    }
-
     if (sheets.length === 0) {
       toast.error('Please load sheet tabs first');
       return;
@@ -197,6 +204,9 @@ const BulkEvalStudentImport = () => {
         toast.error(`Failed to import ${failCount} sheets`);
       }
 
+      // Reload count
+      await loadEvalStudentCount();
+
     } catch (error) {
       console.error('Error during bulk import:', error);
       toast.error('Import process failed');
@@ -218,9 +228,13 @@ const BulkEvalStudentImport = () => {
         fontSize: '24px',
         fontWeight: '700',
         color: '#1a1a1a',
-        marginBottom: '8px'
+        marginBottom: '8px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px'
       }}>
-        📋 Import Evaluation Students
+        <Star style={{ width: '28px', height: '28px', color: '#fbbf24' }} />
+        Import Evaluation Students
       </h2>
       <p style={{
         color: '#666',
@@ -229,6 +243,31 @@ const BulkEvalStudentImport = () => {
       }}>
         Import students from your Evaluation Google Sheet into the eval_students table.
       </p>
+
+      {/* Current Data Status */}
+      <div style={{
+        backgroundColor: '#fef3c7',
+        padding: '16px',
+        borderRadius: '8px',
+        marginBottom: '20px',
+        border: '1px solid #fbbf24'
+      }}>
+        <h3 style={{
+          fontSize: '14px',
+          fontWeight: '700',
+          color: '#92400e',
+          marginBottom: '10px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <AlertCircle style={{ width: '16px', height: '16px' }} />
+          Current Database Status
+        </h3>
+        <div style={{ fontSize: '13px' }}>
+          <strong>Evaluation Students:</strong> {evalStudentCount}
+        </div>
+      </div>
 
       {/* Step 1: Enter Spreadsheet ID */}
       <div style={{
@@ -265,14 +304,15 @@ const BulkEvalStudentImport = () => {
           type="text"
           value={spreadsheetId}
           onChange={(e) => setSpreadsheetId(e.target.value)}
-          placeholder="1bTqqYlwdmCsv-hjm_SL8mawRNZk..."
+          placeholder="1tVWRqyYrTHbYFPh4Yo8NVijrxE3ZRYe..."
           style={{
             width: '100%',
             padding: '12px',
             border: '1px solid #ddd',
             borderRadius: '6px',
             fontSize: '14px',
-            marginBottom: '12px'
+            marginBottom: '12px',
+            fontFamily: 'monospace'
           }}
         />
         <button
@@ -376,11 +416,32 @@ const BulkEvalStudentImport = () => {
               cursor: importing ? 'not-allowed' : 'pointer',
               fontSize: '16px',
               fontWeight: '600',
-              width: '100%'
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px'
             }}
           >
-            {importing ? 'Importing...' : 'Import All Evaluation Students'}
+            {importing ? (
+              <>
+                <RefreshCw style={{ width: '20px', height: '20px', animation: 'spin 1s linear infinite' }} />
+                Importing...
+              </>
+            ) : (
+              <>
+                <Star style={{ width: '20px', height: '20px' }} />
+                Import All Evaluation Students
+              </>
+            )}
           </button>
+
+          <style>{`
+            @keyframes spin {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
         </div>
       )}
 
@@ -444,6 +505,7 @@ const BulkEvalStudentImport = () => {
           <li>Sheet names must match class <code>sheet_name</code> exactly</li>
           <li>You must have Editor access to the Google Sheet</li>
           <li>Duplicate students will be skipped</li>
+          <li>For a complete clear and re-import, use the "Update Student Sheets" in the Attendance tab</li>
         </ul>
       </div>
     </div>
