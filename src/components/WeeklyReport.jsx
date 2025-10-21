@@ -12,7 +12,9 @@ import {
   Award,
   AlertTriangle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Mail,
+  Send
 } from 'lucide-react';
 
 const WeeklyReport = () => {
@@ -21,6 +23,7 @@ const WeeklyReport = () => {
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [reportData, setReportData] = useState(null);
   const [expandedLesson, setExpandedLesson] = useState(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   useEffect(() => {
     loadLessons();
@@ -194,6 +197,41 @@ const WeeklyReport = () => {
     return 'Not Submitted';
   };
 
+  const sendEmailReport = async () => {
+    if (!reportData) {
+      toast.error('No report data available');
+      return;
+    }
+
+    setSendingEmail(true);
+    try {
+      // Call your Vercel API endpoint to send email
+      const response = await fetch('/api/send-weekly-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          lessonDate: selectedLesson,
+          reportData: reportData
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast.success('📧 Report sent successfully!');
+      } else {
+        throw new Error(result.error || 'Failed to send email');
+      }
+    } catch (error) {
+      console.error('Error sending email:', error);
+      toast.error('Failed to send report: ' + error.message);
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '40px' }}>
@@ -236,21 +274,70 @@ const WeeklyReport = () => {
 
       {/* Header */}
       <div style={{ marginBottom: '24px' }}>
-        <h2 style={{
-          fontSize: '24px',
-          fontWeight: '700',
-          color: '#1a1a1a',
-          marginBottom: '8px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px'
-        }}>
-          <TrendingUp style={{ width: '28px', height: '28px', color: '#3b82f6' }} />
-          Weekly Teacher Progress Report
-        </h2>
-        <p style={{ color: '#666', fontSize: '14px' }}>
-          Track attendance and evaluation completion for each catechism lesson
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+          <div>
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: '700',
+              color: '#1a1a1a',
+              marginBottom: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
+              <TrendingUp style={{ width: '28px', height: '28px', color: '#3b82f6' }} />
+              Weekly Teacher Progress Report
+            </h2>
+            <p style={{ color: '#666', fontSize: '14px', margin: 0 }}>
+              Track attendance and evaluation completion for each catechism lesson
+            </p>
+          </div>
+          
+          {/* Send Email Button */}
+          {reportData && (
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={sendEmailReport}
+              disabled={sendingEmail}
+              style={{
+                padding: '12px 20px',
+                background: sendingEmail 
+                  ? 'linear-gradient(135deg, #94a3b8 0%, #64748b 100%)'
+                  : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                cursor: sendingEmail ? 'not-allowed' : 'pointer',
+                fontSize: '14px',
+                fontWeight: '700',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: sendingEmail ? 'none' : '0 4px 12px rgba(16, 185, 129, 0.3)',
+                transition: 'all 0.2s'
+              }}
+            >
+              {sendingEmail ? (
+                <>
+                  <div style={{
+                    width: '16px',
+                    height: '16px',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    borderTop: '2px solid white',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }} />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send style={{ width: '16px', height: '16px' }} />
+                  Send Report
+                </>
+              )}
+            </motion.button>
+          )}
+        </div>
       </div>
 
       {/* Lesson Dropdown */}
