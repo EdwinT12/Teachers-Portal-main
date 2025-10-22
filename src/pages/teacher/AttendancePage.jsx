@@ -201,9 +201,18 @@ const AttendancePage = () => {
 
       setAttendance({});
 
+      // Load attendance records with student info to match by name
       const { data: attendanceData, error: attendanceError } = await supabase
         .from('attendance_records')
-        .select('student_id, status, synced_to_sheets')
+        .select(`
+          student_id,
+          status,
+          synced_to_sheets,
+          students!inner (
+            student_name,
+            class_id
+          )
+        `)
         .eq('class_id', selectedClassId)
         .eq('attendance_date', selectedDate);
 
@@ -213,11 +222,32 @@ const AttendancePage = () => {
 
       const attendanceMap = {};
       if (attendanceData && attendanceData.length > 0) {
+        // First, try to match by student_id (for records with current students)
         attendanceData.forEach(record => {
-          attendanceMap[record.student_id] = {
-            status: record.status,
-            synced: record.synced_to_sheets
-          };
+          const currentStudent = studentsData.find(s => s.id === record.student_id);
+          if (currentStudent) {
+            attendanceMap[currentStudent.id] = {
+              status: record.status,
+              synced: record.synced_to_sheets
+            };
+          }
+        });
+
+        // Then, match by student name for orphaned records (old student IDs)
+        attendanceData.forEach(record => {
+          if (record.students && record.students.student_name) {
+            const matchingStudent = studentsData.find(
+              s => s.student_name.trim().toLowerCase() === record.students.student_name.trim().toLowerCase()
+            );
+            
+            // Only set if not already set by ID match
+            if (matchingStudent && !attendanceMap[matchingStudent.id]) {
+              attendanceMap[matchingStudent.id] = {
+                status: record.status,
+                synced: record.synced_to_sheets
+              };
+            }
+          }
         });
       }
       setAttendance(attendanceMap);
