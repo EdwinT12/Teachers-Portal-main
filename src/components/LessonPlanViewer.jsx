@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import supabase from '../utils/supabase';
 import { AuthContext } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import { FileText, Upload, Loader, Download, Eye, Trash2, FolderOpen, X, Folder, Plus, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileText, Upload, Loader, Download, Eye, Trash2, FolderOpen, X, Folder, Plus, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 
 const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
   const { user } = useContext(AuthContext);
@@ -18,6 +18,17 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
   const [expandedFolders, setExpandedFolders] = useState({});
   const [selectedFile, setSelectedFile] = useState(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     loadInitialData();
@@ -254,6 +265,29 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
     }
   };
 
+  const handleOpenFile = (file) => {
+    window.open(file.url, '_blank');
+  };
+
+  const handleDownloadFile = async (file) => {
+    try {
+      const response = await fetch(file.url);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${file.displayName}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success('Download started!');
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      toast.error('Failed to download file');
+    }
+  };
+
   const formatFileSize = (bytes) => {
     if (!bytes) return 'N/A';
     const mb = bytes / (1024 * 1024);
@@ -262,8 +296,11 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
   if (loading) {
@@ -272,436 +309,417 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        minHeight: isModal ? '400px' : '100vh',
-        backgroundColor: isModal ? 'transparent' : '#f5f5f5'
+        minHeight: '400px',
+        color: '#666'
       }}>
-        <Loader style={{
-          width: '50px',
-          height: '50px',
-          color: '#4CAF50',
-          animation: 'spin 1s linear infinite'
-        }} />
-        <style>
-          {`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}
-        </style>
+        <Loader style={{ width: '32px', height: '32px', animation: 'spin 1s linear infinite' }} />
       </div>
     );
   }
 
   const content = (
     <div style={{
-      maxWidth: isModal ? '100%' : '1200px',
+      maxWidth: isModal ? '100%' : '1400px',
       margin: isModal ? '0' : '0 auto',
-      padding: isModal ? '0' : '24px'
+      padding: isModal ? '0' : isMobile ? '16px' : '24px'
     }}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        style={{
-          backgroundColor: 'white',
-          borderRadius: '16px',
-          padding: '32px',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-        }}
-      >
-        {/* Header */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '32px',
-          flexWrap: 'wrap',
-          gap: '16px'
-        }}>
-          <div>
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        justifyContent: 'space-between',
+        alignItems: isMobile ? 'flex-start' : 'center',
+        marginBottom: isMobile ? '20px' : '32px',
+        gap: isMobile ? '16px' : '0'
+      }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+            <div style={{
+              width: isMobile ? '40px' : '48px',
+              height: isMobile ? '40px' : '48px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <FolderOpen style={{ width: isMobile ? '20px' : '24px', height: isMobile ? '20px' : '24px', color: 'white' }} />
+            </div>
             <h2 style={{
-              fontSize: '24px',
+              fontSize: isMobile ? '22px' : '28px',
               fontWeight: '700',
               color: '#1a1a1a',
-              margin: '0 0 8px 0',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px'
-            }}>
-              <FolderOpen style={{ width: '28px', height: '28px', color: '#4CAF50' }} />
-              Lesson Plans
-            </h2>
-            <p style={{
-              fontSize: '14px',
-              color: '#666',
               margin: 0
             }}>
-              Organize and manage lesson plans by class
-            </p>
+              Lesson Plans
+            </h2>
           </div>
-
-          {(profile?.role === 'admin' || profile?.role === 'teacher') && (
-            <button
-              onClick={() => setShowUploadModal(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 24px',
-                backgroundColor: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '10px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#059669'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#10b981'}
-            >
-              <Plus style={{ width: '18px', height: '18px' }} />
-              Upload New File
-            </button>
-          )}
+          <p style={{
+            fontSize: isMobile ? '13px' : '14px',
+            color: '#666',
+            margin: 0
+          }}>
+            Organize and manage lesson plans by class
+          </p>
         </div>
 
-        {/* Main Content - Split View */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: selectedFile ? '350px 1fr' : '1fr',
-          gap: '24px',
-          minHeight: '500px'
-        }}>
-          {/* Folder Tree View */}
-          <div style={{
-            backgroundColor: '#f9fafb',
-            borderRadius: '12px',
-            padding: '20px',
-            overflowY: 'auto',
-            maxHeight: '700px'
-          }}>
-            <h3 style={{
-              fontSize: '14px',
-              fontWeight: '700',
-              color: '#374151',
-              margin: '0 0 16px 0',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              Classes
-            </h3>
+        <button
+          onClick={() => setShowUploadModal(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: isMobile ? '12px 20px' : '12px 24px',
+            backgroundColor: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '10px',
+            fontSize: isMobile ? '14px' : '15px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+            width: isMobile ? '100%' : 'auto',
+            justifyContent: 'center'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#059669';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#10b981';
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+          }}
+        >
+          <Plus style={{ width: isMobile ? '18px' : '20px', height: isMobile ? '18px' : '20px' }} />
+          Upload New File
+        </button>
+      </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {classes.map((cls) => {
-                const files = lessonPlansByClass[cls.id] || [];
-                const isExpanded = expandedFolders[cls.id];
-                
-                return (
-                  <div key={cls.id}>
-                    {/* Folder Header */}
-                    <div
-                      onClick={() => toggleFolder(cls.id)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '10px 12px',
-                        backgroundColor: 'white',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        border: '1px solid #e5e7eb'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#f3f4f6';
-                        e.currentTarget.style.borderColor = '#4CAF50';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'white';
-                        e.currentTarget.style.borderColor = '#e5e7eb';
-                      }}
-                    >
-                      {isExpanded ? (
-                        <ChevronDown style={{ width: '16px', height: '16px', color: '#6b7280' }} />
-                      ) : (
-                        <ChevronRight style={{ width: '16px', height: '16px', color: '#6b7280' }} />
-                      )}
-                      <Folder style={{ 
-                        width: '20px', 
-                        height: '20px', 
-                        color: cls.id === 'general' ? '#3b82f6' : '#f59e0b' 
-                      }} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          color: '#1a1a1a'
-                        }}>
-                          {cls.name}
-                        </div>
-                        <div style={{
-                          fontSize: '12px',
-                          color: '#6b7280'
-                        }}>
-                          {files.length} file{files.length !== 1 ? 's' : ''}
-                        </div>
+      {/* Class Folders */}
+      <div style={{
+        display: 'grid',
+        gap: isMobile ? '12px' : '16px'
+      }}>
+        {classes.map((classItem) => {
+          const files = lessonPlansByClass[classItem.id] || [];
+          const isExpanded = expandedFolders[classItem.id];
+          const fileCount = files.length;
+
+          return (
+            <motion.div
+              key={classItem.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                backgroundColor: 'white',
+                borderRadius: isMobile ? '12px' : '16px',
+                border: '1px solid #e5e7eb',
+                overflow: 'hidden',
+                transition: 'all 0.2s'
+              }}
+            >
+              {/* Folder Header */}
+              <div
+                onClick={() => toggleFolder(classItem.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: isMobile ? '16px' : '20px 24px',
+                  cursor: 'pointer',
+                  backgroundColor: isExpanded ? '#f9fafb' : 'white',
+                  borderBottom: isExpanded && fileCount > 0 ? '1px solid #e5e7eb' : 'none',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                  <motion.div
+                    animate={{ rotate: isExpanded ? 90 : 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <ChevronRight style={{
+                      width: isMobile ? '20px' : '24px',
+                      height: isMobile ? '20px' : '24px',
+                      color: '#10b981'
+                    }} />
+                  </motion.div>
+                  <Folder style={{
+                    width: isMobile ? '24px' : '28px',
+                    height: isMobile ? '24px' : '28px',
+                    color: classItem.id === 'general' ? '#8b5cf6' : '#10b981'
+                  }} />
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{
+                      fontSize: isMobile ? '16px' : '18px',
+                      fontWeight: '700',
+                      color: '#1a1a1a',
+                      margin: 0
+                    }}>
+                      {classItem.name}
+                    </h3>
+                    {classItem.description && (
+                      <p style={{
+                        fontSize: isMobile ? '12px' : '13px',
+                        color: '#666',
+                        margin: '2px 0 0 0'
+                      }}>
+                        {classItem.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <span style={{
+                    fontSize: isMobile ? '12px' : '13px',
+                    fontWeight: '600',
+                    color: fileCount > 0 ? '#10b981' : '#9ca3af',
+                    backgroundColor: fileCount > 0 ? '#d1fae5' : '#f3f4f6',
+                    padding: '4px 12px',
+                    borderRadius: '12px'
+                  }}>
+                    {fileCount} {fileCount === 1 ? 'file' : 'files'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Files List */}
+              <AnimatePresence>
+                {isExpanded && fileCount > 0 && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <div style={{
+                      padding: isMobile ? '12px' : '16px 24px 24px 24px'
+                    }}>
+                      <div style={{
+                        display: 'grid',
+                        gap: isMobile ? '8px' : '12px'
+                      }}>
+                        {files.map((file, index) => (
+                          <motion.div
+                            key={file.name}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: isMobile ? '10px' : '16px',
+                              padding: isMobile ? '12px' : '16px',
+                              backgroundColor: '#f9fafb',
+                              borderRadius: isMobile ? '8px' : '12px',
+                              border: '1px solid #e5e7eb',
+                              transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#f3f4f6';
+                              e.currentTarget.style.borderColor = '#10b981';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = '#f9fafb';
+                              e.currentTarget.style.borderColor = '#e5e7eb';
+                            }}
+                          >
+                            {/* File Icon */}
+                            <div style={{
+                              width: isMobile ? '36px' : '44px',
+                              height: isMobile ? '36px' : '44px',
+                              borderRadius: '8px',
+                              backgroundColor: '#fee2e2',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              <FileText style={{
+                                width: isMobile ? '18px' : '22px',
+                                height: isMobile ? '18px' : '22px',
+                                color: '#dc2626'
+                              }} />
+                            </div>
+
+                            {/* File Info */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <h4 style={{
+                                fontSize: isMobile ? '14px' : '15px',
+                                fontWeight: '600',
+                                color: '#1a1a1a',
+                                margin: '0 0 4px 0',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: isMobile ? 'normal' : 'nowrap'
+                              }}>
+                                {file.displayName}
+                              </h4>
+                              <div style={{
+                                display: 'flex',
+                                flexDirection: isMobile ? 'column' : 'row',
+                                gap: isMobile ? '2px' : '12px',
+                                fontSize: isMobile ? '11px' : '12px',
+                                color: '#9ca3af'
+                              }}>
+                                {file.size && (
+                                  <span>{formatFileSize(file.size)}</span>
+                                )}
+                                {file.updatedAt && (
+                                  <span>Updated {formatDate(file.updatedAt)}</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div style={{
+                              display: 'flex',
+                              gap: isMobile ? '6px' : '8px',
+                              flexShrink: 0
+                            }}>
+                              {/* Open Button */}
+                              <button
+                                onClick={() => handleOpenFile(file)}
+                                title="Open file"
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: isMobile ? '4px' : '6px',
+                                  padding: isMobile ? '8px 12px' : '8px 16px',
+                                  backgroundColor: '#10b981',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '8px',
+                                  fontSize: isMobile ? '12px' : '13px',
+                                  fontWeight: '600',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = '#059669';
+                                  e.currentTarget.style.transform = 'translateY(-1px)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = '#10b981';
+                                  e.currentTarget.style.transform = 'translateY(0)';
+                                }}
+                              >
+                                <ExternalLink style={{
+                                  width: isMobile ? '14px' : '16px',
+                                  height: isMobile ? '14px' : '16px'
+                                }} />
+                                {!isMobile && 'Open'}
+                              </button>
+
+                              {/* Download Button */}
+                              <button
+                                onClick={() => handleDownloadFile(file)}
+                                title="Download file"
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  padding: isMobile ? '8px' : '8px 12px',
+                                  backgroundColor: '#3b82f6',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '8px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = '#2563eb';
+                                  e.currentTarget.style.transform = 'translateY(-1px)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = '#3b82f6';
+                                  e.currentTarget.style.transform = 'translateY(0)';
+                                }}
+                              >
+                                <Download style={{
+                                  width: isMobile ? '14px' : '16px',
+                                  height: isMobile ? '14px' : '16px'
+                                }} />
+                              </button>
+
+                              {/* Delete Button */}
+                              <button
+                                onClick={() => handleDelete(file)}
+                                title="Delete file"
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  padding: isMobile ? '8px' : '8px 12px',
+                                  backgroundColor: '#ef4444',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '8px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = '#dc2626';
+                                  e.currentTarget.style.transform = 'translateY(-1px)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = '#ef4444';
+                                  e.currentTarget.style.transform = 'translateY(0)';
+                                }}
+                              >
+                                <Trash2 style={{
+                                  width: isMobile ? '14px' : '16px',
+                                  height: isMobile ? '14px' : '16px'
+                                }} />
+                              </button>
+                            </div>
+                          </motion.div>
+                        ))}
                       </div>
                     </div>
+                  </motion.div>
+                )}
 
-                    {/* Folder Contents */}
-                    <AnimatePresence>
-                      {isExpanded && files.length > 0 && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          style={{
-                            overflow: 'hidden',
-                            marginLeft: '24px',
-                            marginTop: '4px'
-                          }}
-                        >
-                          {files.map((file) => (
-                            <div
-                              key={file.name}
-                              onClick={() => setSelectedFile(file)}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                gap: '8px',
-                                padding: '10px 12px',
-                                marginBottom: '4px',
-                                backgroundColor: selectedFile?.name === file.name ? '#e0f2fe' : 'white',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                border: selectedFile?.name === file.name ? '1px solid #3b82f6' : '1px solid transparent'
-                              }}
-                              onMouseEnter={(e) => {
-                                if (selectedFile?.name !== file.name) {
-                                  e.currentTarget.style.backgroundColor = '#f3f4f6';
-                                }
-                              }}
-                              onMouseLeave={(e) => {
-                                if (selectedFile?.name !== file.name) {
-                                  e.currentTarget.style.backgroundColor = 'white';
-                                }
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-                                <FileText style={{ width: '16px', height: '16px', color: '#ef4444', flexShrink: 0 }} />
-                                <div style={{
-                                  fontSize: '13px',
-                                  fontWeight: '500',
-                                  color: '#1a1a1a',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap'
-                                }}>
-                                  {file.displayName}
-                                </div>
-                              </div>
-                              {(profile?.role === 'admin' || profile?.role === 'teacher') && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDelete(file);
-                                  }}
-                                  style={{
-                                    padding: '4px',
-                                    backgroundColor: 'transparent',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    transition: 'background-color 0.2s'
-                                  }}
-                                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
-                                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                                >
-                                  <Trash2 style={{ width: '14px', height: '14px', color: '#ef4444' }} />
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                        </motion.div>
-                      )}
-                      {isExpanded && files.length === 0 && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          style={{
-                            marginLeft: '24px',
-                            marginTop: '4px',
-                            padding: '12px',
-                            fontSize: '13px',
-                            color: '#9ca3af',
-                            fontStyle: 'italic'
-                          }}
-                        >
-                          No files in this folder
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* PDF Viewer */}
-          {selectedFile ? (
-            <div style={{
-              backgroundColor: '#f9fafb',
-              borderRadius: '12px',
-              padding: '20px',
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              {/* File Header */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                marginBottom: '16px',
-                gap: '12px',
-                flexWrap: 'wrap'
-              }}>
-                <div>
-                  <h3 style={{
-                    fontSize: '18px',
-                    fontWeight: '700',
-                    color: '#1a1a1a',
-                    margin: '0 0 8px 0'
-                  }}>
-                    {selectedFile.displayName}
-                  </h3>
-                  <div style={{
-                    display: 'flex',
-                    gap: '16px',
-                    fontSize: '13px',
-                    color: '#6b7280'
-                  }}>
-                    <span>Size: {formatFileSize(selectedFile.size)}</span>
-                    <span>Updated: {formatDate(selectedFile.updatedAt)}</span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={() => window.open(selectedFile.url, '_blank')}
+                {/* Empty State */}
+                {isExpanded && fileCount === 0 && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '8px 16px',
-                      backgroundColor: '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      transition: 'background-color 0.2s'
+                      padding: isMobile ? '24px' : '32px',
+                      textAlign: 'center'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
                   >
-                    <Download style={{ width: '14px', height: '14px' }} />
-                    Download
-                  </button>
-                  <button
-                    onClick={() => setSelectedFile(null)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: '8px',
-                      backgroundColor: '#f3f4f6',
-                      color: '#6b7280',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      transition: 'background-color 0.2s'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5e7eb'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
-                  >
-                    <X style={{ width: '16px', height: '16px' }} />
-                  </button>
-                </div>
-              </div>
-
-              {/* PDF iframe */}
-              <div style={{
-                flex: 1,
-                border: '2px solid #e5e7eb',
-                borderRadius: '8px',
-                overflow: 'hidden',
-                backgroundColor: 'white',
-                minHeight: '600px'
-              }}>
-                <iframe
-                  src={selectedFile.url}
-                  title={selectedFile.displayName}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    border: 'none',
-                    minHeight: '600px'
-                  }}
-                />
-              </div>
-            </div>
-          ) : (
-            <div style={{
-              backgroundColor: '#f9fafb',
-              borderRadius: '12px',
-              padding: '80px 20px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textAlign: 'center'
-            }}>
-              <div style={{
-                width: '80px',
-                height: '80px',
-                marginBottom: '24px',
-                borderRadius: '50%',
-                backgroundColor: '#e5e7eb',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <FileText style={{ width: '40px', height: '40px', color: '#9ca3af' }} />
-              </div>
-              <h3 style={{
-                fontSize: '20px',
-                fontWeight: '700',
-                color: '#1a1a1a',
-                margin: '0 0 8px 0'
-              }}>
-                No File Selected
-              </h3>
-              <p style={{
-                fontSize: '15px',
-                color: '#6b7280',
-                margin: 0,
-                maxWidth: '400px'
-              }}>
-                Click on any lesson plan file from the folders on the left to view it here
-              </p>
-            </div>
-          )}
-        </div>
-      </motion.div>
+                    <FileText style={{
+                      width: isMobile ? '40px' : '48px',
+                      height: isMobile ? '40px' : '48px',
+                      color: '#d1d5db',
+                      margin: '0 auto 12px'
+                    }} />
+                    <p style={{
+                      fontSize: isMobile ? '13px' : '14px',
+                      color: '#9ca3af',
+                      margin: 0
+                    }}>
+                      No files in this folder
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          );
+        })}
+      </div>
     </div>
   );
 
@@ -711,7 +729,11 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      onClick={() => setShowUploadModal(false)}
+      onClick={() => {
+        setShowUploadModal(false);
+        setUploadFile(null);
+        setUploadFileName('');
+      }}
       style={{
         position: 'fixed',
         top: 0,
@@ -723,25 +745,54 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 2000,
-        padding: '20px'
+        padding: isMobile ? '16px' : '20px',
+        overflowY: 'auto'
       }}
     >
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
         onClick={(e) => e.stopPropagation()}
         style={{
           backgroundColor: 'white',
-          borderRadius: '16px',
-          padding: '32px',
-          maxWidth: '500px',
+          borderRadius: isMobile ? '16px' : '20px',
+          padding: isMobile ? '24px' : '32px',
+          maxWidth: isMobile ? '100%' : '500px',
           width: '100%',
           boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
         }}
       >
+        {/* Close Button */}
+        <button
+          onClick={() => {
+            setShowUploadModal(false);
+            setUploadFile(null);
+            setUploadFileName('');
+          }}
+          style={{
+            position: 'absolute',
+            top: isMobile ? '12px' : '16px',
+            right: isMobile ? '12px' : '16px',
+            background: '#f3f4f6',
+            border: 'none',
+            borderRadius: '50%',
+            width: isMobile ? '32px' : '36px',
+            height: isMobile ? '32px' : '36px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            transition: 'background-color 0.2s'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e5e7eb'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+        >
+          <X style={{ width: isMobile ? '18px' : '20px', height: isMobile ? '18px' : '20px', color: '#666' }} />
+        </button>
+
         <h3 style={{
-          fontSize: '20px',
+          fontSize: isMobile ? '20px' : '24px',
           fontWeight: '700',
           color: '#1a1a1a',
           margin: '0 0 24px 0'
@@ -753,7 +804,7 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
         <div style={{ marginBottom: '20px' }}>
           <label style={{
             display: 'block',
-            fontSize: '14px',
+            fontSize: isMobile ? '13px' : '14px',
             fontWeight: '600',
             color: '#374151',
             marginBottom: '8px'
@@ -768,10 +819,10 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
             }}
             style={{
               width: '100%',
-              padding: '10px 12px',
+              padding: isMobile ? '10px 12px' : '12px',
               border: '1px solid #e5e7eb',
               borderRadius: '8px',
-              fontSize: '14px',
+              fontSize: isMobile ? '13px' : '14px',
               backgroundColor: 'white',
               cursor: 'pointer'
             }}
@@ -789,7 +840,7 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
         <div style={{ marginBottom: '20px' }}>
           <label style={{
             display: 'block',
-            fontSize: '14px',
+            fontSize: isMobile ? '13px' : '14px',
             fontWeight: '600',
             color: '#374151',
             marginBottom: '8px'
@@ -805,7 +856,7 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
               padding: '10px',
               border: '1px solid #e5e7eb',
               borderRadius: '8px',
-              fontSize: '14px'
+              fontSize: isMobile ? '13px' : '14px'
             }}
           />
         </div>
@@ -815,7 +866,7 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
           <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
-              fontSize: '14px',
+              fontSize: isMobile ? '13px' : '14px',
               fontWeight: '600',
               color: '#374151',
               marginBottom: '8px'
@@ -829,10 +880,10 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
               placeholder="e.g., Week 1 - Introduction"
               style={{
                 width: '100%',
-                padding: '10px 12px',
+                padding: isMobile ? '10px 12px' : '12px',
                 border: '1px solid #e5e7eb',
                 borderRadius: '8px',
-                fontSize: '14px'
+                fontSize: isMobile ? '13px' : '14px'
               }}
             />
           </div>
@@ -842,7 +893,8 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
         <div style={{
           display: 'flex',
           gap: '12px',
-          justifyContent: 'flex-end'
+          justifyContent: 'flex-end',
+          flexDirection: isMobile ? 'column-reverse' : 'row'
         }}>
           <button
             onClick={() => {
@@ -851,12 +903,12 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
               setUploadFileName('');
             }}
             style={{
-              padding: '10px 20px',
+              padding: isMobile ? '12px 20px' : '10px 20px',
               backgroundColor: '#f3f4f6',
               color: '#374151',
               border: 'none',
               borderRadius: '8px',
-              fontSize: '14px',
+              fontSize: isMobile ? '14px' : '14px',
               fontWeight: '600',
               cursor: 'pointer',
               transition: 'background-color 0.2s'
@@ -872,13 +924,14 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
             style={{
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '8px',
-              padding: '10px 20px',
+              padding: isMobile ? '12px 20px' : '10px 20px',
               backgroundColor: uploading || !uploadFile || !selectedClass || !uploadFileName.trim() ? '#9ca3af' : '#10b981',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
-              fontSize: '14px',
+              fontSize: isMobile ? '14px' : '14px',
               fontWeight: '600',
               cursor: uploading || !uploadFile || !selectedClass || !uploadFileName.trim() ? 'not-allowed' : 'pointer',
               transition: 'background-color 0.2s'
@@ -931,7 +984,7 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000,
-            padding: '20px',
+            padding: isMobile ? '16px' : '20px',
             overflowY: 'auto'
           }}
         >
@@ -942,8 +995,8 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
             onClick={(e) => e.stopPropagation()}
             style={{
               backgroundColor: 'white',
-              borderRadius: '20px',
-              padding: '32px',
+              borderRadius: isMobile ? '16px' : '20px',
+              padding: isMobile ? '24px' : '32px',
               maxWidth: '1400px',
               width: '100%',
               boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
@@ -991,7 +1044,7 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
   return (
     <>
       <div style={{
-        paddingTop: '80px',
+        paddingTop: isMobile ? '60px' : '80px',
         minHeight: '100vh',
         backgroundColor: '#f5f5f5'
       }}>
@@ -1000,6 +1053,15 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
       <AnimatePresence>
         {uploadModal}
       </AnimatePresence>
+      
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
     </>
   );
 };
