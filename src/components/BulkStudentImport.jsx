@@ -409,66 +409,112 @@ const BulkStudentImport = () => {
     try {
       console.log(`Importing historical evaluations from ${sheetName}...`);
       
-      // Read header row AND all data in one call to reduce API requests
-      const allData = await readSheetData(evaluationSheetId, sheetName, 'D4:AZ100');
-      if (!allData || allData.length === 0) return [];
+      // Read the evaluation sheet structure:
+      // Row 2: Class name (C), Mid Term Total (D), Final Term Total (E), Chapter numbers (F+)
+      // Row 3: Student header (C), Totals (D,E), Category headers D/B/HW/AP repeating (F+)
+      // Row 4: "Date" (C), Dates for each chapter column (F+)
+      // Row 5+: Student names (C), Evaluation data (F+)
       
-      const headers = allData[0]; // Row 4 headers
-      const dataRows = allData.slice(1); // Data starts at row 5
+      const allData = await readSheetData(evaluationSheetId, sheetName, 'C2:AZ100');
+      if (!allData || allData.length < 4) {
+        console.log('Not enough data rows in evaluation sheet');
+        return [];
+      }
       
-      console.log('Evaluation sheet headers:', headers);
+      const chapterRow = allData[0];      // Row 2 - chapter numbers
+      const categoryRow = allData[1];     // Row 3 - category headers (D, B, HW, AP)
+      const dateRow = allData[2];         // Row 4 - dates
+      const dataRows = allData.slice(3);  // Row 5+ - student data
       
-      const dateColumns = [];
+      console.log('Evaluation chapter row:', chapterRow);
+      console.log('Evaluation category row:', categoryRow);
+      console.log('Evaluation date row:', dateRow);
       
-      // Find which columns have dates that match our lesson dates
-      // Each date has 4 columns: D, B, HW, AP
-      headers.forEach((header, index) => {
-        if (!header) return;
-        const dateStr = parseColumnDate(header);
-        if (dateStr) {
-          console.log(`Parsed date: ${header} -> ${dateStr}, Match: ${lessonDates.includes(dateStr)}`);
-          if (lessonDates.includes(dateStr)) {
-            dateColumns.push({
-              startColumnIndex: index, // Index within the data we read
-              date: dateStr,
-              header: header
-            });
-          }
-        } else {
-          console.log(`Could not parse date from header: "${header}"`);
+      // Build a map of chapter columns
+      // Start from index 3 (column F) since C=0, D=1, E=2, F=3
+      const chapterColumns = [];
+      let currentChapter = null;
+      let chapterStartIndex = null;
+      
+      for (let i = 3; i < chapterRow.length; i++) {
+        const chapterCell = chapterRow[i];
+        const categoryCell = categoryRow[i];
+        
+        // Check if this is a new chapter number
+        const chapterNum = parseInt(chapterCell);
+        if (!isNaN(chapterNum) && chapterNum >= 1 && chapterNum <= 15) {
+          // Found a new chapter
+          currentChapter = chapterNum;
+          chapterStartIndex = i;
+          
+          console.log(`Found Chapter ${chapterNum} starting at column index ${i} (date: ${dateRow[i] || 'N/A'})`);
+          
+          // Each chapter has 4 columns: D, B, HW, AP
+          // Map them based on the category row
+          chapterColumns.push({
+            chapterNumber: currentChapter,
+            startIndex: i,
+            date: dateRow[i] || '',
+            columns: {
+              D: i,
+              B: i + 1,
+              HW: i + 2,
+              AP: i + 3
+            }
+          });
         }
-      });
+      }
 
-      if (dateColumns.length === 0) {
-        console.log('No matching date columns found in evaluation sheet');
+      if (chapterColumns.length === 0) {
+        console.log('No chapter columns found in evaluation sheet');
         return [];
       }
 
-      console.log(`Found ${dateColumns.length} date columns to import:`, dateColumns);
+      console.log(`Found ${chapterColumns.length} chapters to import:`, 
+        chapterColumns.map(c => `Chapter ${c.chapterNumber}`));
 
       // Get eval students for this class
       const { data: students, error: studentsError } = await supabase
         .from('eval_students')
         .select('*')
-        .eq('class_id', classId);
+        .eq('class_id', classId)
+        .order('row_number');
 
       if (studentsError) throw studentsError;
+
+      console.log(`Found ${students.length} eval students in database for class ${classId}`);
 
       const evaluationRecords = [];
       const categories = ['D', 'B', 'HW', 'AP'];
       
-      for (const dateCol of dateColumns) {
-        // Process 4 columns for each date (D, B, HW, AP)
-        for (let catIndex = 0; catIndex < 4; catIndex++) {
-          const columnIndex = dateCol.startColumnIndex + catIndex;
+      // Process each chapter
+      for (const chapterCol of chapterColumns) {
+        console.log(`Processing Chapter ${chapterCol.chapterNumber}...`);
+        
+        // Process each category (D, B, HW, AP)
+        for (const category of categories) {
+          const columnIndex = chapterCol.columns[category];
           
-          // Match each row with a student
-          for (let i = 0; i < dataRows.length && i < students.length; i++) {
-            const row = dataRows[i];
+          // Match each data row with a student by NAME
+          for (let rowIndex = 0; rowIndex < dataRows.length; rowIndex++) {
+            const row = dataRows[rowIndex];
+            const studentNameInSheet = row[0] ? row[0].trim() : ''; // Column C (index 0)
             const evalValue = row[columnIndex];
-            const student = students.find(s => s.row_number === i + 5);
             
-            if (!student || !evalValue) continue;
+            if (!studentNameInSheet || !evalValue) continue;
+
+            // Find matching student by name (case-insensitive)
+            const matchingStudent = students.find(s => 
+              s.student_name.trim().toLowerCase() === studentNameInSheet.toLowerCase()
+            );
+            
+            if (!matchingStudent) {
+              // Only log first time for each student
+              if (category === 'D') {
+                console.log(`No matching student found for: "${studentNameInSheet}" in row ${rowIndex + 5}`);
+              }
+              continue;
+            }
 
             // Valid ratings: E, G, I (Excellent, Good, Improving)
             const cleanedValue = evalValue.toString().trim().toUpperCase();
@@ -476,12 +522,13 @@ const BulkStudentImport = () => {
             
             if (validRatings.includes(cleanedValue)) {
               evaluationRecords.push({
-                eval_student_id: student.id,
-                teacher_id: user.id, // Use current admin user's ID for RLS
+                eval_student_id: matchingStudent.id,
+                teacher_id: user.id,
                 class_id: classId,
-                evaluation_date: dateCol.date,
-                category: categories[catIndex],
+                chapter_number: chapterCol.chapterNumber,
+                category: category,
                 rating: cleanedValue,
+                teacher_notes: null,
                 synced_to_sheets: true
               });
             }
@@ -489,10 +536,38 @@ const BulkStudentImport = () => {
         }
       }
 
+      console.log(`Created ${evaluationRecords.length} evaluation records for ${sheetName}`);
       return evaluationRecords;
     } catch (error) {
       console.error(`Error importing historical evaluations from ${sheetName}:`, error);
       return [];
+    }
+  };
+
+  // Clear historical data (attendance and evaluations only, keep students)
+  const clearHistoricalData = async () => {
+    try {
+      console.log('Clearing historical attendance records...');
+      const { error: attendanceError } = await supabase
+        .from('attendance_records')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+
+      if (attendanceError) throw attendanceError;
+
+      console.log('Clearing historical evaluation records...');
+      const { error: evaluationError } = await supabase
+        .from('lesson_evaluations')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+
+      if (evaluationError) throw evaluationError;
+
+      console.log('Successfully cleared historical data (students preserved)');
+      return true;
+    } catch (error) {
+      console.error('Error clearing historical data:', error);
+      throw error;
     }
   };
 
@@ -518,14 +593,21 @@ const BulkStudentImport = () => {
       setProgress({
         currentStep: 'Initializing...',
         percentage: 0,
-        totalSteps: attendanceSheets.length + evaluationSheets.length + 2,
+        totalSteps: attendanceSheets.length + evaluationSheets.length + 3,
         completedSteps: 0,
         estimatedTimeRemaining: 'Calculating...',
         details: []
       });
 
-      toast.loading('Importing historical data...');
+      toast.loading('Clearing existing historical data...');
+      updateProgress('Clearing historical data...', 2);
 
+      // STEP 1: Clear existing historical data (keep students)
+      await clearHistoricalData();
+      toast.dismiss();
+      toast.success('Historical data cleared');
+
+      toast.loading('Importing historical data...');
       updateProgress('Loading catechism lesson dates...', 5);
 
       // Get all catechism lesson dates
@@ -662,12 +744,12 @@ const BulkStudentImport = () => {
           // Insert records one by one to handle duplicates gracefully
           for (const record of evaluationRecords) {
             try {
-              // Check if record exists
+              // Check if record exists (unique constraint: eval_student_id, chapter_number, category)
               const { data: existing, error: checkError } = await supabase
                 .from('lesson_evaluations')
                 .select('id')
                 .eq('eval_student_id', record.eval_student_id)
-                .eq('evaluation_date', record.evaluation_date)
+                .eq('chapter_number', record.chapter_number)
                 .eq('category', record.category)
                 .maybeSingle();
 

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router";
 import { AuthContext } from "../context/AuthContext";
 import supabase from "../utils/supabase";
 import toast from "react-hot-toast";
-import { User, LogOut, Home, Shield, ChevronDown } from 'lucide-react';
+import { User, LogOut, Home, Shield, ChevronDown, BookOpen, TrendingUp } from 'lucide-react';
 
 function ResponsiveAppBar() {
   const { user } = useContext(AuthContext);
@@ -90,12 +90,28 @@ function ResponsiveAppBar() {
     }
   };
 
+  const handleDashboardClick = () => {
+    if (profile?.role === 'teacher' && profile?.default_class_id) {
+      navigate('/teacher/extended-dashboard');
+    } else if (profile?.role === 'teacher') {
+      toast.error('You have not been assigned to a class yet.');
+    } else {
+      toast.info('Dashboard is for teachers only.');
+    }
+  };
+
+  const handleLessonPlansClick = () => {
+    navigate('/teacher/lesson-plans');
+  };
+
   if (location.pathname.startsWith('/auth')) {
     return null;
   }
 
   const isAttendancePage = location.pathname.includes('/attendance');
   const isEvaluationPage = location.pathname.includes('/evaluation');
+  const isExtendedDashboardPage = location.pathname.includes('/extended-dashboard');
+  const isLessonPlansPage = location.pathname.includes('/lesson-plans');
 
   return (
     <div style={{
@@ -193,7 +209,8 @@ function ResponsiveAppBar() {
             alignItems: 'center',
             justifyContent: 'center',
             flex: '1',
-            maxWidth: '500px'
+            maxWidth: '400px',
+            overflowX: 'auto'
           }}>
             <button
               onClick={handleAttendanceClick}
@@ -211,7 +228,8 @@ function ResponsiveAppBar() {
                 justifyContent: 'center',
                 transition: 'all 0.2s ease',
                 boxShadow: isAttendancePage ? '0 2px 8px rgba(76, 175, 80, 0.3)' : 'none',
-                minWidth: '100px'
+                minWidth: '100px',
+                whiteSpace: 'nowrap'
               }}
               onMouseEnter={(e) => {
                 if (!isAttendancePage) {
@@ -233,7 +251,7 @@ function ResponsiveAppBar() {
               onClick={handleEvaluationClick}
               style={{
                 padding: '8px 16px',
-                backgroundColor: isEvaluationPage ? '#9C27B0' : 'transparent',
+                backgroundColor: isEvaluationPage ? '#4CAF50' : 'transparent',
                 color: isEvaluationPage ? 'white' : '#1a1a1a',
                 border: isEvaluationPage ? 'none' : '1.5px solid #e5e7eb',
                 borderRadius: '8px',
@@ -244,8 +262,9 @@ function ResponsiveAppBar() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 transition: 'all 0.2s ease',
-                boxShadow: isEvaluationPage ? '0 2px 8px rgba(156, 39, 176, 0.3)' : 'none',
-                minWidth: '100px'
+                boxShadow: isEvaluationPage ? '0 2px 8px rgba(76, 175, 80, 0.3)' : 'none',
+                minWidth: '100px',
+                whiteSpace: 'nowrap'
               }}
               onMouseEnter={(e) => {
                 if (!isEvaluationPage) {
@@ -409,32 +428,92 @@ function ResponsiveAppBar() {
                       Admin Dashboard
                     </button>
                   ) : (
-                    <button
-                      onClick={() => handleNavigation('/teacher')}
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        border: 'none',
-                        backgroundColor: 'white',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        textAlign: 'left',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        transition: 'background-color 0.2s ease',
-                        borderBottom: '1px solid #f3f4f6'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#f9fafb';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'white';
-                      }}
-                    >
-                      <Home style={{ width: '16px', height: '16px' }} />
-                      Dashboard
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handleNavigation('/teacher')}
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          border: 'none',
+                          backgroundColor: 'white',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          textAlign: 'left',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          transition: 'background-color 0.2s ease',
+                          borderBottom: '1px solid #f3f4f6'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#f9fafb';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'white';
+                        }}
+                      >
+                        <Home style={{ width: '16px', height: '16px' }} />
+                        Dashboard
+                      </button>
+
+                      {profile.default_class_id && (
+                        <>
+                          <button
+                            onClick={() => handleNavigation('/teacher/extended-dashboard')}
+                            style={{
+                              width: '100%',
+                              padding: '12px 16px',
+                              border: 'none',
+                              backgroundColor: 'white',
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              textAlign: 'left',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              transition: 'background-color 0.2s ease',
+                              borderBottom: '1px solid #f3f4f6'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#f9fafb';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'white';
+                            }}
+                          >
+                            <TrendingUp style={{ width: '16px', height: '16px' }} />
+                            Extended Dashboard
+                          </button>
+
+                          <button
+                            onClick={() => handleNavigation('/teacher/lesson-plans')}
+                            style={{
+                              width: '100%',
+                              padding: '12px 16px',
+                              border: 'none',
+                              backgroundColor: 'white',
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              textAlign: 'left',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              transition: 'background-color 0.2s ease',
+                              borderBottom: '1px solid #f3f4f6'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#f9fafb';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'white';
+                            }}
+                          >
+                            <BookOpen style={{ width: '16px', height: '16px' }} />
+                            Lesson Plans
+                          </button>
+                        </>
+                      )}
+                    </>
                   )}
 
                   {/* Sign Out */}

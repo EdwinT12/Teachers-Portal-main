@@ -19,9 +19,13 @@ import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
 import AttendancePage from "./pages/teacher/AttendancePage.jsx";
 import EvaluationPage from "./pages/teacher/EvaluationPage.jsx";
 import EvaluationDiagnostic from "./components/EvaluationDiagnostic.jsx";
+import ExtendedTeacherDashboard from "./pages/teacher/ExtendedTeacherDashboard.jsx";
 
 // Catechism pages
 import CatechismLessonTracker from "./pages/admin/CatechismLessonTracker.jsx";
+
+// Lesson Plan Viewer
+import LessonPlanViewer from "./components/LessonPlanViewer.jsx";
 
 createRoot(document.getElementById("root")).render(
   <div
@@ -79,6 +83,24 @@ createRoot(document.getElementById("root")).render(
                 <ProtectedRoute>
                   <RoleBasedRoute>
                     <EvaluationPage />
+                  </RoleBasedRoute>
+                </ProtectedRoute>
+              } />
+
+              {/* Extended Teacher Dashboard */}
+              <Route path="/teacher/extended-dashboard" element={
+                <ProtectedRoute>
+                  <RoleBasedRoute>
+                    <ExtendedTeacherDashboard />
+                  </RoleBasedRoute>
+                </ProtectedRoute>
+              } />
+
+              {/* Lesson Plans - Standalone Page */}
+              <Route path="/teacher/lesson-plans" element={
+                <ProtectedRoute>
+                  <RoleBasedRoute>
+                    <LessonPlanViewer />
                   </RoleBasedRoute>
                 </ProtectedRoute>
               } />

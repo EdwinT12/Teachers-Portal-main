@@ -165,9 +165,20 @@ const EvaluationPage = () => {
       setEvaluations({});
       setStudentNotes({});
 
+      // Load evaluations with student info to match by name
       const { data: evaluationsData, error: evaluationsError } = await supabase
         .from('lesson_evaluations')
-        .select('eval_student_id, category, rating, synced_to_sheets, teacher_notes')
+        .select(`
+          eval_student_id,
+          category,
+          rating,
+          synced_to_sheets,
+          teacher_notes,
+          eval_students!inner (
+            student_name,
+            class_id
+          )
+        `)
         .eq('class_id', selectedClassId)
         .eq('chapter_number', selectedChapter);
 
@@ -180,16 +191,29 @@ const EvaluationPage = () => {
       
       if (evaluationsData && evaluationsData.length > 0) {
         evaluationsData.forEach(record => {
-          if (!evaluationsMap[record.eval_student_id]) {
-            evaluationsMap[record.eval_student_id] = {};
-          }
-          evaluationsMap[record.eval_student_id][record.category] = {
-            rating: record.rating,
-            synced: record.synced_to_sheets
-          };
+          // Try to find matching student by ID first
+          let matchedStudent = evalStudentsData.find(s => s.id === record.eval_student_id);
           
-          if (record.teacher_notes) {
-            notesMap[record.eval_student_id] = record.teacher_notes;
+          // If no ID match, try matching by name (for orphaned records)
+          if (!matchedStudent && record.eval_students && record.eval_students.student_name) {
+            matchedStudent = evalStudentsData.find(
+              s => s.student_name.trim().toLowerCase() === record.eval_students.student_name.trim().toLowerCase()
+            );
+          }
+          
+          // Only add to map if we found a matching student
+          if (matchedStudent) {
+            if (!evaluationsMap[matchedStudent.id]) {
+              evaluationsMap[matchedStudent.id] = {};
+            }
+            evaluationsMap[matchedStudent.id][record.category] = {
+              rating: record.rating,
+              synced: record.synced_to_sheets
+            };
+            
+            if (record.teacher_notes) {
+              notesMap[matchedStudent.id] = record.teacher_notes;
+            }
           }
         });
       }
