@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, TrendingUp, CheckCircle2, Clock, XCircle, AlertCircle, Calendar } from 'lucide-react';
 
-const StudentProfilePopup = ({ student, weeks, attendanceData, onClose }) => {
+const StudentProfilePopup = ({ student, weeks, attendanceData, onClose }) => { 
   if (!student) return null;
 
   const getAttendanceColor = (percentage) => {
