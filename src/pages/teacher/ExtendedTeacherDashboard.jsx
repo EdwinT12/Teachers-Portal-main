@@ -1020,7 +1020,7 @@ const ExtendedDashboard = () => {
                     }}
                   >
                     {chapterOptions.map(ch => (
-                      <option key={ch} value={ch}>Ch {ch}</option>
+                      <option key={ch} value={ch}>Chapter: {ch}</option>
                     ))}
                   </select>
                 </div>
