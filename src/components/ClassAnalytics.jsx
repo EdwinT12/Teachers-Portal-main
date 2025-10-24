@@ -25,10 +25,10 @@ import {
 const ClassAnalytics = ({ summaryData, classInfo, students, weeks, attendanceData, chapters, evaluationsData, selectedChapter, type = 'attendance' }) => {
   const [isMobile, setIsMobile] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
-    trends: true,
-    distribution: true,
-    atRisk: true,
-    performance: true
+    trends: false,
+    distribution: false,
+    atRisk: false,
+    performance: false
   });
 
   useEffect(() => {

@@ -5,7 +5,7 @@ import StudentProfilePopup from './StudentProfilePopup';
 
 const AttendanceSummary = ({ summaryData, classInfo, students, weeks, attendanceData }) => {
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [showTrends, setShowTrends] = useState(true);
+  const [showTrends, setShowTrends] = useState(false);
 
   if (!summaryData) {
     return (

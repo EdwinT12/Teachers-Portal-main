@@ -5,7 +5,7 @@ import StudentProfilePopup from './StudentProfilePopup';
 
 const EvaluationSummary = ({ summaryData, classInfo, evalStudents, chapters, evaluationsData, selectedChapter }) => {
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [showTrends, setShowTrends] = useState(true);
+  const [showTrends, setShowTrends] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
