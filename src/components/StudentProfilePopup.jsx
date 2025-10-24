@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, TrendingUp, CheckCircle2, Clock, XCircle, AlertCircle, Calendar, Award, Heart, BookOpen, Zap, Church } from 'lucide-react';
 import { useState } from 'react';
 
-const StudentProfilePopup = ({ student, weeks, attendanceData, onClose, type = 'attendance', chapters, evaluationsData }) => { 
+const StudentProfilePopup = ({ student, weeks, attendanceData, onClose, type = 'attendance', chapters, evaluationsData, selectedChapter = 1 }) => { 
   const [activeTab, setActiveTab] = useState(type);
   
   if (!student) return null;
@@ -19,6 +19,48 @@ const StudentProfilePopup = ({ student, weeks, attendanceData, onClose, type = '
     { value: 'G', label: 'Good', color: '#3b82f6' },
     { value: 'I', label: 'Improving', color: '#f59e0b' }
   ];
+
+  // Compute evaluation ratings from evaluationsData if not in student object
+  const computeEvaluationRatings = () => {
+    if (student.ratings) {
+      return student.ratings;
+    }
+    
+    if (!evaluationsData) return {};
+    
+    const ratings = {};
+    const studentId = student.id || student.studentId;
+    const chapter = selectedChapter || 1;
+    
+    categories.forEach(category => {
+      const key = `${studentId}-${chapter}-${category.key}`;
+      const record = evaluationsData[key];
+      if (record) {
+        ratings[category.key] = record.rating;
+      }
+    });
+    
+    return ratings;
+  };
+
+  // Compute evaluation score
+  const computeEvaluationScore = () => {
+    if (student.score !== undefined) {
+      return student.score;
+    }
+    
+    const ratings = computeEvaluationRatings();
+    const ratingValues = { 'E': 100, 'G': 75, 'I': 50 };
+    const values = Object.values(ratings).map(r => ratingValues[r] || 0);
+    
+    if (values.length === 0) return 0;
+    
+    const sum = values.reduce((acc, val) => acc + val, 0);
+    return Math.round(sum / values.length);
+  };
+
+  const studentRatings = computeEvaluationRatings();
+  const studentScore = computeEvaluationScore();
 
   const getAttendanceColor = (percentage) => {
     if (percentage >= 90) return '#10b981';
@@ -567,15 +609,15 @@ const StudentProfilePopup = ({ student, weeks, attendanceData, onClose, type = '
           )}
 
           {/* Evaluation Tab Content */}
-          {activeTab === 'evaluation' && student.ratings && (
+          {activeTab === 'evaluation' && (
             <div>
               {/* Overall Score */}
               <div style={{
                 padding: '20px',
-                backgroundColor: getScoreColor(student.score) + '10',
+                backgroundColor: getScoreColor(studentScore) + '10',
                 borderRadius: '12px',
                 marginBottom: '24px',
-                border: `2px solid ${getScoreColor(student.score) + '30'}`
+                border: `2px solid ${getScoreColor(studentScore) + '30'}`
               }}>
                 <div style={{
                   display: 'flex',
@@ -591,7 +633,7 @@ const StudentProfilePopup = ({ student, weeks, attendanceData, onClose, type = '
                     <TrendingUp style={{ 
                       width: '20px', 
                       height: '20px', 
-                      color: getScoreColor(student.score)
+                      color: getScoreColor(studentScore)
                     }} />
                     <span style={{
                       fontSize: '14px',
@@ -606,19 +648,19 @@ const StudentProfilePopup = ({ student, weeks, attendanceData, onClose, type = '
                   <span style={{
                     fontSize: '32px',
                     fontWeight: '700',
-                    color: getScoreColor(student.score)
+                    color: getScoreColor(studentScore)
                   }}>
-                    {student.score}%
+                    {studentScore}%
                   </span>
                 </div>
                 <p style={{
                   fontSize: '13px',
                   fontWeight: '600',
-                  color: getScoreColor(student.score),
+                  color: getScoreColor(studentScore),
                   margin: 0,
                   textAlign: 'center'
                 }}>
-                  {getScoreLabel(student.score)}
+                  {getScoreLabel(studentScore)}
                 </p>
               </div>
 
@@ -642,7 +684,7 @@ const StudentProfilePopup = ({ student, weeks, attendanceData, onClose, type = '
                 }}>
                   {categories.map(category => {
                     const Icon = category.icon;
-                    const rating = student.ratings[category.key];
+                    const rating = studentRatings[category.key];
                     const ratingConfig = evalRatings.find(r => r.value === rating);
                     
                     return (

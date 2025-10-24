@@ -725,7 +725,10 @@ const AttendanceSummary = ({ summaryData, classInfo, students, weeks, attendance
       {selectedStudent && (
         <StudentProfilePopup
           student={selectedStudent}
+          weeks={weeks}
+          attendanceData={attendanceData}
           onClose={() => setSelectedStudent(null)}
+          type="attendance"
         />
       )}
     </div>
