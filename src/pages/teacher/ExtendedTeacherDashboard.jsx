@@ -12,14 +12,16 @@ import {
   ChevronDown,
   BarChart3,
   Activity,
-  AlertTriangle,
-  CheckCircle2,
   Loader,
-  Download
+  Download,
+  Award,
+  BookOpen
 } from 'lucide-react';
 import AttendanceGrid from '../../components/AttendanceGrid';
 import AttendanceSummary from '../../components/AttendanceSummary';
 import ClassAnalytics from '../../components/ClassAnalytics';
+import EvaluationGrid from '../../components/EvaluationGrids';
+import EvaluationSummary from '../../components/EvaluationSummary';
 
 const ExtendedDashboard = () => {
   const { user } = useContext(AuthContext);
@@ -30,13 +32,26 @@ const ExtendedDashboard = () => {
   const [allClasses, setAllClasses] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState(null);
   const [classInfo, setClassInfo] = useState(null);
+  
+  // Attendance State
   const [students, setStudents] = useState([]);
   const [weeks, setWeeks] = useState([]);
   const [attendanceData, setAttendanceData] = useState({});
-  const [summaryData, setSummaryData] = useState(null);
+  const [attendanceSummary, setAttendanceSummary] = useState(null);
+  
+  // Evaluation State
+  const [evalStudents, setEvalStudents] = useState([]);
+  const [chapters, setChapters] = useState([]);
+  const [evaluationsData, setEvaluationsData] = useState({});
+  const [evaluationSummary, setEvaluationSummary] = useState(null);
+  const [selectedChapter, setSelectedChapter] = useState(1);
+  
   const [isMobile, setIsMobile] = useState(false);
   const [activeTab, setActiveTab] = useState('grid');
   const [showClassDropdown, setShowClassDropdown] = useState(false);
+  const [viewMode, setViewMode] = useState('attendance'); // 'attendance' or 'evaluation'
+
+  const chapterOptions = Array.from({ length: 15 }, (_, i) => i + 1);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -99,12 +114,26 @@ const ExtendedDashboard = () => {
 
   useEffect(() => {
     if (selectedClassId) {
-      loadClassData();
+      loadAllData();
     }
-  }, [selectedClassId]);
+  }, [selectedClassId, selectedChapter]);
 
-  const loadClassData = async () => {
+  const loadAllData = async () => {
     setLoading(true);
+    try {
+      await Promise.all([
+        loadAttendanceData(),
+        loadEvaluationData()
+      ]);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast.error('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAttendanceData = async () => {
     try {
       // Load class info
       const { data: classData, error: classError } = await supabase
@@ -159,19 +188,59 @@ const ExtendedDashboard = () => {
       setAttendanceData(attendanceMap);
 
       // Calculate summary data
-      calculateSummary(studentsData, formattedWeeks, attendanceMap);
+      calculateAttendanceSummary(studentsData, formattedWeeks, attendanceMap);
 
     } catch (error) {
-      console.error('Error loading class data:', error);
-      toast.error('Failed to load attendance data');
-    } finally {
-      setLoading(false);
+      console.error('Error loading attendance data:', error);
     }
   };
 
-  const calculateSummary = (studentsData, weeksData, attendanceMap) => {
+  const loadEvaluationData = async () => {
+    try {
+      // Load eval students
+      const { data: evalStudentsData, error: evalStudentsError } = await supabase
+        .from('eval_students')
+        .select('*')
+        .eq('class_id', selectedClassId)
+        .order('row_number');
+
+      if (evalStudentsError) throw evalStudentsError;
+      setEvalStudents(evalStudentsData || []);
+
+      // Load ALL evaluation records for this class
+      const { data: evaluationRecords, error: evaluationsError } = await supabase
+        .from('lesson_evaluations')
+        .select('*')
+        .eq('class_id', selectedClassId);
+
+      if (evaluationsError && evaluationsError.code !== 'PGRST116') {
+        throw evaluationsError;
+      }
+
+      // Extract unique chapters
+      const uniqueChapters = [...new Set((evaluationRecords || []).map(r => r.chapter_number))];
+      const sortedChapters = uniqueChapters.sort((a, b) => a - b);
+      setChapters(sortedChapters);
+
+      // Create evaluations map - include chapter_number in key to separate data by chapter
+      const evaluationsMap = {};
+      (evaluationRecords || []).forEach(record => {
+        const key = `${record.eval_student_id}-${record.chapter_number}-${record.category}`;
+        evaluationsMap[key] = record;
+      });
+      setEvaluationsData(evaluationsMap);
+
+      // Calculate summary data
+      calculateEvaluationSummary(evalStudentsData, evaluationRecords);
+
+    } catch (error) {
+      console.error('Error loading evaluation data:', error);
+    }
+  };
+
+  const calculateAttendanceSummary = (studentsData, weeksData, attendanceMap) => {
     if (!studentsData || !weeksData || studentsData.length === 0 || weeksData.length === 0) {
-      setSummaryData(null);
+      setAttendanceSummary(null);
       return;
     }
 
@@ -223,10 +292,69 @@ const ExtendedDashboard = () => {
       ? ((totalPresent / totalRecords) * 100).toFixed(1)
       : '0.0';
 
-    setSummaryData({
+    setAttendanceSummary({
       totalStudents: studentsData.length,
       totalWeeks: weeksData.length,
       overallAttendance,
+      studentStats
+    });
+  };
+
+  const calculateEvaluationSummary = (evalStudentsData, evaluationRecords) => {
+    if (!evalStudentsData || evalStudentsData.length === 0) {
+      setEvaluationSummary(null);
+      return;
+    }
+
+    const categories = ['D', 'B', 'HW', 'AP'];
+    
+    const studentStats = evalStudentsData.map(student => {
+      const studentEvals = evaluationRecords.filter(
+        r => r.eval_student_id === student.id && r.chapter_number === selectedChapter
+      );
+
+      const ratings = {};
+      let totalScore = 0;
+      let countedCategories = 0;
+
+      categories.forEach(cat => {
+        const evalRecord = studentEvals.find(e => e.category === cat);
+        if (evalRecord && evalRecord.rating) {
+          ratings[cat] = evalRecord.rating;
+          // E=100, G=75, I=50
+          const score = evalRecord.rating === 'E' ? 100 : evalRecord.rating === 'G' ? 75 : 50;
+          totalScore += score;
+          countedCategories++;
+        } else {
+          ratings[cat] = null;
+        }
+      });
+
+      const score = countedCategories > 0 
+        ? (totalScore / countedCategories).toFixed(1)
+        : '0.0';
+
+      const notesRecord = studentEvals.find(e => e.teacher_notes);
+      
+      return {
+        studentId: student.id,
+        studentName: student.student_name,
+        ratings,
+        score: parseFloat(score),
+        notes: notesRecord?.teacher_notes || ''
+      };
+    });
+
+    studentStats.sort((a, b) => b.score - a.score);
+
+    const totalScores = studentStats.reduce((sum, s) => sum + s.score, 0);
+    const overallScore = studentStats.length > 0
+      ? (totalScores / studentStats.length).toFixed(1)
+      : '0.0';
+
+    setEvaluationSummary({
+      totalStudents: evalStudentsData.length,
+      overallScore: parseFloat(overallScore),
       studentStats
     });
   };
@@ -235,64 +363,96 @@ const ExtendedDashboard = () => {
     setSelectedClassId(classId);
     setShowClassDropdown(false);
     setAttendanceData({});
+    setEvaluationsData({});
   };
 
   const handleDataUpdate = () => {
-    loadClassData();
+    loadAllData();
   };
 
   const exportToCSV = () => {
-    if (!summaryData || !summaryData.studentStats || summaryData.studentStats.length === 0) {
+    if (viewMode === 'attendance' && attendanceSummary && attendanceSummary.studentStats) {
+      const headers = ['Student Name', 'Present', 'Late', 'Absent', 'Excused', 'Unattended Mass', 'Total Sessions', 'Attendance %'];
+      const rows = attendanceSummary.studentStats.map(s => [
+        s.studentName,
+        s.present,
+        s.late,
+        s.absent,
+        s.excused,
+        s.unattendedMass,
+        s.totalSessions,
+        s.attendancePercentage
+      ]);
+      
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `attendance_${classInfo?.class_name || 'class'}_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('Attendance data exported');
+    } else if (viewMode === 'evaluation' && evaluationSummary && evaluationSummary.studentStats) {
+      const headers = ['Student Name', 'Discipline', 'Behaviour', 'Homework', 'Active Participation', 'Score %'];
+      const rows = evaluationSummary.studentStats.map(s => [
+        s.studentName,
+        s.ratings.D || '-',
+        s.ratings.B || '-',
+        s.ratings.HW || '-',
+        s.ratings.AP || '-',
+        s.score
+      ]);
+      
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `evaluations_ch${selectedChapter}_${classInfo?.class_name || 'class'}_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('Evaluation data exported');
+    } else {
       toast.error('No data to export');
-      return;
     }
-
-    const headers = ['Student Name', 'Present', 'Late', 'Absent', 'Excused', 'Unattended Mass', 'Total Sessions', 'Attendance %'];
-    
-    const rows = summaryData.studentStats.map(student => [
-      student.studentName,
-      student.present,
-      student.late,
-      student.absent,
-      student.excused,
-      student.unattendedMass,
-      student.totalSessions,
-      student.attendancePercentage
-    ]);
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${classInfo?.name || 'class'}_attendance_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-    
-    toast.success('Attendance data exported!');
   };
 
   if (loading) {
     return (
       <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
         minHeight: '100vh',
-        backgroundColor: '#f5f5f5'
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}>
-        <Loader style={{ 
-          width: '48px', 
-          height: '48px', 
-          color: '#10b981',
-          animation: 'spin 1s linear infinite' 
-        }} />
+        <div style={{
+          textAlign: 'center'
+        }}>
+          <Loader style={{
+            width: '48px',
+            height: '48px',
+            color: 'white',
+            animation: 'spin 1s linear infinite',
+            marginBottom: '16px'
+          }} />
+          <p style={{
+            color: 'white',
+            fontSize: '16px',
+            fontWeight: '600'
+          }}>
+            Loading dashboard...
+          </p>
+        </div>
         <style>
           {`
             @keyframes spin {
@@ -305,205 +465,151 @@ const ExtendedDashboard = () => {
     );
   }
 
-  if (!selectedClassId) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        backgroundColor: '#f5f5f5',
-        padding: '20px'
-      }}>
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '16px',
-          padding: '32px',
-          textAlign: 'center',
-          maxWidth: '400px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-        }}>
-          <AlertTriangle style={{ 
-            width: '48px', 
-            height: '48px', 
-            color: '#f59e0b',
-            margin: '0 auto 16px'
-          }} />
-          <h2 style={{ fontSize: '20px', fontWeight: '700', margin: '0 0 8px 0' }}>
-            No Class Selected
-          </h2>
-          <p style={{ color: '#666', margin: '0 0 20px 0' }}>
-            Please select a class to view attendance data
-          </p>
-          <button
-            onClick={() => navigate('/teacher')}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer'
-            }}
-          >
-            Go Back
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#f5f5f5',
-      paddingTop: isMobile ? '72px' : '88px',
-      paddingBottom: isMobile ? '80px' : '40px'
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      padding: isMobile ? '12px' : '24px',
+      paddingTop: isMobile ? '68px' : '88px' // Account for fixed AppBar
     }}>
       <div style={{
-        maxWidth: '1600px',
-        margin: '0 auto',
-        padding: isMobile ? '0 16px' : '0 24px'
+        maxWidth: '1400px',
+        margin: '0 auto'
       }}>
+        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           style={{
-            marginBottom: isMobile ? '20px' : '32px'
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: isMobile ? '16px' : '20px',
+            padding: isMobile ? '16px' : '24px',
+            marginBottom: isMobile ? '16px' : '24px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+            overflow: 'visible'
           }}
         >
           <div style={{
             display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            marginBottom: '16px'
-          }}>
-            <button
-              onClick={() => navigate('/teacher')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: isMobile ? '8px 16px' : '10px 20px',
-                backgroundColor: 'white',
-                border: '1px solid #e5e7eb',
-                borderRadius: '10px',
-                fontSize: isMobile ? '13px' : '14px',
-                fontWeight: '600',
-                color: '#374151',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#f9fafb';
-                e.currentTarget.style.borderColor = '#10b981';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'white';
-                e.currentTarget.style.borderColor = '#e5e7eb';
-              }}
-            >
-              <ArrowLeft style={{ width: '16px', height: '16px' }} />
-              {!isMobile && 'Back'}
-            </button>
-
-            <h1 style={{
-              fontSize: isMobile ? '22px' : '32px',
-              fontWeight: '800',
-              color: '#1a1a1a',
-              margin: 0
-            }}>
-              Extended Dashboard
-            </h1>
-          </div>
-
-          <div style={{
-            display: 'flex',
             flexDirection: isMobile ? 'column' : 'row',
-            alignItems: isMobile ? 'stretch' : 'center',
-            gap: '12px',
-            flexWrap: 'wrap'
+            justifyContent: 'space-between',
+            alignItems: isMobile ? 'flex-start' : 'center',
+            gap: isMobile ? '12px' : '16px'
           }}>
-            {isAdmin && allClasses.length > 0 && (
-              <div style={{ position: 'relative', flex: isMobile ? '1' : '0 0 auto' }}>
-                <button
-                  onClick={() => setShowClassDropdown(!showClassDropdown)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '12px',
-                    padding: isMobile ? '12px 16px' : '12px 20px',
-                    backgroundColor: 'white',
-                    border: '2px solid #10b981',
-                    borderRadius: '12px',
-                    fontSize: isMobile ? '14px' : '15px',
-                    fontWeight: '600',
-                    color: '#1a1a1a',
-                    cursor: 'pointer',
-                    minWidth: isMobile ? '100%' : '250px',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f0fdf4';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'white';
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Users style={{ width: '18px', height: '18px', color: '#10b981' }} />
-                    <span>{classInfo?.name || 'Select Class'}</span>
-                  </div>
-                  <ChevronDown 
-                    style={{ 
-                      width: '18px', 
-                      height: '18px',
-                      transform: showClassDropdown ? 'rotate(180deg)' : 'rotate(0deg)',
-                      transition: 'transform 0.2s'
-                    }} 
-                  />
-                </button>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              width: isMobile ? '100%' : 'auto'
+            }}>
+              <button
+                onClick={() => navigate('/teacher')}
+                style={{
+                  background: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: '12px',
+                  width: '40px',
+                  height: '40px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  flexShrink: 0
+                }}
+              >
+                <ArrowLeft style={{ width: '20px', height: '20px', color: '#666' }} />
+              </button>
+              
+              <div style={{ flex: 1 }}>
+                <h1 style={{
+                  fontSize: isMobile ? '20px' : '28px',
+                  fontWeight: '800',
+                  color: '#1a1a1a',
+                  margin: 0
+                }}>
+                  Extended Dashboard
+                </h1>
+                {classInfo && (
+                  <p style={{
+                    fontSize: isMobile ? '13px' : '14px',
+                    color: '#666',
+                    margin: '4px 0 0 0',
+                    fontWeight: '500'
+                  }}>
+                    {classInfo.name}
+                  </p>
+                )}
+              </div>
+            </div>
 
-                <AnimatePresence>
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              width: isMobile ? '100%' : 'auto',
+              flexWrap: 'wrap',
+              overflow: 'visible'
+            }}>
+              {/* Class Selector for Admin */}
+              {isAdmin && allClasses.length > 0 && (
+                <div style={{ position: 'relative', flex: isMobile ? '1' : 'initial' }}>
+                  <button
+                    onClick={() => setShowClassDropdown(!showClassDropdown)}
+                    style={{
+                      padding: isMobile ? '10px 14px' : '10px 20px',
+                      backgroundColor: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontSize: isMobile ? '13px' : '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      width: '100%',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    <span style={{
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {classInfo?.name || 'Select Class'}
+                    </span>
+                    <ChevronDown style={{ width: '16px', height: '16px', flexShrink: 0 }} />
+                  </button>
+
                   {showClassDropdown && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        marginTop: '8px',
-                        backgroundColor: 'white',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '12px',
-                        boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
-                        zIndex: 100,
-                        maxHeight: '300px',
-                        overflowY: 'auto'
-                      }}
-                    >
-                      {allClasses.map((cls) => (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      marginTop: '8px',
+                      backgroundColor: 'white',
+                      borderRadius: '12px',
+                      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
+                      zIndex: 9999,
+                      maxHeight: '300px',
+                      overflowY: 'auto'
+                    }}>
+                      {allClasses.map(cls => (
                         <button
                           key={cls.id}
                           onClick={() => handleClassChange(cls.id)}
                           style={{
                             width: '100%',
                             padding: '12px 16px',
-                            backgroundColor: cls.id === selectedClassId ? '#f0fdf4' : 'white',
-                            border: 'none',
-                            borderBottom: '1px solid #f3f4f6',
                             textAlign: 'left',
+                            border: 'none',
+                            backgroundColor: cls.id === selectedClassId ? '#eff6ff' : 'white',
+                            cursor: 'pointer',
                             fontSize: '14px',
                             fontWeight: cls.id === selectedClassId ? '600' : '500',
-                            color: cls.id === selectedClassId ? '#10b981' : '#374151',
-                            cursor: 'pointer',
-                            transition: 'background-color 0.2s'
+                            color: cls.id === selectedClassId ? '#3b82f6' : '#1a1a1a',
+                            borderBottom: '1px solid #f3f4f6'
                           }}
                           onMouseEnter={(e) => {
                             if (cls.id !== selectedClassId) {
@@ -517,71 +623,112 @@ const ExtendedDashboard = () => {
                           }}
                         >
                           {cls.name}
-                          {cls.id === selectedClassId && (
-                            <CheckCircle2 
-                              style={{ 
-                                width: '16px', 
-                                height: '16px',
-                                color: '#10b981',
-                                float: 'right',
-                                marginTop: '2px'
-                              }} 
-                            />
-                          )}
                         </button>
                       ))}
-                    </motion.div>
+                    </div>
                   )}
-                </AnimatePresence>
-              </div>
-            )}
+                </div>
+              )}
 
-            <div style={{ 
-              display: 'flex', 
-              gap: '8px',
-              flex: isMobile ? '1' : '0 0 auto'
-            }}>
               <button
                 onClick={exportToCSV}
-                disabled={!summaryData}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: isMobile ? '12px 16px' : '12px 20px',
-                  backgroundColor: summaryData ? '#3b82f6' : '#9ca3af',
+                  padding: isMobile ? '10px 14px' : '10px 20px',
+                  backgroundColor: '#10b981',
                   color: 'white',
                   border: 'none',
                   borderRadius: '10px',
                   fontSize: isMobile ? '13px' : '14px',
                   fontWeight: '600',
-                  cursor: summaryData ? 'pointer' : 'not-allowed',
-                  transition: 'all 0.2s',
-                  flex: isMobile ? '1' : '0 0 auto'
-                }}
-                onMouseEnter={(e) => {
-                  if (summaryData) {
-                    e.currentTarget.style.backgroundColor = '#2563eb';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (summaryData) {
-                    e.currentTarget.style.backgroundColor = '#3b82f6';
-                  }
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  flex: isMobile ? '1' : 'initial'
                 }}
               >
                 <Download style={{ width: '16px', height: '16px' }} />
-                {!isMobile && 'Export CSV'}
+                {!isMobile && 'Export'}
               </button>
             </div>
           </div>
         </motion.div>
 
-        {summaryData && (
+        {/* View Mode Toggle */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: isMobile ? '16px' : '20px',
+            padding: isMobile ? '12px' : '16px',
+            marginBottom: isMobile ? '16px' : '24px',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+            display: 'flex',
+            gap: '8px'
+          }}
+        >
+          <button
+            onClick={() => {
+              setViewMode('attendance');
+              setActiveTab('grid');
+            }}
+            style={{
+              flex: 1,
+              padding: isMobile ? '14px' : '16px',
+              backgroundColor: viewMode === 'attendance' ? '#10b981' : 'transparent',
+              color: viewMode === 'attendance' ? 'white' : '#666',
+              border: 'none',
+              borderRadius: '12px',
+              fontSize: isMobile ? '14px' : '16px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+          >
+            <Calendar style={{ width: isMobile ? '18px' : '20px', height: isMobile ? '18px' : '20px' }} />
+            Attendance
+          </button>
+          
+          <button
+            onClick={() => {
+              setViewMode('evaluation');
+              setActiveTab('grid');
+            }}
+            style={{
+              flex: 1,
+              padding: isMobile ? '14px' : '16px',
+              backgroundColor: viewMode === 'evaluation' ? '#8b5cf6' : 'transparent',
+              color: viewMode === 'evaluation' ? 'white' : '#666',
+              border: 'none',
+              borderRadius: '12px',
+              fontSize: isMobile ? '14px' : '16px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+          >
+            <BookOpen style={{ width: isMobile ? '18px' : '20px', height: isMobile ? '18px' : '20px' }} />
+            Evaluations
+          </button>
+        </motion.div>
+
+        {/* Summary Cards */}
+        {viewMode === 'attendance' && attendanceSummary && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+            transition={{ delay: 0.15 }}
             style={{
               display: 'grid',
               gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -628,7 +775,7 @@ const ExtendedDashboard = () => {
                     color: '#10b981',
                     margin: 0
                   }}>
-                    {summaryData.overallAttendance}%
+                    {attendanceSummary.overallAttendance}%
                   </p>
                 </div>
               </div>
@@ -672,7 +819,7 @@ const ExtendedDashboard = () => {
                     color: '#1a1a1a',
                     margin: 0
                   }}>
-                    {summaryData.totalStudents}
+                    {attendanceSummary.totalStudents}
                   </p>
                 </div>
               </div>
@@ -716,7 +863,7 @@ const ExtendedDashboard = () => {
                     color: '#1a1a1a',
                     margin: 0
                   }}>
-                    {summaryData.totalWeeks}
+                    {attendanceSummary.totalWeeks}
                   </p>
                 </div>
               </div>
@@ -724,6 +871,165 @@ const ExtendedDashboard = () => {
           </motion.div>
         )}
 
+        {viewMode === 'evaluation' && evaluationSummary && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: isMobile ? '12px' : '16px',
+              marginBottom: isMobile ? '20px' : '32px'
+            }}
+          >
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: isMobile ? '16px' : '20px',
+              border: '2px solid #8b5cf6',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  backgroundColor: '#ede9fe',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <TrendingUp style={{ width: '20px', height: '20px', color: '#8b5cf6' }} />
+                </div>
+                <div>
+                  <p style={{
+                    fontSize: '12px',
+                    color: '#666',
+                    margin: '0 0 4px 0',
+                    fontWeight: '600',
+                    textTransform: 'uppercase'
+                  }}>
+                    Overall Score
+                  </p>
+                  <p style={{
+                    fontSize: isMobile ? '24px' : '28px',
+                    fontWeight: '700',
+                    color: '#8b5cf6',
+                    margin: 0
+                  }}>
+                    {evaluationSummary.overallScore}%
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: isMobile ? '16px' : '20px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  backgroundColor: '#dbeafe',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Users style={{ width: '20px', height: '20px', color: '#3b82f6' }} />
+                </div>
+                <div>
+                  <p style={{
+                    fontSize: '12px',
+                    color: '#666',
+                    margin: '0 0 4px 0',
+                    fontWeight: '600',
+                    textTransform: 'uppercase'
+                  }}>
+                    Students
+                  </p>
+                  <p style={{
+                    fontSize: isMobile ? '24px' : '28px',
+                    fontWeight: '700',
+                    color: '#1a1a1a',
+                    margin: 0
+                  }}>
+                    {evaluationSummary.totalStudents}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: isMobile ? '16px' : '20px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  backgroundColor: '#fef3c7',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Award style={{ width: '20px', height: '20px', color: '#f59e0b' }} />
+                </div>
+                <div>
+                  <p style={{
+                    fontSize: '12px',
+                    color: '#666',
+                    margin: '0 0 4px 0',
+                    fontWeight: '600',
+                    textTransform: 'uppercase'
+                  }}>
+                    Chapter
+                  </p>
+                  <select
+                    value={selectedChapter}
+                    onChange={(e) => setSelectedChapter(parseInt(e.target.value))}
+                    style={{
+                      fontSize: isMobile ? '20px' : '24px',
+                      fontWeight: '700',
+                      color: '#1a1a1a',
+                      border: 'none',
+                      backgroundColor: 'transparent',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      padding: 0,
+                      margin: 0
+                    }}
+                  >
+                    {chapterOptions.map(ch => (
+                      <option key={ch} value={ch}>Ch {ch}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Tab Navigation */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -740,7 +1046,7 @@ const ExtendedDashboard = () => {
           }}
         >
           {[
-            { id: 'grid', label: 'Attendance Grid', icon: Calendar },
+            { id: 'grid', label: viewMode === 'attendance' ? 'Attendance Grid' : 'Evaluation Grid', icon: Calendar },
             { id: 'summary', label: 'Summary', icon: BarChart3 },
             { id: 'analytics', label: 'Analytics', icon: Activity }
           ].map((tab) => {
@@ -758,7 +1064,7 @@ const ExtendedDashboard = () => {
                   justifyContent: 'center',
                   gap: '8px',
                   padding: isMobile ? '12px 16px' : '12px 24px',
-                  backgroundColor: isActive ? '#10b981' : 'transparent',
+                  backgroundColor: isActive ? (viewMode === 'attendance' ? '#10b981' : '#8b5cf6') : 'transparent',
                   color: isActive ? 'white' : '#666',
                   border: 'none',
                   borderRadius: '8px',
@@ -786,43 +1092,88 @@ const ExtendedDashboard = () => {
           })}
         </motion.div>
 
+        {/* Tab Content */}
         <AnimatePresence mode="wait">
           <motion.div
-            key={activeTab}
+            key={`${viewMode}-${activeTab}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
           >
-            {activeTab === 'grid' && (
-              <AttendanceGrid
-                students={students}
-                weeks={weeks}
-                attendanceData={attendanceData}
-                classId={selectedClassId}
-                teacherId={user?.id}
-                onDataUpdate={handleDataUpdate}
-              />
+            {viewMode === 'attendance' && (
+              <>
+                {activeTab === 'grid' && (
+                  <AttendanceGrid
+                    students={students}
+                    weeks={weeks}
+                    attendanceData={attendanceData}
+                    classId={selectedClassId}
+                    teacherId={user?.id}
+                    onDataUpdate={handleDataUpdate}
+                  />
+                )}
+
+                {activeTab === 'summary' && (
+                  <AttendanceSummary
+                    summaryData={attendanceSummary}
+                    classInfo={classInfo}
+                    students={students}
+                    weeks={weeks}
+                    attendanceData={attendanceData}
+                  />
+                )}
+
+                {activeTab === 'analytics' && (
+                  <ClassAnalytics
+                    summaryData={attendanceSummary}
+                    classInfo={classInfo}
+                    students={students}
+                    weeks={weeks}
+                    attendanceData={attendanceData}
+                    type="attendance"
+                  />
+                )}
+              </>
             )}
 
-            {activeTab === 'summary' && (
-              <AttendanceSummary
-                summaryData={summaryData}
-                classInfo={classInfo}
-                students={students}
-                weeks={weeks}
-                attendanceData={attendanceData}
-              />
-            )}
+            {viewMode === 'evaluation' && (
+              <>
+                {activeTab === 'grid' && (
+                  <EvaluationGrid
+                    evalStudents={evalStudents}
+                    chapters={chapters}
+                    evaluationsData={evaluationsData}
+                    classId={selectedClassId}
+                    teacherId={user?.id}
+                    selectedChapter={selectedChapter}
+                    onDataUpdate={handleDataUpdate}
+                  />
+                )}
 
-            {activeTab === 'analytics' && (
-              <ClassAnalytics
-                summaryData={summaryData}
-                classInfo={classInfo}
-                students={students}
-                weeks={weeks}
-                attendanceData={attendanceData}
-              />
+                {activeTab === 'summary' && (
+                  <EvaluationSummary
+                    summaryData={evaluationSummary}
+                    classInfo={classInfo}
+                    evalStudents={evalStudents}
+                    chapters={chapters}
+                    evaluationsData={evaluationsData}
+                    selectedChapter={selectedChapter}
+                  />
+                )}
+
+                {activeTab === 'analytics' && (
+                  <ClassAnalytics
+                    summaryData={evaluationSummary}
+                    classInfo={classInfo}
+                    students={evalStudents}
+                    chapters={chapters}
+                    evaluationsData={evaluationsData}
+                    selectedChapter={selectedChapter}
+                    type="evaluation"
+                  />
+                )}
+              </>
             )}
           </motion.div>
         </AnimatePresence>

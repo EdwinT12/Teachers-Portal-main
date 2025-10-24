@@ -68,12 +68,8 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
       const allClassesWithGeneral = [generalClass, ...classesData];
       setClasses(allClassesWithGeneral);
 
-      // Set all folders as expanded by default
-      const initialExpanded = {};
-      allClassesWithGeneral.forEach(cls => {
-        initialExpanded[cls.id] = true;
-      });
-      setExpandedFolders(initialExpanded);
+      // Set all folders as collapsed by default for a cleaner look
+      setExpandedFolders({});
 
       // Load all lesson plans organized by class
       await loadAllLessonPlans(allClassesWithGeneral);
