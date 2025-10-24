@@ -1,9 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, TrendingUp, CheckCircle2, Clock, XCircle, AlertCircle, Calendar, Award, Heart, BookOpen, Zap, Church } from 'lucide-react';
-import { useState } from 'react';
 
-const StudentProfilePopup = ({ student, weeks, attendanceData, onClose, type = 'attendance', chapters, evaluationsData, selectedChapter = 1 }) => { 
-  const [activeTab, setActiveTab] = useState(type);
+const StudentProfilePopup = ({ student, weeks, attendanceData, onClose, type = 'attendance', chapters, evaluationsData }) => { 
   
   if (!student) return null;
 
@@ -19,48 +17,6 @@ const StudentProfilePopup = ({ student, weeks, attendanceData, onClose, type = '
     { value: 'G', label: 'Good', color: '#3b82f6' },
     { value: 'I', label: 'Improving', color: '#f59e0b' }
   ];
-
-  // Compute evaluation ratings from evaluationsData if not in student object
-  const computeEvaluationRatings = () => {
-    if (student.ratings) {
-      return student.ratings;
-    }
-    
-    if (!evaluationsData) return {};
-    
-    const ratings = {};
-    const studentId = student.id || student.studentId;
-    const chapter = selectedChapter || 1;
-    
-    categories.forEach(category => {
-      const key = `${studentId}-${chapter}-${category.key}`;
-      const record = evaluationsData[key];
-      if (record) {
-        ratings[category.key] = record.rating;
-      }
-    });
-    
-    return ratings;
-  };
-
-  // Compute evaluation score
-  const computeEvaluationScore = () => {
-    if (student.score !== undefined) {
-      return student.score;
-    }
-    
-    const ratings = computeEvaluationRatings();
-    const ratingValues = { 'E': 100, 'G': 75, 'I': 50 };
-    const values = Object.values(ratings).map(r => ratingValues[r] || 0);
-    
-    if (values.length === 0) return 0;
-    
-    const sum = values.reduce((acc, val) => acc + val, 0);
-    return Math.round(sum / values.length);
-  };
-
-  const studentRatings = computeEvaluationRatings();
-  const studentScore = computeEvaluationScore();
 
   const getAttendanceColor = (percentage) => {
     if (percentage >= 90) return '#10b981';
@@ -204,68 +160,13 @@ const StudentProfilePopup = ({ student, weeks, attendanceData, onClose, type = '
                 color: '#666',
                 margin: 0
               }}>
-                Student Profile
+                {type === 'attendance' ? 'Attendance Profile' : 'Evaluation Profile'}
               </p>
             </div>
           </div>
 
-          {/* Tab Navigation */}
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            marginBottom: '24px',
-            backgroundColor: '#f9fafb',
-            padding: '4px',
-            borderRadius: '12px'
-          }}>
-            <button
-              onClick={() => setActiveTab('attendance')}
-              style={{
-                flex: 1,
-                padding: '12px',
-                backgroundColor: activeTab === 'attendance' ? '#10b981' : 'transparent',
-                color: activeTab === 'attendance' ? 'white' : '#666',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px'
-              }}
-            >
-              <Calendar style={{ width: '16px', height: '16px' }} />
-              Attendance
-            </button>
-            <button
-              onClick={() => setActiveTab('evaluation')}
-              style={{
-                flex: 1,
-                padding: '12px',
-                backgroundColor: activeTab === 'evaluation' ? '#8b5cf6' : 'transparent',
-                color: activeTab === 'evaluation' ? 'white' : '#666',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px'
-              }}
-            >
-              <Award style={{ width: '16px', height: '16px' }} />
-              Evaluations
-            </button>
-          </div>
-
           {/* Attendance Tab Content */}
-          {activeTab === 'attendance' && attendanceData && (
+          {type === 'attendance' && attendanceData && (
             <div>
               {/* Overall Attendance */}
               <div style={{
@@ -609,15 +510,15 @@ const StudentProfilePopup = ({ student, weeks, attendanceData, onClose, type = '
           )}
 
           {/* Evaluation Tab Content */}
-          {activeTab === 'evaluation' && (
+          {type === 'evaluation' && student.ratings && (
             <div>
               {/* Overall Score */}
               <div style={{
                 padding: '20px',
-                backgroundColor: getScoreColor(studentScore) + '10',
+                backgroundColor: getScoreColor(student.score) + '10',
                 borderRadius: '12px',
                 marginBottom: '24px',
-                border: `2px solid ${getScoreColor(studentScore) + '30'}`
+                border: `2px solid ${getScoreColor(student.score) + '30'}`
               }}>
                 <div style={{
                   display: 'flex',
@@ -633,7 +534,7 @@ const StudentProfilePopup = ({ student, weeks, attendanceData, onClose, type = '
                     <TrendingUp style={{ 
                       width: '20px', 
                       height: '20px', 
-                      color: getScoreColor(studentScore)
+                      color: getScoreColor(student.score)
                     }} />
                     <span style={{
                       fontSize: '14px',
@@ -648,19 +549,19 @@ const StudentProfilePopup = ({ student, weeks, attendanceData, onClose, type = '
                   <span style={{
                     fontSize: '32px',
                     fontWeight: '700',
-                    color: getScoreColor(studentScore)
+                    color: getScoreColor(student.score)
                   }}>
-                    {studentScore}%
+                    {student.score}%
                   </span>
                 </div>
                 <p style={{
                   fontSize: '13px',
                   fontWeight: '600',
-                  color: getScoreColor(studentScore),
+                  color: getScoreColor(student.score),
                   margin: 0,
                   textAlign: 'center'
                 }}>
-                  {getScoreLabel(studentScore)}
+                  {getScoreLabel(student.score)}
                 </p>
               </div>
 
@@ -684,7 +585,7 @@ const StudentProfilePopup = ({ student, weeks, attendanceData, onClose, type = '
                 }}>
                   {categories.map(category => {
                     const Icon = category.icon;
-                    const rating = studentRatings[category.key];
+                    const rating = student.ratings[category.key];
                     const ratingConfig = evalRatings.find(r => r.value === rating);
                     
                     return (
