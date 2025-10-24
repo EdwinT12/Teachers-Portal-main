@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router";
 import { AuthContext } from "../context/AuthContext";
 import supabase from "../utils/supabase";
 import toast from "react-hot-toast";
-import { User, LogOut, Home, Shield, ChevronDown, BookOpen, TrendingUp } from 'lucide-react';
+import { User, LogOut, Home, Shield, ChevronDown, BookOpen, TrendingUp, HelpCircle } from 'lucide-react';
 
 function ResponsiveAppBar() {
   const { user } = useContext(AuthContext);
@@ -483,6 +483,33 @@ function ResponsiveAppBar() {
                         <BookOpen style={{ width: '16px', height: '16px' }} />
                         Lesson Plans
                       </button>
+
+                      <button
+                        onClick={() => handleNavigation('/teacher/help')}
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          border: 'none',
+                          backgroundColor: 'white',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          textAlign: 'left',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          transition: 'background-color 0.2s ease',
+                          borderBottom: '1px solid #f3f4f6'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#f9fafb';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'white';
+                        }}
+                      >
+                        <HelpCircle style={{ width: '16px', height: '16px' }} />
+                        Help
+                      </button>
                     </>
                   ) : (
                     <>
@@ -511,6 +538,33 @@ function ResponsiveAppBar() {
                       >
                         <Home style={{ width: '16px', height: '16px' }} />
                         Dashboard
+                      </button>
+
+                      <button
+                        onClick={() => handleNavigation('/teacher/help')}
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          border: 'none',
+                          backgroundColor: 'white',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          textAlign: 'left',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          transition: 'background-color 0.2s ease',
+                          borderBottom: '1px solid #f3f4f6'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#f9fafb';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'white';
+                        }}
+                      >
+                        <HelpCircle style={{ width: '16px', height: '16px' }} />
+                        Help
                       </button>
 
                       {profile.default_class_id && (
@@ -567,6 +621,33 @@ function ResponsiveAppBar() {
                           >
                             <BookOpen style={{ width: '16px', height: '16px' }} />
                             Lesson Plans
+                          </button>
+
+                          <button
+                            onClick={() => handleNavigation('/teacher/help')}
+                            style={{
+                              width: '100%',
+                              padding: '12px 16px',
+                              border: 'none',
+                              backgroundColor: 'white',
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              textAlign: 'left',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              transition: 'background-color 0.2s ease',
+                              borderBottom: '1px solid #f3f4f6'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#f9fafb';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'white';
+                            }}
+                          >
+                            <HelpCircle style={{ width: '16px', height: '16px' }} />
+                            Help
                           </button>
                         </>
                       )}

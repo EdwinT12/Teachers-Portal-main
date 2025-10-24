@@ -20,6 +20,7 @@ import AttendancePage from "./pages/teacher/AttendancePage.jsx";
 import EvaluationPage from "./pages/teacher/EvaluationPage.jsx";
 import EvaluationDiagnostic from "./components/EvaluationDiagnostic.jsx";
 import ExtendedTeacherDashboard from "./pages/teacher/ExtendedTeacherDashboard.jsx";
+import HelpPage from "./pages/teacher/HelpPage.jsx";
 
 // Catechism pages
 import CatechismLessonTracker from "./pages/admin/CatechismLessonTracker.jsx";
@@ -92,6 +93,15 @@ createRoot(document.getElementById("root")).render(
                 <ProtectedRoute>
                   <RoleBasedRoute>
                     <ExtendedTeacherDashboard />
+                  </RoleBasedRoute>
+                </ProtectedRoute>
+              } />
+
+              {/* Help Page */}
+              <Route path="/teacher/help" element={
+                <ProtectedRoute>
+                  <RoleBasedRoute>
+                    <HelpPage />
                   </RoleBasedRoute>
                 </ProtectedRoute>
               } />
