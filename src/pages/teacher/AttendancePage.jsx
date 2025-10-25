@@ -454,6 +454,21 @@ const AttendancePage = () => {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
+        @keyframes pulse-glow {
+          0%, 100% { 
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4),
+                        0 0 0 0 rgba(16, 185, 129, 0.4);
+          }
+          50% { 
+            box-shadow: 0 12px 48px rgba(16, 185, 129, 0.8),
+                        0 0 40px 8px rgba(16, 185, 129, 0.6);
+          }
+        }
+        @keyframes gradient-shift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
       `}</style>
 
       <div style={{
@@ -1257,57 +1272,102 @@ const AttendancePage = () => {
           </AnimatePresence>
         </div>
 
-        {/* Save Button */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
+      </div>
+
+      {/* Floating Save & Sync Button with Tooltip */}
+      <motion.div
+        initial={{ scale: 0, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        transition={{ 
+          type: "spring", 
+          stiffness: 260, 
+          damping: 20,
+          delay: 0.1 
+        }}
+        style={{
+          position: 'fixed',
+          bottom: isMobile ? '20px' : '30px',
+          left: isMobile ? '20px' : '30px',
+          zIndex: 1000,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          gap: '8px'
+        }}
+      >
+        <motion.button
+          whileHover={saving || stats.marked === 0 ? {} : { 
+            scale: 1.05,
+            transition: { type: "spring", stiffness: 400, damping: 10 }
+          }}
+          whileTap={saving || stats.marked === 0 ? {} : { scale: 0.95 }}
+          onClick={handleSaveClick}
+          disabled={saving || stats.marked === 0}
           style={{
-            width: '100%',
-            marginTop: '24px',
-            marginBottom: isMobile ? '80px' : '24px',
+            backgroundImage: saving || stats.marked === 0
+              ? 'none'
+              : 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)',
+            backgroundColor: saving || stats.marked === 0
+              ? 'rgba(148, 163, 184, 0.85)'
+              : 'transparent',
+            backgroundSize: '200% 200%',
+            animation: saving || stats.marked === 0 
+              ? 'none' 
+              : 'gradient-shift 3s ease infinite, pulse-glow 2s ease-in-out infinite',
+            border: 'none',
+            borderRadius: '50px',
+            padding: isMobile ? '14px 24px' : '16px 28px',
+            fontSize: isMobile ? '14px' : '16px',
+            fontWeight: '700',
+            color: 'white',
+            cursor: saving || stats.marked === 0 ? 'not-allowed' : 'pointer',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
             display: 'flex',
-            justifyContent: 'center'
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '10px',
+            minHeight: isMobile ? '52px' : '56px',
+            whiteSpace: 'nowrap',
+            transition: 'all 0.3s ease',
+            boxShadow: saving || stats.marked === 0 
+              ? '0 4px 12px rgba(100, 116, 139, 0.2)' 
+              : '0 8px 24px rgba(16, 185, 129, 0.4)'
           }}
         >
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            onClick={handleSaveClick}
-            disabled={saving || stats.marked === 0}
-            style={{
-              width: '100%',
-              background: saving || stats.marked === 0
-                ? 'linear-gradient(135deg, #94a3b8 0%, #64748b 100%)'
-                : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-              border: 'none',
-              borderRadius: '16px',
-              padding: isMobile ? '16px 24px' : '18px 32px',
-              fontSize: isMobile ? '15px' : '17px',
-              fontWeight: '800',
-              color: 'white',
-              cursor: saving || stats.marked === 0 ? 'not-allowed' : 'pointer',
-              boxShadow: '0 12px 40px rgba(16, 185, 129, 0.4)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: isMobile ? '8px' : '12px',
-              minHeight: isMobile ? '56px' : 'auto'
-            }}
-          >
-            {saving ? (
-              <>
-                <Loader style={{ width: isMobile ? '18px' : '20px', height: isMobile ? '18px' : '20px', animation: 'spin 1s linear infinite', flexShrink: 0 }} />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save style={{ width: isMobile ? '18px' : '20px', height: isMobile ? '18px' : '20px', flexShrink: 0 }} />
-                <span style={{ whiteSpace: 'nowrap' }}>Save & Sync ({stats.marked}/{stats.total})</span>
-              </>
-            )}
-          </motion.button>
-        </motion.div>
-      </div>
+          {saving ? (
+            <>
+              <Loader style={{ 
+                width: isMobile ? '18px' : '20px', 
+                height: isMobile ? '18px' : '20px', 
+                animation: 'spin 1s linear infinite', 
+                flexShrink: 0 
+              }} />
+              <span>Saving...</span>
+            </>
+          ) : (
+            <>
+              <motion.div
+                animate={{ 
+                  rotate: [0, -10, 10, -10, 0],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  repeatDelay: 3
+                }}
+              >
+                <Save style={{ 
+                  width: isMobile ? '18px' : '20px', 
+                  height: isMobile ? '18px' : '20px', 
+                  flexShrink: 0 
+                }} />
+              </motion.div>
+              <span>Save & Sync ({stats.marked}/{stats.total})</span>
+            </>
+          )}
+        </motion.button>
+      </motion.div>
 
       {/* Floating Legend Button */}
       <motion.button

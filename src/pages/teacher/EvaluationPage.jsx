@@ -455,6 +455,21 @@ const EvaluationPage = () => {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
+        @keyframes pulse-glow {
+          0%, 100% { 
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4),
+                        0 0 0 0 rgba(16, 185, 129, 0.4);
+          }
+          50% { 
+            box-shadow: 0 12px 48px rgba(16, 185, 129, 0.8),
+                        0 0 40px 8px rgba(16, 185, 129, 0.6);
+          }
+        }
+        @keyframes gradient-shift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
       `}</style>
 
       <div style={{
@@ -1374,52 +1389,96 @@ const EvaluationPage = () => {
           </AnimatePresence>
         </div>
 
-        {/* Save Button */}
+        {/* Floating Save & Sync Button with Tooltip */}
         <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
+          initial={{ scale: 0, y: 20 }}
+          animate={{ scale: 1, y: 0 }}
+          transition={{ 
+            type: "spring", 
+            stiffness: 260, 
+            damping: 20,
+            delay: 0.1 
+          }}
           style={{
-            width: '100%',
-            marginTop: '24px',
-            marginBottom: isMobile ? '80px' : '24px',
+            position: 'fixed',
+            bottom: isMobile ? '20px' : '30px',
+            left: isMobile ? '20px' : '30px',
+            zIndex: 1000,
             display: 'flex',
-            justifyContent: 'center'
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: '8px'
           }}
         >
           <motion.button
-            whileTap={{ scale: 0.98 }}
+            whileHover={saving || stats.evaluated === 0 ? {} : { 
+              scale: 1.05,
+              transition: { type: "spring", stiffness: 400, damping: 10 }
+            }}
+            whileTap={saving || stats.evaluated === 0 ? {} : { scale: 0.95 }}
             onClick={handleSaveClick}
             disabled={saving || stats.evaluated === 0}
             style={{
-              width: '100%',
-              background: saving || stats.evaluated === 0
-                ? 'linear-gradient(135deg, #94a3b8 0%, #64748b 100%)'
-                : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              backgroundImage: saving || stats.evaluated === 0
+                ? 'none'
+                : 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)',
+              backgroundColor: saving || stats.evaluated === 0
+                ? 'rgba(148, 163, 184, 0.85)'
+                : 'transparent',
+              backgroundSize: '200% 200%',
+              animation: saving || stats.evaluated === 0 
+                ? 'none' 
+                : 'gradient-shift 3s ease infinite, pulse-glow 2s ease-in-out infinite',
               border: 'none',
-              borderRadius: '16px',
-              padding: isMobile ? '16px 32px' : '18px 32px',
-              fontSize: '17px',
-              fontWeight: '800',
+              borderRadius: '50px',
+              padding: isMobile ? '14px 24px' : '16px 28px',
+              fontSize: isMobile ? '14px' : '16px',
+              fontWeight: '700',
               color: 'white',
               cursor: saving || stats.evaluated === 0 ? 'not-allowed' : 'pointer',
-              boxShadow: '0 12px 40px rgba(16, 185, 129, 0.4)',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '12px',
-              minHeight: isMobile ? '56px' : 'auto'
+              gap: '10px',
+              minHeight: isMobile ? '52px' : '56px',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.3s ease',
+              boxShadow: saving || stats.evaluated === 0 
+                ? '0 4px 12px rgba(100, 116, 139, 0.2)' 
+                : '0 8px 24px rgba(16, 185, 129, 0.4)'
             }}
           >
             {saving ? (
               <>
-                <Loader style={{ width: '20px', height: '20px', animation: 'spin 1s linear infinite' }} />
-                Saving...
+                <Loader style={{ 
+                  width: isMobile ? '18px' : '20px', 
+                  height: isMobile ? '18px' : '20px', 
+                  animation: 'spin 1s linear infinite', 
+                  flexShrink: 0 
+                }} />
+                <span>Saving...</span>
               </>
             ) : (
               <>
-                <Save style={{ width: '20px', height: '20px' }} />
-                Save & Sync ({stats.evaluated})
+                <motion.div
+                  animate={{ 
+                    rotate: [0, -10, 10, -10, 0],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    repeatDelay: 3
+                  }}
+                >
+                  <Save style={{ 
+                    width: isMobile ? '18px' : '20px', 
+                    height: isMobile ? '18px' : '20px', 
+                    flexShrink: 0 
+                  }} />
+                </motion.div>
+                <span>Save & Sync ({stats.evaluated})</span>
               </>
             )}
           </motion.button>
