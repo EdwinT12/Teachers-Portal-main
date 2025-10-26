@@ -392,7 +392,7 @@ const AttendancePage = () => {
     total: students.length,
     marked: Object.values(attendance).filter(a => a?.status).length,
     synced: Object.values(attendance).filter(a => a?.synced).length,
-    present: Object.values(attendance).filter(a => a?.status === 'P').length
+    present: Object.values(attendance).filter(a => a?.status === 'P' || a?.status === 'L' || a?.status === 'UM').length
   };
 
   if (loading) {
@@ -1109,7 +1109,7 @@ const AttendancePage = () => {
             {[
               { label: 'Total', value: stats.total, color: '#64748b' },
               { label: 'Marked', value: stats.marked, color: '#3b82f6' },
-              { label: 'Present', value: stats.present, color: '#10b981' },
+              { label: 'In-Class', value: stats.present, color: '#10b981' },
               { label: 'Synced', value: stats.synced, color: '#8b5cf6' }
             ].map((stat) => (
               <div key={stat.label} style={{
