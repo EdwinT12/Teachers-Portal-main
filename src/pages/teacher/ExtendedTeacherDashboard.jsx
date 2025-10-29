@@ -60,6 +60,18 @@ const ExtendedDashboard = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showClassDropdown && !event.target.closest('[data-dropdown-container]')) {
+        setShowClassDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showClassDropdown]);
+
   useEffect(() => {
     const checkAdminAndLoadClasses = async () => {
       if (!user) return;
@@ -487,7 +499,9 @@ const ExtendedDashboard = () => {
             padding: isMobile ? '16px' : '24px',
             marginBottom: isMobile ? '16px' : '24px',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-            overflow: 'visible'
+            overflow: 'visible',
+            position: 'relative',
+            zIndex: 10
           }}
         >
           <div style={{
@@ -552,7 +566,7 @@ const ExtendedDashboard = () => {
             }}>
               {/* Class Selector for Admin */}
               {isAdmin && allClasses.length > 0 && (
-                <div style={{ position: 'relative', flex: isMobile ? '1' : 'initial' }}>
+                <div data-dropdown-container style={{ position: 'relative', flex: isMobile ? '1' : 'initial' }}>
                   <button
                     onClick={() => setShowClassDropdown(!showClassDropdown)}
                     style={{
@@ -590,10 +604,12 @@ const ExtendedDashboard = () => {
                       marginTop: '8px',
                       backgroundColor: 'white',
                       borderRadius: '12px',
-                      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
-                      zIndex: 9999,
+                      boxShadow: '0 12px 32px rgba(0, 0, 0, 0.25)',
+                      zIndex: 999999,
                       maxHeight: '300px',
-                      overflowY: 'auto'
+                      overflowY: 'auto',
+                      border: '1px solid #e5e7eb',
+                      minWidth: '200px'
                     }}>
                       {allClasses.map(cls => (
                         <button
