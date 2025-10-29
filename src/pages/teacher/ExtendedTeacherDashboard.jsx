@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthContext } from '../../context/AuthContext';
@@ -26,6 +26,10 @@ import EvaluationSummary from '../../components/EvaluationSummary';
 const ExtendedDashboard = () => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+  
+  // Ref to track if data has been loaded for current class/chapter combination
+  const dataLoadedRef = useRef(new Set());
+  const isLoadingRef = useRef(false);
   
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -58,6 +62,17 @@ const ExtendedDashboard = () => {
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Prevent page reloads on tab visibility changes
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // Do nothing - data will persist when tab becomes visible again
+      // This prevents unnecessary reloads when switching tabs
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   // Close dropdown when clicking outside
@@ -126,22 +141,40 @@ const ExtendedDashboard = () => {
 
   useEffect(() => {
     if (selectedClassId) {
-      loadAllData();
+      const dataKey = `${selectedClassId}-${selectedChapter}`;
+      
+      // Only load data if it hasn't been loaded for this combination yet
+      // or if it's a genuine change (not just a tab switch)
+      if (!dataLoadedRef.current.has(dataKey)) {
+        loadAllData(dataKey);
+      }
     }
   }, [selectedClassId, selectedChapter]);
 
-  const loadAllData = async () => {
+  const loadAllData = async (dataKey) => {
+    // Prevent concurrent loads
+    if (isLoadingRef.current) {
+      return;
+    }
+    
+    isLoadingRef.current = true;
     setLoading(true);
     try {
       await Promise.all([
         loadAttendanceData(),
         loadEvaluationData()
       ]);
+      
+      // Mark this data combination as loaded
+      if (dataKey) {
+        dataLoadedRef.current.add(dataKey);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Failed to load data');
     } finally {
       setLoading(false);
+      isLoadingRef.current = false;
     }
   };
 
@@ -379,7 +412,12 @@ const ExtendedDashboard = () => {
   };
 
   const handleDataUpdate = () => {
-    loadAllData();
+    // Clear the loaded data cache for current class/chapter so data reloads
+    const dataKey = `${selectedClassId}-${selectedChapter}`;
+    dataLoadedRef.current.delete(dataKey);
+    
+    // Force reload the data
+    loadAllData(dataKey);
   };
 
   const exportToCSV = () => {
