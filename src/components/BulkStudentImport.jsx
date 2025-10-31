@@ -2,6 +2,7 @@ import { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import supabase from '../utils/supabase';
 import { readSheetData, getSpreadsheetMetadata } from '../utils/googleSheetsAPI';
+import { remapParentStudentLinks } from '../utils/remapParentLinks';
 import toast from 'react-hot-toast';
 import { Trash2, RefreshCw, AlertCircle } from 'lucide-react';
 
@@ -940,6 +941,27 @@ const BulkStudentImport = () => {
 
       updateProgress('Finalizing import...', 90);
       setImportResults(results);
+
+      // Step 4: Remap parent-student relationships
+      updateProgress('Re-linking parent-child relationships...', 95);
+      toast.dismiss();
+      toast.loading('Re-linking parent-child relationships...');
+      
+      try {
+        const remapResult = await remapParentStudentLinks();
+        console.log('Parent-child remapping result:', remapResult);
+        
+        if (remapResult && remapResult.remapped_count > 0) {
+          toast.success(`✅ Re-linked ${remapResult.remapped_count} parent-child relationship${remapResult.remapped_count > 1 ? 's' : ''}!`);
+        }
+        
+        if (remapResult && remapResult.failed_count > 0) {
+          toast.error(`⚠️ ${remapResult.failed_count} parent-child relationship${remapResult.failed_count > 1 ? 's' : ''} could not be automatically linked`);
+        }
+      } catch (error) {
+        console.error('Error remapping parent-student links:', error);
+        toast.error('Warning: Could not re-link some parent-child relationships. Please check the Parent Verification panel.');
+      }
 
       const successCount = results.filter(r => r.success).length;
       const failCount = results.filter(r => !r.success).length;

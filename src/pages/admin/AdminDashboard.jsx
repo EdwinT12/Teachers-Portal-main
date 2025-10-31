@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import BulkStudentImport from '../../components/BulkStudentImport';
 import CatechismLessonTracker from './CatechismLessonTracker';
 import WeeklyReport from '../../components/WeeklyReport';
+import ParentVerificationPanel from '../../components/ParentVerificationPanel';
+import DualRoleManager from '../../components/DualRoleManager';
 import { 
   Users, 
   Clock, 
@@ -29,6 +31,7 @@ const AdminDashboard = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [showSheetModal, setShowSheetModal] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState(null);
+  const [showDualRoleModal, setShowDualRoleModal] = useState(false);
   const [sheetIds, setSheetIds] = useState({
     google_sheets_id: '',
     evaluation_sheets_id: ''
@@ -214,6 +217,32 @@ const AdminDashboard = () => {
 
   const renderOverviewTab = () => (
     <>
+      {/* Dual Role Button */}
+      <motion.button
+        whileTap={{ scale: 0.98 }}
+        onClick={() => setShowDualRoleModal(true)}
+        style={{
+          width: '100%',
+          padding: isMobile ? '12px' : '14px',
+          background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+          border: 'none',
+          borderRadius: '12px',
+          color: 'white',
+          fontSize: isMobile ? '14px' : '15px',
+          fontWeight: '700',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          marginBottom: isMobile ? '16px' : '20px',
+          boxShadow: '0 4px 16px rgba(139, 92, 246, 0.3)'
+        }}
+      >
+        <Users style={{ width: '20px', height: '20px' }} />
+        Teacher & Parent
+      </motion.button>
+
       {/* Stats Cards */}
       <div style={{
         display: 'grid',
@@ -880,6 +909,7 @@ const AdminDashboard = () => {
         >
           {[
             { id: 'overview', label: '📊 Overview' },
+            { id: 'parents', label: 'Parents' },
             { id: 'weekly-report', label: '📈 Weekly Report' },
             { id: 'catechism-tracker', label: '📖 Log Catechism' },
             { id: 'update-sheets', label: '🔄 Update Sheets' }
@@ -920,6 +950,19 @@ const AdminDashboard = () => {
             transition={{ duration: 0.2 }}
           >
             {activeTab === 'overview' && renderOverviewTab()}
+            {activeTab === 'parents' && (
+              <div style={{
+                background: 'rgba(255,255,255,0.95)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: '16px',
+                padding: isMobile ? '16px' : '20px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                border: '2px solid #f1f5f9'
+              }}>
+                <ParentVerificationPanel />
+              </div>
+            )}
+
             {activeTab === 'weekly-report' && (
               <div style={{
                 background: 'rgba(255,255,255,0.95)',
@@ -959,6 +1002,12 @@ const AdminDashboard = () => {
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {/* Dual Role Manager Modal */}
+      <DualRoleManager 
+        isOpen={showDualRoleModal} 
+        onClose={() => setShowDualRoleModal(false)} 
+      />
     </div>
   );
 };

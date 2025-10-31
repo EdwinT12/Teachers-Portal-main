@@ -11,6 +11,7 @@ const RoleBasedRoute = ({ children }) => {
   const location = useLocation();
   const [roleLoading, setRoleLoading] = useState(true);
   const [userRole, setUserRole] = useState(null);
+  const [userRoles, setUserRoles] = useState([]);
 
   useEffect(() => {
     const checkUserRole = async () => {
@@ -24,7 +25,7 @@ const RoleBasedRoute = ({ children }) => {
         
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('role, full_name')
+          .select('role, roles, full_name')
           .eq('id', user.id)
           .single();
 
@@ -33,34 +34,62 @@ const RoleBasedRoute = ({ children }) => {
 
         if (error) {
           console.error('Error fetching user profile:', error);
-          // If profile doesn't exist, treat as teacher
+          // If profile doesn't exist, treat as teacher by default
           setUserRole('teacher');
+          setUserRoles(['teacher']);
         } else {
-          const role = profile?.role || 'teacher';
-          console.log('Setting user role to:', role);
-          setUserRole(role);
+          const primaryRole = profile?.role || 'teacher';
+          const allRoles = profile?.roles || [primaryRole];
           
-          // Only redirect teachers away from admin pages
-          // Admins can access both admin dashboard and student results
+          console.log('Setting user role to:', primaryRole);
+          console.log('All user roles:', allRoles);
+          
+          setUserRole(primaryRole);
+          setUserRoles(allRoles);
+          
+          // Role-based redirection logic
           setTimeout(() => {
             const currentPath = location.pathname;
-            console.log('Current path:', currentPath, 'User role:', role);
+            console.log('Current path:', currentPath, 'User role:', primaryRole, 'All roles:', allRoles);
             
-            if (role === 'teacher') {
-              // If teacher is trying to access admin, redirect to root
-              if (currentPath === '/admin') {
+            // Parent trying to access teacher/admin routes
+            if (primaryRole === 'parent' && !allRoles.includes('teacher') && !allRoles.includes('admin')) {
+              if (currentPath.startsWith('/teacher') || currentPath.startsWith('/admin') || currentPath === '/') {
+                console.log('Redirecting parent to parent dashboard');
+                toast.error('Access denied. This area is for teachers and administrators.');
+                navigate('/parent', { replace: true });
+                return;
+              }
+            }
+            
+            // Teacher trying to access admin routes
+            if (primaryRole === 'teacher' && !allRoles.includes('admin')) {
+              if (currentPath === '/admin' || currentPath.startsWith('/admin/')) {
                 console.log('Redirecting teacher away from admin');
                 toast.error('Access denied. Admin privileges required.');
                 navigate('/', { replace: true });
                 return;
               }
             }
-            // Admins can access both '/' and '/admin' freely - no auto-redirect
+            
+            // Teacher trying to access parent routes
+            if ((primaryRole === 'teacher' || primaryRole === 'admin') && !allRoles.includes('parent')) {
+              if (currentPath.startsWith('/parent')) {
+                console.log('Redirecting non-parent away from parent area');
+                toast.error('Access denied. This area is for parents.');
+                navigate('/', { replace: true });
+                return;
+              }
+            }
+            
+            // Users with multiple roles can access their respective areas
+            // No auto-redirect for multi-role users - they can navigate freely
           }, 100);
         }
       } catch (error) {
         console.error('Error checking user role:', error);
         setUserRole('teacher');
+        setUserRoles(['teacher']);
       } finally {
         setRoleLoading(false);
       }

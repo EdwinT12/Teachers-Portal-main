@@ -19,7 +19,7 @@ function ResponsiveAppBar() {
       try {
         const { data: profileData, error } = await supabase
           .from('profiles')
-          .select('id, email, full_name, role, status, default_class_id')
+          .select('id, email, full_name, role, roles, status, default_class_id')
           .eq('id', user.id)
           .single();
 
@@ -188,7 +188,7 @@ function ResponsiveAppBar() {
               lineHeight: '1.3',
               whiteSpace: 'nowrap'
             }}>
-              School Attendance
+              St. John Maria Vianney Mission
             </div>
             <div style={{
               fontSize: '11px',
@@ -196,7 +196,7 @@ function ResponsiveAppBar() {
               lineHeight: '1.3',
               whiteSpace: 'nowrap'
             }}>
-              Management System
+              Catechism Portal
             </div>
           </div>
         </div>
@@ -510,6 +510,36 @@ function ResponsiveAppBar() {
                         <HelpCircle style={{ width: '16px', height: '16px' }} />
                         Help
                       </button>
+
+                      {/* Parent Dashboard for Dual Role Users */}
+                      {profile.roles && Array.isArray(profile.roles) && profile.roles.includes('parent') && (
+                        <button
+                          onClick={() => handleNavigation('/parent')}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            border: 'none',
+                            backgroundColor: 'white',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            textAlign: 'left',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            transition: 'background-color 0.2s ease',
+                            borderBottom: '1px solid #f3f4f6'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#f9fafb';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'white';
+                          }}
+                        >
+                          <User style={{ width: '16px', height: '16px' }} />
+                          Parent Dashboard
+                        </button>
+                      )}
                     </>
                   ) : (
                     <>
@@ -538,33 +568,6 @@ function ResponsiveAppBar() {
                       >
                         <Home style={{ width: '16px', height: '16px' }} />
                         Dashboard
-                      </button>
-
-                      <button
-                        onClick={() => handleNavigation('/teacher/help')}
-                        style={{
-                          width: '100%',
-                          padding: '12px 16px',
-                          border: 'none',
-                          backgroundColor: 'white',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          textAlign: 'left',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          transition: 'background-color 0.2s ease',
-                          borderBottom: '1px solid #f3f4f6'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#f9fafb';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'white';
-                        }}
-                      >
-                        <HelpCircle style={{ width: '16px', height: '16px' }} />
-                        Help
                       </button>
 
                       {profile.default_class_id && (
@@ -622,34 +625,64 @@ function ResponsiveAppBar() {
                             <BookOpen style={{ width: '16px', height: '16px' }} />
                             Lesson Plans
                           </button>
-
-                          <button
-                            onClick={() => handleNavigation('/teacher/help')}
-                            style={{
-                              width: '100%',
-                              padding: '12px 16px',
-                              border: 'none',
-                              backgroundColor: 'white',
-                              cursor: 'pointer',
-                              fontSize: '14px',
-                              textAlign: 'left',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              transition: 'background-color 0.2s ease',
-                              borderBottom: '1px solid #f3f4f6'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = '#f9fafb';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = 'white';
-                            }}
-                          >
-                            <HelpCircle style={{ width: '16px', height: '16px' }} />
-                            Help
-                          </button>
                         </>
+                      )}
+
+                      <button
+                        onClick={() => handleNavigation('/teacher/help')}
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          border: 'none',
+                          backgroundColor: 'white',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          textAlign: 'left',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          transition: 'background-color 0.2s ease',
+                          borderBottom: '1px solid #f3f4f6'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#f9fafb';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'white';
+                        }}
+                      >
+                        <HelpCircle style={{ width: '16px', height: '16px' }} />
+                        Help
+                      </button>
+
+                      {/* Parent Dashboard for Dual Role Users */}
+                      {profile.roles && Array.isArray(profile.roles) && profile.roles.includes('parent') && (
+                        <button
+                          onClick={() => handleNavigation('/parent')}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            border: 'none',
+                            backgroundColor: 'white',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            textAlign: 'left',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            transition: 'background-color 0.2s ease',
+                            borderBottom: '1px solid #f3f4f6'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#f9fafb';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'white';
+                          }}
+                        >
+                          <User style={{ width: '16px', height: '16px' }} />
+                          Parent Dashboard
+                        </button>
                       )}
                     </>
                   )}

@@ -16,8 +16,8 @@ const ProtectedRoute = ({ children }) => {
         delete window.csvData;
       }
       
-      // Redirect to Google OAuth landing page instead of sign-in
-      navigate('/auth', { replace: true });
+      // Redirect to home page (landing page) instead of sign-in
+      navigate('/', { replace: true });
     }
   }, [user, loading, navigate]);
 

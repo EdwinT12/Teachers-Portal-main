@@ -57,6 +57,7 @@ const GoogleAuthLanding = () => {
       alignItems: 'center',
       justifyContent: 'center',
       padding: '20px',
+      paddingTop: '100px', // Extra padding for app bar
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
       position: 'relative',

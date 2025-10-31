@@ -10,12 +10,18 @@ import AuthProvider from "./context/AuthContext.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import RoleBasedRoute from "./components/RoleBasedRoute.jsx"; 
 
+// Home page
+import HomePage from "./pages/HomePage.jsx";
+
 // Auth pages
 import GoogleAuthLanding from "./pages/auth/GoogleAuthLanding.jsx";
+import ParentAuthLanding from "./pages/auth/ParentAuthLanding.jsx";
+import ParentSignUp from "./pages/auth/ParentSignUp.jsx";
 
 // Dashboard pages
 import TeacherDashboard from "./pages/teacher/TeacherDashboard.jsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
+import ParentDashboard from "./pages/parent/ParentDashboard.jsx";
 import AttendancePage from "./pages/teacher/AttendancePage.jsx";
 import EvaluationPage from "./pages/teacher/EvaluationPage.jsx";
 import EvaluationDiagnostic from "./components/EvaluationDiagnostic.jsx";
@@ -49,11 +55,24 @@ createRoot(document.getElementById("root")).render(
           <BrowserRouter>
             <AppBar />
             <Routes>
-              {/* Public route - Google OAuth landing page */}
+              {/* Public route - Home/Landing page */}
+              <Route path="/" element={<HomePage />} />
+              
+              {/* Public route - Teacher Google OAuth landing page */}
               <Route path="/auth" element={<GoogleAuthLanding />} />
               
-              {/* Protected routes - Main App */}
-              <Route path="/" element={
+              {/* Public route - Parent OAuth landing page */}
+              <Route path="/parent/auth" element={<ParentAuthLanding />} />
+              
+              {/* Protected route - Parent signup/registration */}
+              <Route path="/parent/signup" element={
+                <ProtectedRoute>
+                  <ParentSignUp />
+                </ProtectedRoute>
+              } />
+              
+              {/* Protected routes - Main App (now for authenticated users) */}
+              <Route path="/app" element={
                 <ProtectedRoute>
                   <RoleBasedRoute>
                     <App />
@@ -138,6 +157,15 @@ createRoot(document.getElementById("root")).render(
                 <ProtectedRoute>
                   <RoleBasedRoute>
                     <CatechismLessonTracker />
+                  </RoleBasedRoute>
+                </ProtectedRoute>
+              } />
+
+              {/* Parent Dashboard */}
+              <Route path="/parent" element={
+                <ProtectedRoute>
+                  <RoleBasedRoute>
+                    <ParentDashboard />
                   </RoleBasedRoute>
                 </ProtectedRoute>
               } />
