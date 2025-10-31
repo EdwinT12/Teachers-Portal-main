@@ -501,34 +501,42 @@ const ParentVerificationPanel = () => {
 
   return (
     <div style={{
-      padding: '32px',
+      padding: window.innerWidth < 768 ? '16px' : '32px',
       maxWidth: '1400px',
-      margin: '0 auto'
+      margin: '0 auto',
+      width: '100%',
+      boxSizing: 'border-box'
     }}>
       {/* Header with Status Summary */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: '32px',
-        gap: '24px',
+        marginBottom: window.innerWidth < 768 ? '20px' : '32px',
+        gap: window.innerWidth < 768 ? '12px' : '24px',
         flexWrap: 'wrap'
       }}>
-        <div>
+        <div style={{ width: '100%', maxWidth: '100%' }}>
           <h1 style={{
-            fontSize: '32px',
+            fontSize: window.innerWidth < 768 ? '24px' : '32px',
             fontWeight: '800',
             color: '#1e293b',
             marginBottom: '8px',
             display: 'flex',
             alignItems: 'center',
-            gap: '12px'
+            gap: window.innerWidth < 768 ? '8px' : '12px',
+            flexWrap: 'wrap'
           }}>
-            <Users style={{ width: '32px', height: '32px', color: '#667eea' }} />
-            Parent Verification
+            <Users style={{ 
+              width: window.innerWidth < 768 ? '24px' : '32px', 
+              height: window.innerWidth < 768 ? '24px' : '32px', 
+              color: '#667eea',
+              flexShrink: 0
+            }} />
+            <span style={{ wordBreak: 'break-word' }}>Parent Verification</span>
           </h1>
           <p style={{
-            fontSize: '16px',
+            fontSize: window.innerWidth < 768 ? '14px' : '16px',
             color: '#64748b',
             margin: 0
           }}>
@@ -540,50 +548,88 @@ const ParentVerificationPanel = () => {
         {linkStatus && (
           <div style={{
             display: 'flex',
-            gap: '12px',
-            flexWrap: 'wrap'
+            gap: window.innerWidth < 768 ? '8px' : '12px',
+            flexWrap: 'wrap',
+            width: '100%',
+            justifyContent: window.innerWidth < 768 ? 'space-between' : 'flex-start'
           }}>
             {linkStatus.VALID > 0 && (
               <div style={{
-                padding: '12px 16px',
+                padding: window.innerWidth < 768 ? '10px 12px' : '12px 16px',
                 background: '#f0fdf4',
                 borderRadius: '8px',
-                border: '2px solid #86efac'
+                border: '2px solid #86efac',
+                flex: window.innerWidth < 768 ? '1 1 calc(33.333% - 8px)' : '0 0 auto',
+                minWidth: window.innerWidth < 768 ? '80px' : 'auto',
+                textAlign: 'center'
               }}>
-                <div style={{ fontSize: '24px', fontWeight: '800', color: '#16a34a' }}>
+                <div style={{ 
+                  fontSize: window.innerWidth < 768 ? '20px' : '24px', 
+                  fontWeight: '800', 
+                  color: '#16a34a' 
+                }}>
                   {linkStatus.VALID}
                 </div>
-                <div style={{ fontSize: '12px', color: '#15803d', fontWeight: '600' }}>
+                <div style={{ 
+                  fontSize: window.innerWidth < 768 ? '10px' : '12px', 
+                  color: '#15803d', 
+                  fontWeight: '600',
+                  whiteSpace: window.innerWidth < 768 ? 'nowrap' : 'normal'
+                }}>
                   Valid Links
                 </div>
               </div>
             )}
             {linkStatus.BROKEN_LINK > 0 && (
               <div style={{
-                padding: '12px 16px',
+                padding: window.innerWidth < 768 ? '10px 12px' : '12px 16px',
                 background: '#fee2e2',
                 borderRadius: '8px',
-                border: '2px solid #fca5a5'
+                border: '2px solid #fca5a5',
+                flex: window.innerWidth < 768 ? '1 1 calc(33.333% - 8px)' : '0 0 auto',
+                minWidth: window.innerWidth < 768 ? '80px' : 'auto',
+                textAlign: 'center'
               }}>
-                <div style={{ fontSize: '24px', fontWeight: '800', color: '#dc2626' }}>
+                <div style={{ 
+                  fontSize: window.innerWidth < 768 ? '20px' : '24px', 
+                  fontWeight: '800', 
+                  color: '#dc2626' 
+                }}>
                   {linkStatus.BROKEN_LINK}
                 </div>
-                <div style={{ fontSize: '12px', color: '#991b1b', fontWeight: '600' }}>
+                <div style={{ 
+                  fontSize: window.innerWidth < 768 ? '10px' : '12px', 
+                  color: '#991b1b', 
+                  fontWeight: '600',
+                  whiteSpace: window.innerWidth < 768 ? 'nowrap' : 'normal'
+                }}>
                   Broken Links
                 </div>
               </div>
             )}
             {linkStatus.PENDING_VERIFICATION > 0 && (
               <div style={{
-                padding: '12px 16px',
+                padding: window.innerWidth < 768 ? '10px 12px' : '12px 16px',
                 background: '#fef3c7',
                 borderRadius: '8px',
-                border: '2px solid #fcd34d'
+                border: '2px solid #fcd34d',
+                flex: window.innerWidth < 768 ? '1 1 calc(33.333% - 8px)' : '0 0 auto',
+                minWidth: window.innerWidth < 768 ? '80px' : 'auto',
+                textAlign: 'center'
               }}>
-                <div style={{ fontSize: '24px', fontWeight: '800', color: '#d97706' }}>
+                <div style={{ 
+                  fontSize: window.innerWidth < 768 ? '20px' : '24px', 
+                  fontWeight: '800', 
+                  color: '#d97706' 
+                }}>
                   {linkStatus.PENDING_VERIFICATION}
                 </div>
-                <div style={{ fontSize: '12px', color: '#b45309', fontWeight: '600' }}>
+                <div style={{ 
+                  fontSize: window.innerWidth < 768 ? '10px' : '12px', 
+                  color: '#b45309', 
+                  fontWeight: '600',
+                  whiteSpace: window.innerWidth < 768 ? 'nowrap' : 'normal'
+                }}>
                   Pending
                 </div>
               </div>
@@ -595,25 +641,30 @@ const ParentVerificationPanel = () => {
       {/* Action Buttons */}
       <div style={{
         display: 'flex',
-        gap: '12px',
-        marginBottom: '24px',
-        flexWrap: 'wrap'
+        gap: window.innerWidth < 768 ? '8px' : '12px',
+        marginBottom: window.innerWidth < 768 ? '16px' : '24px',
+        flexWrap: 'wrap',
+        width: '100%',
+        boxSizing: 'border-box'
       }}>
         <button
           onClick={() => setShowAddModal(true)}
           style={{
-            padding: '12px 20px',
+            padding: window.innerWidth < 768 ? '10px 14px' : '12px 20px',
             background: '#10b981',
             color: 'white',
             border: 'none',
             borderRadius: '8px',
-            fontSize: '14px',
+            fontSize: window.innerWidth < 768 ? '12px' : '14px',
             fontWeight: '600',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
+            flex: window.innerWidth < 768 ? '1 1 auto' : '0 0 auto',
+            justifyContent: 'center',
+            whiteSpace: 'nowrap'
           }}
           onMouseEnter={(e) => {
             e.target.style.background = '#059669';
@@ -622,25 +673,30 @@ const ParentVerificationPanel = () => {
             e.target.style.background = '#10b981';
           }}
         >
-          <Plus style={{ width: '16px', height: '16px' }} />
-          Add New Link
+          <Plus style={{ width: '16px', height: '16px', flexShrink: 0 }} />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {window.innerWidth < 640 ? 'Add Link' : 'Add New Link'}
+          </span>
         </button>
 
         <button
           onClick={handleRemapAll}
           style={{
-            padding: '12px 20px',
+            padding: window.innerWidth < 768 ? '10px 14px' : '12px 20px',
             background: '#667eea',
             color: 'white',
             border: 'none',
             borderRadius: '8px',
-            fontSize: '14px',
+            fontSize: window.innerWidth < 768 ? '12px' : '14px',
             fontWeight: '600',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
+            flex: window.innerWidth < 768 ? '1 1 auto' : '0 0 auto',
+            justifyContent: 'center',
+            whiteSpace: 'nowrap'
           }}
           onMouseEnter={(e) => {
             e.target.style.background = '#5568d3';
@@ -649,29 +705,33 @@ const ParentVerificationPanel = () => {
             e.target.style.background = '#667eea';
           }}
         >
-          <RefreshCw style={{ width: '16px', height: '16px' }} />
-          Auto-Fix Broken Links
+          <RefreshCw style={{ width: '16px', height: '16px', flexShrink: 0 }} />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {window.innerWidth < 640 ? 'Auto-Fix' : 'Auto-Fix Broken Links'}
+          </span>
         </button>
 
         <button
           onClick={loadData}
           style={{
-            padding: '12px 20px',
+            padding: window.innerWidth < 768 ? '10px 14px' : '12px 20px',
             background: 'white',
             color: '#667eea',
             border: '2px solid #667eea',
             borderRadius: '8px',
-            fontSize: '14px',
+            fontSize: window.innerWidth < 768 ? '12px' : '14px',
             fontWeight: '600',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            transition: 'all 0.2s'
+            transition: 'all 0.2s',
+            flex: window.innerWidth < 768 ? '0 0 auto' : '0 0 auto',
+            justifyContent: 'center'
           }}
         >
-          <RefreshCw style={{ width: '16px', height: '16px' }} />
-          Refresh
+          <RefreshCw style={{ width: '16px', height: '16px', flexShrink: 0 }} />
+          {window.innerWidth >= 640 && 'Refresh'}
         </button>
       </div>
 
@@ -686,38 +746,48 @@ const ParentVerificationPanel = () => {
           background: 'rgba(0, 0, 0, 0.5)',
           display: 'flex',
           justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000
+          alignItems: window.innerWidth < 768 ? 'flex-start' : 'center',
+          zIndex: 1000,
+          padding: window.innerWidth < 768 ? '16px' : '0',
+          overflowY: 'auto'
         }}>
           <div style={{
             background: 'white',
             borderRadius: '16px',
-            padding: '32px',
+            padding: window.innerWidth < 768 ? '20px' : '32px',
             maxWidth: '600px',
-            width: '90%',
-            maxHeight: '80vh',
+            width: '100%',
+            maxHeight: window.innerWidth < 768 ? 'calc(100vh - 32px)' : '80vh',
             overflowY: 'auto',
-            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15)'
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15)',
+            margin: window.innerWidth < 768 ? '16px 0' : '0',
+            boxSizing: 'border-box'
           }}>
             <h2 style={{
-              fontSize: '24px',
+              fontSize: window.innerWidth < 768 ? '20px' : '24px',
               fontWeight: '700',
               color: '#1e293b',
-              marginBottom: '24px',
+              marginBottom: window.innerWidth < 768 ? '16px' : '24px',
               display: 'flex',
               alignItems: 'center',
-              gap: '12px'
+              gap: window.innerWidth < 768 ? '8px' : '12px',
+              flexWrap: 'wrap'
             }}>
-              <Plus style={{ width: '24px', height: '24px', color: '#10b981' }} />
-              Add New Parent-Child Link
+              <Plus style={{ 
+                width: window.innerWidth < 768 ? '20px' : '24px', 
+                height: window.innerWidth < 768 ? '20px' : '24px', 
+                color: '#10b981',
+                flexShrink: 0 
+              }} />
+              <span style={{ wordBreak: 'break-word' }}>Add New Parent-Child Link</span>
             </h2>
 
-            <div style={{ display: 'grid', gap: '20px' }}>
+            <div style={{ display: 'grid', gap: window.innerWidth < 768 ? '16px' : '20px' }}>
               {/* Parent Selection */}
               <div>
                 <label style={{
                   display: 'block',
-                  fontSize: '14px',
+                  fontSize: window.innerWidth < 768 ? '13px' : '14px',
                   fontWeight: '600',
                   color: '#475569',
                   marginBottom: '8px'
@@ -732,13 +802,17 @@ const ParentVerificationPanel = () => {
                   })}
                   style={{
                     width: '100%',
-                    padding: '12px 16px',
-                    fontSize: '15px',
+                    padding: window.innerWidth < 768 ? '10px 14px' : '12px 16px',
+                    fontSize: window.innerWidth < 768 ? '14px' : '15px',
                     border: '2px solid #e2e8f0',
                     borderRadius: '8px',
                     outline: 'none',
                     cursor: 'pointer',
-                    background: 'white'
+                    background: 'white',
+                    boxSizing: 'border-box',
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none',
+                    appearance: 'none'
                   }}
                 >
                   <option value="">-- Select Parent --</option>
@@ -749,7 +823,7 @@ const ParentVerificationPanel = () => {
                   ))}
                 </select>
                 <div style={{
-                  fontSize: '12px',
+                  fontSize: window.innerWidth < 768 ? '11px' : '12px',
                   color: '#64748b',
                   marginTop: '4px'
                 }}>
@@ -761,7 +835,7 @@ const ParentVerificationPanel = () => {
               <div>
                 <label style={{
                   display: 'block',
-                  fontSize: '14px',
+                  fontSize: window.innerWidth < 768 ? '13px' : '14px',
                   fontWeight: '600',
                   color: '#475569',
                   marginBottom: '8px'
@@ -777,13 +851,17 @@ const ParentVerificationPanel = () => {
                   })}
                   style={{
                     width: '100%',
-                    padding: '12px 16px',
-                    fontSize: '15px',
+                    padding: window.innerWidth < 768 ? '10px 14px' : '12px 16px',
+                    fontSize: window.innerWidth < 768 ? '14px' : '15px',
                     border: '2px solid #e2e8f0',
                     borderRadius: '8px',
                     outline: 'none',
                     cursor: 'pointer',
-                    background: 'white'
+                    background: 'white',
+                    boxSizing: 'border-box',
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none',
+                    appearance: 'none'
                   }}
                 >
                   <option value="">All Years</option>
@@ -800,7 +878,7 @@ const ParentVerificationPanel = () => {
               <div>
                 <label style={{
                   display: 'block',
-                  fontSize: '14px',
+                  fontSize: window.innerWidth < 768 ? '13px' : '14px',
                   fontWeight: '600',
                   color: '#475569',
                   marginBottom: '8px'
@@ -820,13 +898,17 @@ const ParentVerificationPanel = () => {
                   }}
                   style={{
                     width: '100%',
-                    padding: '12px 16px',
-                    fontSize: '15px',
+                    padding: window.innerWidth < 768 ? '10px 14px' : '12px 16px',
+                    fontSize: window.innerWidth < 768 ? '14px' : '15px',
                     border: '2px solid #e2e8f0',
                     borderRadius: '8px',
                     outline: 'none',
                     cursor: 'pointer',
-                    background: 'white'
+                    background: 'white',
+                    boxSizing: 'border-box',
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none',
+                    appearance: 'none'
                   }}
                 >
                   <option value="">-- Select Student --</option>
@@ -837,7 +919,7 @@ const ParentVerificationPanel = () => {
                   ))}
                 </select>
                 <div style={{
-                  fontSize: '12px',
+                  fontSize: window.innerWidth < 768 ? '11px' : '12px',
                   color: '#64748b',
                   marginTop: '4px'
                 }}>
@@ -875,23 +957,25 @@ const ParentVerificationPanel = () => {
             {/* Modal Actions */}
             <div style={{
               display: 'flex',
-              gap: '12px',
-              marginTop: '32px',
-              justifyContent: 'flex-end'
+              gap: window.innerWidth < 768 ? '8px' : '12px',
+              marginTop: window.innerWidth < 768 ? '20px' : '32px',
+              justifyContent: 'flex-end',
+              flexWrap: 'wrap'
             }}>
               <button
                 onClick={resetAddForm}
                 disabled={addingLink}
                 style={{
-                  padding: '12px 24px',
+                  padding: window.innerWidth < 768 ? '10px 18px' : '12px 24px',
                   background: 'white',
                   color: '#6b7280',
                   border: '2px solid #d1d5db',
                   borderRadius: '8px',
-                  fontSize: '14px',
+                  fontSize: window.innerWidth < 768 ? '13px' : '14px',
                   fontWeight: '600',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
+                  flex: window.innerWidth < 768 ? '1 1 auto' : '0 0 auto'
                 }}
               >
                 Cancel
@@ -900,19 +984,21 @@ const ParentVerificationPanel = () => {
                 onClick={handleAddNewLink}
                 disabled={addingLink || !newLink.parentId || !newLink.studentId}
                 style={{
-                  padding: '12px 24px',
+                  padding: window.innerWidth < 768 ? '10px 18px' : '12px 24px',
                   background: (newLink.parentId && newLink.studentId) ? '#10b981' : '#94a3b8',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
-                  fontSize: '14px',
+                  fontSize: window.innerWidth < 768 ? '13px' : '14px',
                   fontWeight: '600',
                   cursor: (newLink.parentId && newLink.studentId) ? 'pointer' : 'not-allowed',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
                   opacity: addingLink ? 0.5 : 1,
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
+                  flex: window.innerWidth < 768 ? '1 1 auto' : '0 0 auto',
+                  justifyContent: 'center'
                 }}
               >
                 {addingLink ? (
@@ -943,21 +1029,29 @@ const ParentVerificationPanel = () => {
       <div style={{
         background: 'white',
         borderRadius: '12px',
-        padding: '24px',
-        marginBottom: '24px',
-        border: '1px solid #e2e8f0'
+        padding: window.innerWidth < 768 ? '16px' : '24px',
+        marginBottom: window.innerWidth < 768 ? '16px' : '24px',
+        border: '1px solid #e2e8f0',
+        width: '100%',
+        boxSizing: 'border-box'
       }}>
         <h2 style={{
-          fontSize: '20px',
+          fontSize: window.innerWidth < 768 ? '18px' : '20px',
           fontWeight: '700',
           color: '#1e293b',
-          marginBottom: '16px',
+          marginBottom: window.innerWidth < 768 ? '12px' : '16px',
           display: 'flex',
           alignItems: 'center',
-          gap: '12px'
+          gap: window.innerWidth < 768 ? '8px' : '12px',
+          flexWrap: 'wrap'
         }}>
-          <AlertCircle style={{ width: '24px', height: '24px', color: '#f59e0b' }} />
-          Pending Verification ({pendingLinks.length})
+          <AlertCircle style={{ 
+            width: window.innerWidth < 768 ? '20px' : '24px', 
+            height: window.innerWidth < 768 ? '20px' : '24px', 
+            color: '#f59e0b',
+            flexShrink: 0 
+          }} />
+          <span style={{ wordBreak: 'break-word' }}>Pending Verification ({pendingLinks.length})</span>
         </h2>
 
         {pendingLinks.length === 0 ? (
@@ -970,7 +1064,7 @@ const ParentVerificationPanel = () => {
             No pending verification requests
           </p>
         ) : (
-          <div style={{ display: 'grid', gap: '16px' }}>
+          <div style={{ display: 'grid', gap: window.innerWidth < 768 ? '12px' : '16px' }}>
             {pendingLinks.map((link) => {
               const matchingStudents = getFilteredStudents(link.year_group);
               
@@ -978,33 +1072,37 @@ const ParentVerificationPanel = () => {
                 <div
                   key={link.id}
                   style={{
-                    padding: '20px',
+                    padding: window.innerWidth < 768 ? '16px' : '20px',
                     background: '#f8fafc',
                     borderRadius: '12px',
-                    border: '2px solid #e2e8f0'
+                    border: '2px solid #e2e8f0',
+                    width: '100%',
+                    boxSizing: 'border-box'
                   }}
                 >
                   <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'flex-start',
-                    gap: '16px',
+                    gap: window.innerWidth < 768 ? '12px' : '16px',
                     flexWrap: 'wrap'
                   }}>
-                    <div style={{ flex: 1, minWidth: '250px' }}>
+                    <div style={{ flex: '1', minWidth: window.innerWidth < 768 ? '100%' : '250px' }}>
                       <h3 style={{
-                        fontSize: '16px',
+                        fontSize: window.innerWidth < 768 ? '15px' : '16px',
                         fontWeight: '700',
                         color: '#1e293b',
-                        marginBottom: '8px'
+                        marginBottom: '8px',
+                        wordBreak: 'break-word'
                       }}>
                         {link.parent?.full_name || 'Unknown Parent'}
                       </h3>
                       <div style={{
-                        fontSize: '14px',
+                        fontSize: window.innerWidth < 768 ? '13px' : '14px',
                         color: '#64748b',
                         display: 'grid',
-                        gap: '4px'
+                        gap: '4px',
+                        wordBreak: 'break-word'
                       }}>
                         <div>
                           <span style={{ fontWeight: '600' }}>Email:</span> {link.parent?.email}
@@ -1015,16 +1113,16 @@ const ParentVerificationPanel = () => {
                         <div>
                           <span style={{ fontWeight: '600' }}>Year Group:</span> Year {link.year_group}
                         </div>
-                        <div style={{ fontSize: '12px', color: '#94a3b8' }}>
+                        <div style={{ fontSize: window.innerWidth < 768 ? '11px' : '12px', color: '#94a3b8' }}>
                           Submitted: {new Date(link.created_at).toLocaleDateString()}
                         </div>
                       </div>
                     </div>
 
-                    <div style={{ flex: 1, minWidth: '250px' }}>
+                    <div style={{ flex: '1', minWidth: window.innerWidth < 768 ? '100%' : '250px', width: '100%' }}>
                       <label style={{
                         display: 'block',
-                        fontSize: '14px',
+                        fontSize: window.innerWidth < 768 ? '13px' : '14px',
                         fontWeight: '600',
                         color: '#475569',
                         marginBottom: '8px'
@@ -1039,13 +1137,17 @@ const ParentVerificationPanel = () => {
                         })}
                         style={{
                           width: '100%',
-                          padding: '10px 14px',
-                          fontSize: '14px',
+                          padding: window.innerWidth < 768 ? '8px 12px' : '10px 14px',
+                          fontSize: window.innerWidth < 768 ? '13px' : '14px',
                           border: '2px solid #e2e8f0',
                           borderRadius: '8px',
                           outline: 'none',
                           cursor: 'pointer',
-                          background: 'white'
+                          background: 'white',
+                          boxSizing: 'border-box',
+                          WebkitAppearance: 'none',
+                          MozAppearance: 'none',
+                          appearance: 'none'
                         }}
                       >
                         <option value="">-- Select Student --</option>
@@ -1057,7 +1159,7 @@ const ParentVerificationPanel = () => {
                       </select>
                       <div style={{
                         marginTop: '8px',
-                        fontSize: '12px',
+                        fontSize: window.innerWidth < 768 ? '11px' : '12px',
                         color: '#64748b'
                       }}>
                         {matchingStudents.length} student{matchingStudents.length !== 1 ? 's' : ''} in Year {link.year_group}
@@ -1066,49 +1168,55 @@ const ParentVerificationPanel = () => {
 
                     <div style={{
                       display: 'flex',
-                      gap: '8px',
-                      alignItems: 'flex-start'
+                      gap: window.innerWidth < 768 ? '6px' : '8px',
+                      alignItems: 'flex-start',
+                      width: window.innerWidth < 768 ? '100%' : 'auto',
+                      flexWrap: 'wrap'
                     }}>
                       <button
                         onClick={() => handleVerify(link.id, link.parent_id)}
                         disabled={processing === link.id || !selectedStudent[link.id]}
                         style={{
-                          padding: '10px 18px',
+                          padding: window.innerWidth < 768 ? '8px 14px' : '10px 18px',
                           background: selectedStudent[link.id] ? '#10b981' : '#94a3b8',
                           color: 'white',
                           border: 'none',
                           borderRadius: '8px',
-                          fontSize: '14px',
+                          fontSize: window.innerWidth < 768 ? '12px' : '14px',
                           fontWeight: '600',
                           cursor: selectedStudent[link.id] ? 'pointer' : 'not-allowed',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '8px',
-                          opacity: processing === link.id ? 0.5 : 1
+                          gap: '6px',
+                          opacity: processing === link.id ? 0.5 : 1,
+                          flex: window.innerWidth < 768 ? '1 1 auto' : '0 0 auto',
+                          justifyContent: 'center'
                         }}
                       >
-                        <Check style={{ width: '16px', height: '16px' }} />
+                        <Check style={{ width: '14px', height: '14px', flexShrink: 0 }} />
                         Verify
                       </button>
                       <button
                         onClick={() => handleReject(link.id)}
                         disabled={processing === link.id}
                         style={{
-                          padding: '10px 18px',
+                          padding: window.innerWidth < 768 ? '8px 14px' : '10px 18px',
                           background: '#ef4444',
                           color: 'white',
                           border: 'none',
                           borderRadius: '8px',
-                          fontSize: '14px',
+                          fontSize: window.innerWidth < 768 ? '12px' : '14px',
                           fontWeight: '600',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '8px',
-                          opacity: processing === link.id ? 0.5 : 1
+                          gap: '6px',
+                          opacity: processing === link.id ? 0.5 : 1,
+                          flex: window.innerWidth < 768 ? '1 1 auto' : '0 0 auto',
+                          justifyContent: 'center'
                         }}
                       >
-                        <X style={{ width: '16px', height: '16px' }} />
+                        <X style={{ width: '14px', height: '14px', flexShrink: 0 }} />
                         Reject
                       </button>
                     </div>
@@ -1124,20 +1232,28 @@ const ParentVerificationPanel = () => {
       <div style={{
         background: 'white',
         borderRadius: '12px',
-        padding: '24px',
-        border: '1px solid #e2e8f0'
+        padding: window.innerWidth < 768 ? '16px' : '24px',
+        border: '1px solid #e2e8f0',
+        width: '100%',
+        boxSizing: 'border-box'
       }}>
         <h2 style={{
-          fontSize: '20px',
+          fontSize: window.innerWidth < 768 ? '18px' : '20px',
           fontWeight: '700',
           color: '#1e293b',
-          marginBottom: '16px',
+          marginBottom: window.innerWidth < 768 ? '12px' : '16px',
           display: 'flex',
           alignItems: 'center',
-          gap: '12px'
+          gap: window.innerWidth < 768 ? '8px' : '12px',
+          flexWrap: 'wrap'
         }}>
-          <Check style={{ width: '24px', height: '24px', color: '#10b981' }} />
-          Recently Verified Links ({verifiedLinks.length})
+          <Check style={{ 
+            width: window.innerWidth < 768 ? '20px' : '24px', 
+            height: window.innerWidth < 768 ? '20px' : '24px', 
+            color: '#10b981',
+            flexShrink: 0 
+          }} />
+          <span style={{ wordBreak: 'break-word' }}>Recently Verified Links ({verifiedLinks.length})</span>
         </h2>
 
         {verifiedLinks.length === 0 ? (
@@ -1152,16 +1268,18 @@ const ParentVerificationPanel = () => {
         ) : (
           <div style={{
             display: 'grid',
-            gap: '12px'
+            gap: window.innerWidth < 768 ? '10px' : '12px'
           }}>
             {verifiedLinks.map((link) => (
               <div
                 key={link.id}
                 style={{
-                  padding: '20px',
+                  padding: window.innerWidth < 768 ? '16px' : '20px',
                   background: '#f8fafc',
                   borderRadius: '12px',
-                  border: '2px solid #e2e8f0'
+                  border: '2px solid #e2e8f0',
+                  width: '100%',
+                  boxSizing: 'border-box'
                 }}
               >
                 {editingLink === link.id ? (
@@ -1328,27 +1446,29 @@ const ParentVerificationPanel = () => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    gap: '16px',
+                    gap: window.innerWidth < 768 ? '12px' : '16px',
                     flexWrap: 'wrap'
                   }}>
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: '1', minWidth: window.innerWidth < 768 ? '100%' : '200px' }}>
                       <div style={{
-                        fontSize: '15px',
+                        fontSize: window.innerWidth < 768 ? '14px' : '15px',
                         fontWeight: '600',
                         color: '#1e293b',
-                        marginBottom: '4px'
+                        marginBottom: '4px',
+                        wordBreak: 'break-word'
                       }}>
                         {link.parent?.full_name} → {link.students?.student_name || '⚠️ Student Not Found'}
                       </div>
                       <div style={{
-                        fontSize: '13px',
-                        color: '#64748b'
+                        fontSize: window.innerWidth < 768 ? '12px' : '13px',
+                        color: '#64748b',
+                        wordBreak: 'break-word'
                       }}>
                         {link.parent?.email} • {link.students?.classes?.name || `Year ${link.year_group}`}
                       </div>
                       {link.verified_at && (
                         <div style={{
-                          fontSize: '12px',
+                          fontSize: window.innerWidth < 768 ? '11px' : '12px',
                           color: '#94a3b8',
                           marginTop: '4px'
                         }}>
@@ -1360,16 +1480,20 @@ const ParentVerificationPanel = () => {
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '12px'
+                      gap: window.innerWidth < 768 ? '8px' : '12px',
+                      width: window.innerWidth < 768 ? '100%' : 'auto',
+                      flexWrap: 'wrap',
+                      justifyContent: window.innerWidth < 768 ? 'space-between' : 'flex-start'
                     }}>
                       {/* Status Badge */}
                       <div style={{
-                        padding: '6px 12px',
+                        padding: window.innerWidth < 768 ? '4px 10px' : '6px 12px',
                         background: link.students ? '#d1fae5' : '#fee2e2',
                         color: link.students ? '#065f46' : '#991b1b',
                         borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: '700'
+                        fontSize: window.innerWidth < 768 ? '11px' : '12px',
+                        fontWeight: '700',
+                        whiteSpace: 'nowrap'
                       }}>
                         {link.students ? 'LINKED' : 'BROKEN'}
                       </div>
@@ -1377,18 +1501,18 @@ const ParentVerificationPanel = () => {
                       {/* Action Buttons */}
                       <div style={{
                         display: 'flex',
-                        gap: '8px'
+                        gap: window.innerWidth < 768 ? '6px' : '8px'
                       }}>
                         <button
                           onClick={() => startEditing(link)}
                           disabled={processing === link.id || deletingLink === link.id}
                           style={{
-                            padding: '8px 12px',
+                            padding: window.innerWidth < 768 ? '6px 10px' : '8px 12px',
                             background: '#667eea',
                             color: 'white',
                             border: 'none',
                             borderRadius: '6px',
-                            fontSize: '12px',
+                            fontSize: window.innerWidth < 768 ? '11px' : '12px',
                             fontWeight: '600',
                             cursor: 'pointer',
                             display: 'flex',
@@ -1403,7 +1527,7 @@ const ParentVerificationPanel = () => {
                             e.target.style.background = '#667eea';
                           }}
                         >
-                          <Edit2 style={{ width: '12px', height: '12px' }} />
+                          <Edit2 style={{ width: '12px', height: '12px', flexShrink: 0 }} />
                           Edit
                         </button>
                         <button
@@ -1414,12 +1538,12 @@ const ParentVerificationPanel = () => {
                           )}
                           disabled={processing === link.id || deletingLink === link.id}
                           style={{
-                            padding: '8px 12px',
+                            padding: window.innerWidth < 768 ? '6px 10px' : '8px 12px',
                             background: '#ef4444',
                             color: 'white',
                             border: 'none',
                             borderRadius: '6px',
-                            fontSize: '12px',
+                            fontSize: window.innerWidth < 768 ? '11px' : '12px',
                             fontWeight: '600',
                             cursor: 'pointer',
                             display: 'flex',
@@ -1435,7 +1559,7 @@ const ParentVerificationPanel = () => {
                             e.target.style.background = '#ef4444';
                           }}
                         >
-                          <Trash2 style={{ width: '12px', height: '12px' }} />
+                          <Trash2 style={{ width: '12px', height: '12px', flexShrink: 0 }} />
                           Delete
                         </button>
                       </div>
