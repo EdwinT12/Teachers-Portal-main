@@ -18,7 +18,6 @@ const ParentVerificationPanel = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newLink, setNewLink] = useState({
     parentId: '',
-    yearGroup: '',
     studentId: '',
     childName: '' // Added for better tracking
   });
@@ -27,18 +26,39 @@ const ParentVerificationPanel = () => {
   // For editing existing link
   const [editingLink, setEditingLink] = useState(null);
   const [editData, setEditData] = useState({
-    yearGroup: '',
     studentId: ''
   });
 
   // For deleting links
   const [deletingLink, setDeletingLink] = useState(null);
 
+  // For managing children modal
+  const [showChildrenModal, setShowChildrenModal] = useState(false);
+  const [selectedParentLinks, setSelectedParentLinks] = useState([]);
+
   // For showing link status
   const [linkStatus, setLinkStatus] = useState(null);
 
+  // For filtering and search
+  const [activeTab, setActiveTab] = useState('verified'); // 'verified' or 'pending'
+  const [searchText, setSearchText] = useState('');
+  const [filterClass, setFilterClass] = useState('');
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' or 'table'
+
   useEffect(() => {
     loadData();
+    
+    // Cleanup function to restore scroll on unmount
+    return () => {
+      const scrollY = document.body.style.top;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflow = 'unset';
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY) * -1);
+      }
+    };
   }, []);
 
   const loadData = async () => {
@@ -291,11 +311,18 @@ const ParentVerificationPanel = () => {
       // Reset form and close modal
       setNewLink({
         parentId: '',
-        yearGroup: '',
+        classId: '',
         studentId: '',
         childName: ''
       });
       setShowAddModal(false);
+      // Restore body scroll and position
+      const scrollY = document.body.style.top;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflow = 'unset';
+      window.scrollTo(0, parseInt(scrollY || '0') * -1);
       
       await loadData();
 
@@ -313,7 +340,6 @@ const ParentVerificationPanel = () => {
   const resetAddForm = () => {
     setNewLink({
       parentId: '',
-      yearGroup: '',
       studentId: '',
       childName: ''
     });
@@ -326,7 +352,6 @@ const ParentVerificationPanel = () => {
   const startEditing = (link) => {
     setEditingLink(link.id);
     setEditData({
-      yearGroup: link.students?.classes?.year_level?.toString() || '',
       studentId: link.student_id || ''
     });
   };
@@ -336,7 +361,7 @@ const ParentVerificationPanel = () => {
    */
   const cancelEditing = () => {
     setEditingLink(null);
-    setEditData({ yearGroup: '', studentId: '' });
+    setEditData({ studentId: '' });
   };
 
   /**
@@ -363,7 +388,7 @@ const ParentVerificationPanel = () => {
         .update({
           student_id: editData.studentId,
           class_id: student.class_id,
-          year_group: student.classes?.year_level?.toString() || editData.yearGroup,
+          year_group: student.classes?.year_level?.toString() || '',
           child_name_submitted: student.student_name, // Update name for future matching
           updated_at: new Date().toISOString()
         })
@@ -373,7 +398,7 @@ const ParentVerificationPanel = () => {
 
       toast.success('✓ Parent-child link updated successfully');
       setEditingLink(null);
-      setEditData({ yearGroup: '', studentId: '' });
+      setEditData({ studentId: '' });
       await loadData();
 
     } catch (error) {
@@ -458,10 +483,103 @@ const ParentVerificationPanel = () => {
     }
   };
 
-  const getFilteredStudents = (yearGroup) => {
-    if (!yearGroup) return students;
+  const getFilteredStudents = (classId) => {
+    if (!classId) return students;
     
-    return students.filter(s => s.classes?.year_level === parseInt(yearGroup));
+    return students.filter(s => s.class_id === classId);
+  };
+
+  /**
+   * Filter verified links based on search and class filters
+   */
+  const getFilteredVerifiedLinks = () => {
+    let filtered = [...verifiedLinks];
+
+    // Filter by search text (parent name, email, or student name)
+    if (searchText.trim()) {
+      const search = searchText.toLowerCase();
+      filtered = filtered.filter(link => 
+        link.parent?.full_name?.toLowerCase().includes(search) ||
+        link.parent?.email?.toLowerCase().includes(search) ||
+        link.students?.student_name?.toLowerCase().includes(search) ||
+        link.child_name_submitted?.toLowerCase().includes(search)
+      );
+    }
+
+    // Filter by class
+    if (filterClass) {
+      filtered = filtered.filter(link => 
+        link.students?.classes?.id === filterClass
+      );
+    }
+
+    return filtered;
+  };
+
+  /**
+   * Group verified links by parent
+   */
+  const getGroupedVerifiedLinks = () => {
+    const filtered = getFilteredVerifiedLinks();
+    const grouped = {};
+
+    filtered.forEach(link => {
+      const parentId = link.parent_id;
+      if (!grouped[parentId]) {
+        grouped[parentId] = {
+          parent: link.parent,
+          parentId: parentId,
+          children: []
+        };
+      }
+      grouped[parentId].children.push(link);
+    });
+
+    return Object.values(grouped);
+  };
+
+  /**
+   * Filter pending links based on search
+   */
+  const getFilteredPendingLinks = () => {
+    let filtered = [...pendingLinks];
+
+    if (searchText.trim()) {
+      const search = searchText.toLowerCase();
+      filtered = filtered.filter(link => 
+        link.parent?.full_name?.toLowerCase().includes(search) ||
+        link.parent?.email?.toLowerCase().includes(search) ||
+        link.child_name_submitted?.toLowerCase().includes(search)
+      );
+    }
+
+    return filtered;
+  };
+
+  /**
+   * Clear all filters
+   */
+  const clearFilters = () => {
+    setSearchText('');
+    setFilterClass('');
+  };
+
+  /**
+   * Open modal to manage children for a parent
+   */
+  const openChildrenModal = (parentGroup) => {
+    setSelectedParentLinks(parentGroup.children);
+    setShowChildrenModal(true);
+  };
+
+  /**
+   * Close children modal
+   */
+  const closeChildrenModal = () => {
+    setShowChildrenModal(false);
+    setSelectedParentLinks([]);
+    setEditingLink(null);
+    setEditData({ studentId: '' });
   };
 
   if (loading) {
@@ -648,7 +766,9 @@ const ParentVerificationPanel = () => {
         boxSizing: 'border-box'
       }}>
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={() => {
+            setShowAddModal(true);
+          }}
           style={{
             padding: window.innerWidth < 768 ? '10px 14px' : '12px 20px',
             background: '#10b981',
@@ -735,32 +855,243 @@ const ParentVerificationPanel = () => {
         </button>
       </div>
 
+      {/* Tabs for Pending vs Verified */}
+      <div style={{
+        display: 'flex',
+        gap: '8px',
+        marginBottom: window.innerWidth < 768 ? '16px' : '20px',
+        borderBottom: '2px solid #e2e8f0',
+        width: '100%',
+        boxSizing: 'border-box'
+      }}>
+        <button
+          onClick={() => setActiveTab('verified')}
+          style={{
+            padding: window.innerWidth < 768 ? '10px 16px' : '12px 24px',
+            background: 'transparent',
+            color: activeTab === 'verified' ? '#667eea' : '#64748b',
+            border: 'none',
+            borderBottom: activeTab === 'verified' ? '3px solid #667eea' : '3px solid transparent',
+            fontSize: window.innerWidth < 768 ? '14px' : '15px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            marginBottom: '-2px'
+          }}
+        >
+          Verified Links ({verifiedLinks.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('pending')}
+          style={{
+            padding: window.innerWidth < 768 ? '10px 16px' : '12px 24px',
+            background: 'transparent',
+            color: activeTab === 'pending' ? '#f59e0b' : '#64748b',
+            border: 'none',
+            borderBottom: activeTab === 'pending' ? '3px solid #f59e0b' : '3px solid transparent',
+            fontSize: window.innerWidth < 768 ? '14px' : '15px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            marginBottom: '-2px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+        >
+          Pending {pendingLinks.length > 0 && (
+            <span style={{
+              background: '#f59e0b',
+              color: 'white',
+              borderRadius: '12px',
+              padding: '2px 8px',
+              fontSize: '12px',
+              fontWeight: '700'
+            }}>
+              {pendingLinks.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Search and Filter Bar */}
+      <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        padding: window.innerWidth < 768 ? '16px' : '20px',
+        marginBottom: window.innerWidth < 768 ? '16px' : '20px',
+        border: '2px solid #e2e8f0',
+        width: '100%',
+        boxSizing: 'border-box'
+      }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: window.innerWidth < 768 ? '12px' : '16px',
+          marginBottom: '16px'
+        }}>
+          {/* Search Box */}
+          <div style={{ gridColumn: window.innerWidth < 768 ? '1' : 'span 2' }}>
+            <label style={{
+              display: 'block',
+              fontSize: window.innerWidth < 768 ? '13px' : '14px',
+              fontWeight: '600',
+              color: '#475569',
+              marginBottom: '8px'
+            }}>
+              🔍 Search
+            </label>
+            <input
+              type="text"
+              placeholder="Search by parent name, email, or student name..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{
+                width: '100%',
+                padding: window.innerWidth < 768 ? '10px 14px' : '12px 16px',
+                fontSize: window.innerWidth < 768 ? '14px' : '15px',
+                border: '2px solid #e2e8f0',
+                borderRadius: '8px',
+                outline: 'none',
+                boxSizing: 'border-box',
+                transition: 'border-color 0.2s'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#667eea'}
+              onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+            />
+          </div>
+
+          {/* Class Filter */}
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: window.innerWidth < 768 ? '13px' : '14px',
+              fontWeight: '600',
+              color: '#475569',
+              marginBottom: '8px'
+            }}>
+              🏫 Filter by Class
+            </label>
+            <select
+              value={filterClass}
+              onChange={(e) => setFilterClass(e.target.value)}
+              style={{
+                width: '100%',
+                padding: window.innerWidth < 768 ? '10px 14px' : '12px 16px',
+                fontSize: window.innerWidth < 768 ? '14px' : '15px',
+                border: '2px solid #e2e8f0',
+                borderRadius: '8px',
+                outline: 'none',
+                cursor: 'pointer',
+                background: 'white',
+                boxSizing: 'border-box',
+                WebkitAppearance: 'none',
+                MozAppearance: 'none',
+                appearance: 'none'
+              }}
+            >
+              <option value="">All Classes</option>
+              {classes
+                .map(cls => (
+                  <option key={cls.id} value={cls.id}>
+                    {cls.name} {cls.year_level ? `(Year ${cls.year_level})` : ''}
+                  </option>
+                ))
+              }
+            </select>
+          </div>
+        </div>
+
+        {/* Filter Summary and Clear */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '12px',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{
+            fontSize: window.innerWidth < 768 ? '13px' : '14px',
+            color: '#64748b',
+            fontWeight: '500'
+          }}>
+            {activeTab === 'verified' ? (
+              <>
+                Showing <strong style={{ color: '#1e293b' }}>{getFilteredVerifiedLinks().length}</strong> of{' '}
+                <strong style={{ color: '#1e293b' }}>{verifiedLinks.length}</strong> verified links
+              </>
+            ) : (
+              <>
+                Showing <strong style={{ color: '#1e293b' }}>{getFilteredPendingLinks().length}</strong> of{' '}
+                <strong style={{ color: '#1e293b' }}>{pendingLinks.length}</strong> pending requests
+              </>
+            )}
+          </div>
+          
+          {(searchText || filterClass) && (
+            <button
+              onClick={clearFilters}
+              style={{
+                padding: '8px 16px',
+                background: '#f1f5f9',
+                color: '#475569',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = '#e2e8f0';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = '#f1f5f9';
+              }}
+            >
+              <X style={{ width: '14px', height: '14px' }} />
+              Clear Filters
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Add New Link Modal */}
       {showAddModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: window.innerWidth < 768 ? 'flex-start' : 'center',
-          zIndex: 1000,
-          padding: window.innerWidth < 768 ? '16px' : '0',
-          overflowY: 'auto'
-        }}>
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'flex-start',
+            zIndex: 1000,
+            padding: window.innerWidth < 768 ? '16px' : '40px 20px',
+            overflowY: 'auto'
+          }}
+          onClick={(e) => {
+            // Close modal if clicking on backdrop
+            if (e.target === e.currentTarget) {
+              setShowAddModal(false);
+              resetAddForm();
+            }
+          }}
+        >
           <div style={{
             background: 'white',
             borderRadius: '16px',
             padding: window.innerWidth < 768 ? '20px' : '32px',
             maxWidth: '600px',
             width: '100%',
-            maxHeight: window.innerWidth < 768 ? 'calc(100vh - 32px)' : '80vh',
-            overflowY: 'auto',
             boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15)',
-            margin: window.innerWidth < 768 ? '16px 0' : '0',
+            margin: '0 auto',
             boxSizing: 'border-box'
           }}>
             <h2 style={{
@@ -831,7 +1162,7 @@ const ParentVerificationPanel = () => {
                 </div>
               </div>
 
-              {/* Year Group Filter (Optional) */}
+              {/* Class Filter (Optional) */}
               <div>
                 <label style={{
                   display: 'block',
@@ -840,14 +1171,14 @@ const ParentVerificationPanel = () => {
                   color: '#475569',
                   marginBottom: '8px'
                 }}>
-                  Filter by Year Group (Optional)
+                  Filter by Class (Optional)
                 </label>
                 <select
-                  value={newLink.yearGroup}
+                  value={newLink.classId || ''}
                   onChange={(e) => setNewLink({
                     ...newLink,
-                    yearGroup: e.target.value,
-                    studentId: '' // Reset student when year changes
+                    classId: e.target.value,
+                    studentId: '' // Reset student when class changes
                   })}
                   style={{
                     width: '100%',
@@ -864,13 +1195,12 @@ const ParentVerificationPanel = () => {
                     appearance: 'none'
                   }}
                 >
-                  <option value="">All Years</option>
-                  {[...new Set(students.map(s => s.classes?.year_level).filter(Boolean))]
-                    .sort((a, b) => a - b)
-                    .map(year => (
-                      <option key={year} value={year}>Year {year}</option>
-                    ))
-                  }
+                  <option value="">All Classes</option>
+                  {classes.map(cls => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.name} {cls.year_level ? `(Year ${cls.year_level})` : ''}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -912,7 +1242,7 @@ const ParentVerificationPanel = () => {
                   }}
                 >
                   <option value="">-- Select Student --</option>
-                  {getFilteredStudents(newLink.yearGroup).map((student) => (
+                  {getFilteredStudents(newLink.classId).map((student) => (
                     <option key={student.id} value={student.id}>
                       {student.student_name} - {student.classes?.name} (Year {student.classes?.year_level})
                     </option>
@@ -923,8 +1253,7 @@ const ParentVerificationPanel = () => {
                   color: '#64748b',
                   marginTop: '4px'
                 }}>
-                  {getFilteredStudents(newLink.yearGroup).length} student{getFilteredStudents(newLink.yearGroup).length !== 1 ? 's' : ''} available
-                  {newLink.yearGroup && ` in Year ${newLink.yearGroup}`}
+                  {getFilteredStudents(newLink.classId).length} student{getFilteredStudents(newLink.classId).length !== 1 ? 's' : ''} available
                 </div>
               </div>
 
@@ -1026,303 +1355,106 @@ const ParentVerificationPanel = () => {
       )}
 
       {/* Pending Verification Section */}
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: window.innerWidth < 768 ? '16px' : '24px',
-        marginBottom: window.innerWidth < 768 ? '16px' : '24px',
-        border: '1px solid #e2e8f0',
-        width: '100%',
-        boxSizing: 'border-box'
-      }}>
-        <h2 style={{
-          fontSize: window.innerWidth < 768 ? '18px' : '20px',
-          fontWeight: '700',
-          color: '#1e293b',
-          marginBottom: window.innerWidth < 768 ? '12px' : '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: window.innerWidth < 768 ? '8px' : '12px',
-          flexWrap: 'wrap'
+      {activeTab === 'pending' && (
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: window.innerWidth < 768 ? '16px' : '24px',
+          marginBottom: window.innerWidth < 768 ? '16px' : '24px',
+          border: '1px solid #e2e8f0',
+          width: '100%',
+          boxSizing: 'border-box'
         }}>
-          <AlertCircle style={{ 
-            width: window.innerWidth < 768 ? '20px' : '24px', 
-            height: window.innerWidth < 768 ? '20px' : '24px', 
-            color: '#f59e0b',
-            flexShrink: 0 
-          }} />
-          <span style={{ wordBreak: 'break-word' }}>Pending Verification ({pendingLinks.length})</span>
-        </h2>
-
-        {pendingLinks.length === 0 ? (
-          <p style={{
-            color: '#64748b',
-            fontSize: '14px',
-            textAlign: 'center',
-            padding: '40px'
+          <h2 style={{
+            fontSize: window.innerWidth < 768 ? '18px' : '20px',
+            fontWeight: '700',
+            color: '#1e293b',
+            marginBottom: window.innerWidth < 768 ? '12px' : '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: window.innerWidth < 768 ? '8px' : '12px',
+            flexWrap: 'wrap'
           }}>
-            No pending verification requests
-          </p>
-        ) : (
-          <div style={{ display: 'grid', gap: window.innerWidth < 768 ? '12px' : '16px' }}>
-            {pendingLinks.map((link) => {
-              const matchingStudents = getFilteredStudents(link.year_group);
-              
-              return (
-                <div
-                  key={link.id}
-                  style={{
-                    padding: window.innerWidth < 768 ? '16px' : '20px',
-                    background: '#f8fafc',
-                    borderRadius: '12px',
-                    border: '2px solid #e2e8f0',
-                    width: '100%',
-                    boxSizing: 'border-box'
-                  }}
-                >
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    gap: window.innerWidth < 768 ? '12px' : '16px',
-                    flexWrap: 'wrap'
-                  }}>
-                    <div style={{ flex: '1', minWidth: window.innerWidth < 768 ? '100%' : '250px' }}>
-                      <h3 style={{
-                        fontSize: window.innerWidth < 768 ? '15px' : '16px',
-                        fontWeight: '700',
-                        color: '#1e293b',
-                        marginBottom: '8px',
-                        wordBreak: 'break-word'
-                      }}>
-                        {link.parent?.full_name || 'Unknown Parent'}
-                      </h3>
-                      <div style={{
-                        fontSize: window.innerWidth < 768 ? '13px' : '14px',
-                        color: '#64748b',
-                        display: 'grid',
-                        gap: '4px',
-                        wordBreak: 'break-word'
-                      }}>
-                        <div>
-                          <span style={{ fontWeight: '600' }}>Email:</span> {link.parent?.email}
-                        </div>
-                        <div>
-                          <span style={{ fontWeight: '600' }}>Child Name:</span> {link.child_name_submitted}
-                        </div>
-                        <div>
-                          <span style={{ fontWeight: '600' }}>Year Group:</span> Year {link.year_group}
-                        </div>
-                        <div style={{ fontSize: window.innerWidth < 768 ? '11px' : '12px', color: '#94a3b8' }}>
-                          Submitted: {new Date(link.created_at).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </div>
+            <AlertCircle style={{ 
+              width: window.innerWidth < 768 ? '20px' : '24px', 
+              height: window.innerWidth < 768 ? '20px' : '24px', 
+              color: '#f59e0b',
+              flexShrink: 0 
+            }} />
+            <span style={{ wordBreak: 'break-word' }}>Pending Verification</span>
+          </h2>
 
-                    <div style={{ flex: '1', minWidth: window.innerWidth < 768 ? '100%' : '250px', width: '100%' }}>
-                      <label style={{
-                        display: 'block',
-                        fontSize: window.innerWidth < 768 ? '13px' : '14px',
-                        fontWeight: '600',
-                        color: '#475569',
-                        marginBottom: '8px'
-                      }}>
-                        Select Student to Link
-                      </label>
-                      <select
-                        value={selectedStudent[link.id] || ''}
-                        onChange={(e) => setSelectedStudent({
-                          ...selectedStudent,
-                          [link.id]: e.target.value
-                        })}
-                        style={{
-                          width: '100%',
-                          padding: window.innerWidth < 768 ? '8px 12px' : '10px 14px',
-                          fontSize: window.innerWidth < 768 ? '13px' : '14px',
-                          border: '2px solid #e2e8f0',
-                          borderRadius: '8px',
-                          outline: 'none',
-                          cursor: 'pointer',
-                          background: 'white',
-                          boxSizing: 'border-box',
-                          WebkitAppearance: 'none',
-                          MozAppearance: 'none',
-                          appearance: 'none'
-                        }}
-                      >
-                        <option value="">-- Select Student --</option>
-                        {matchingStudents.map((student) => (
-                          <option key={student.id} value={student.id}>
-                            {student.student_name} - {student.classes?.name}
-                          </option>
-                        ))}
-                      </select>
-                      <div style={{
-                        marginTop: '8px',
-                        fontSize: window.innerWidth < 768 ? '11px' : '12px',
-                        color: '#64748b'
-                      }}>
-                        {matchingStudents.length} student{matchingStudents.length !== 1 ? 's' : ''} in Year {link.year_group}
-                      </div>
-                    </div>
-
-                    <div style={{
-                      display: 'flex',
-                      gap: window.innerWidth < 768 ? '6px' : '8px',
-                      alignItems: 'flex-start',
-                      width: window.innerWidth < 768 ? '100%' : 'auto',
-                      flexWrap: 'wrap'
-                    }}>
-                      <button
-                        onClick={() => handleVerify(link.id, link.parent_id)}
-                        disabled={processing === link.id || !selectedStudent[link.id]}
-                        style={{
-                          padding: window.innerWidth < 768 ? '8px 14px' : '10px 18px',
-                          background: selectedStudent[link.id] ? '#10b981' : '#94a3b8',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '8px',
-                          fontSize: window.innerWidth < 768 ? '12px' : '14px',
-                          fontWeight: '600',
-                          cursor: selectedStudent[link.id] ? 'pointer' : 'not-allowed',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          opacity: processing === link.id ? 0.5 : 1,
-                          flex: window.innerWidth < 768 ? '1 1 auto' : '0 0 auto',
-                          justifyContent: 'center'
-                        }}
-                      >
-                        <Check style={{ width: '14px', height: '14px', flexShrink: 0 }} />
-                        Verify
-                      </button>
-                      <button
-                        onClick={() => handleReject(link.id)}
-                        disabled={processing === link.id}
-                        style={{
-                          padding: window.innerWidth < 768 ? '8px 14px' : '10px 18px',
-                          background: '#ef4444',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '8px',
-                          fontSize: window.innerWidth < 768 ? '12px' : '14px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          opacity: processing === link.id ? 0.5 : 1,
-                          flex: window.innerWidth < 768 ? '1 1 auto' : '0 0 auto',
-                          justifyContent: 'center'
-                        }}
-                      >
-                        <X style={{ width: '14px', height: '14px', flexShrink: 0 }} />
-                        Reject
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Verified Links Section */}
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: window.innerWidth < 768 ? '16px' : '24px',
-        border: '1px solid #e2e8f0',
-        width: '100%',
-        boxSizing: 'border-box'
-      }}>
-        <h2 style={{
-          fontSize: window.innerWidth < 768 ? '18px' : '20px',
-          fontWeight: '700',
-          color: '#1e293b',
-          marginBottom: window.innerWidth < 768 ? '12px' : '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: window.innerWidth < 768 ? '8px' : '12px',
-          flexWrap: 'wrap'
-        }}>
-          <Check style={{ 
-            width: window.innerWidth < 768 ? '20px' : '24px', 
-            height: window.innerWidth < 768 ? '20px' : '24px', 
-            color: '#10b981',
-            flexShrink: 0 
-          }} />
-          <span style={{ wordBreak: 'break-word' }}>Recently Verified Links ({verifiedLinks.length})</span>
-        </h2>
-
-        {verifiedLinks.length === 0 ? (
-          <p style={{
-            color: '#64748b',
-            fontSize: '14px',
-            textAlign: 'center',
-            padding: '40px'
-          }}>
-            No verified links yet
-          </p>
-        ) : (
-          <div style={{
-            display: 'grid',
-            gap: window.innerWidth < 768 ? '10px' : '12px'
-          }}>
-            {verifiedLinks.map((link) => (
-              <div
-                key={link.id}
-                style={{
-                  padding: window.innerWidth < 768 ? '16px' : '20px',
-                  background: '#f8fafc',
-                  borderRadius: '12px',
-                  border: '2px solid #e2e8f0',
-                  width: '100%',
-                  boxSizing: 'border-box'
-                }}
-              >
-                {editingLink === link.id ? (
-                  // Edit Mode
-                  <div style={{ width: '100%', boxSizing: 'border-box' }}>
+          {getFilteredPendingLinks().length === 0 ? (
+            <div style={{
+              textAlign: 'center',
+              padding: '60px 20px',
+              color: '#64748b'
+            }}>
+              <AlertCircle size={48} color="#cbd5e1" style={{ marginBottom: '16px' }} />
+              <p style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
+                {searchText || filterClass ? 'No matching pending requests' : 'No pending verification requests'}
+              </p>
+              <p style={{ fontSize: '14px', margin: 0 }}>
+                {searchText || filterClass ? 'Try adjusting your filters' : 'All parent requests have been processed'}
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: window.innerWidth < 768 ? '12px' : '16px' }}>
+              {getFilteredPendingLinks().map((link) => {
+                const matchingStudents = getFilteredStudents(link.year_group);
+                
+                return (
+                  <div
+                    key={link.id}
+                    style={{
+                      padding: window.innerWidth < 768 ? '16px' : '20px',
+                      background: '#fffbeb',
+                      borderRadius: '12px',
+                      border: '2px solid #fde047',
+                      width: '100%',
+                      boxSizing: 'border-box'
+                    }}
+                  >
                     <div style={{
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'flex-start',
-                      marginBottom: window.innerWidth < 768 ? '12px' : '16px',
-                      flexWrap: 'wrap',
-                      gap: '8px'
+                      gap: window.innerWidth < 768 ? '12px' : '16px',
+                      flexWrap: 'wrap'
                     }}>
-                      <div style={{ flex: '1', minWidth: window.innerWidth < 768 ? '100%' : 'auto' }}>
-                        <h4 style={{
+                      <div style={{ flex: '1', minWidth: window.innerWidth < 768 ? '100%' : '250px' }}>
+                        <h3 style={{
                           fontSize: window.innerWidth < 768 ? '15px' : '16px',
                           fontWeight: '700',
                           color: '#1e293b',
-                          marginBottom: '4px',
+                          marginBottom: '8px',
                           wordBreak: 'break-word'
                         }}>
-                          Editing: {link.parent?.full_name}
-                        </h4>
+                          {link.parent?.full_name || 'Unknown Parent'}
+                        </h3>
                         <div style={{
-                          fontSize: window.innerWidth < 768 ? '12px' : '13px',
+                          fontSize: window.innerWidth < 768 ? '13px' : '14px',
                           color: '#64748b',
+                          display: 'grid',
+                          gap: '4px',
                           wordBreak: 'break-word'
                         }}>
-                          {link.parent?.email}
+                          <div>
+                            <span style={{ fontWeight: '600' }}>Email:</span> {link.parent?.email}
+                          </div>
+                          <div>
+                            <span style={{ fontWeight: '600' }}>Child Name:</span> {link.child_name_submitted}
+                          </div>
+                          <div>
+                            <span style={{ fontWeight: '600' }}>Year Group:</span> Year {link.year_group}
+                          </div>
+                          <div style={{ fontSize: window.innerWidth < 768 ? '11px' : '12px', color: '#94a3b8' }}>
+                            Submitted: {new Date(link.created_at).toLocaleDateString()}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 2fr auto',
-                      gap: window.innerWidth < 768 ? '12px' : '16px',
-                      alignItems: window.innerWidth < 768 ? 'stretch' : 'end',
-                      width: '100%',
-                      boxSizing: 'border-box'
-                    }}>
-                      {/* Year Group Selector */}
-                      <div style={{ width: '100%', boxSizing: 'border-box' }}>
+                      <div style={{ flex: '1', minWidth: window.innerWidth < 768 ? '100%' : '250px', width: '100%' }}>
                         <label style={{
                           display: 'block',
                           fontSize: window.innerWidth < 768 ? '13px' : '14px',
@@ -1330,56 +1462,13 @@ const ParentVerificationPanel = () => {
                           color: '#475569',
                           marginBottom: '8px'
                         }}>
-                          Year Group
+                          Select Student to Link
                         </label>
                         <select
-                          value={editData.yearGroup}
-                          onChange={(e) => setEditData({
-                            ...editData,
-                            yearGroup: e.target.value,
-                            studentId: '' // Reset student selection when year changes
-                          })}
-                          style={{
-                            width: '100%',
-                            padding: window.innerWidth < 768 ? '8px 12px' : '10px 14px',
-                            fontSize: window.innerWidth < 768 ? '13px' : '14px',
-                            border: '2px solid #e2e8f0',
-                            borderRadius: '8px',
-                            outline: 'none',
-                            cursor: 'pointer',
-                            background: 'white',
-                            boxSizing: 'border-box',
-                            WebkitAppearance: 'none',
-                            MozAppearance: 'none',
-                            appearance: 'none'
-                          }}
-                        >
-                          <option value="">All Years</option>
-                          {[...new Set(students.map(s => s.classes?.year_level).filter(Boolean))]
-                            .sort((a, b) => a - b)
-                            .map(year => (
-                              <option key={year} value={year}>Year {year}</option>
-                            ))
-                          }
-                        </select>
-                      </div>
-
-                      {/* Student Selector */}
-                      <div style={{ width: '100%', boxSizing: 'border-box' }}>
-                        <label style={{
-                          display: 'block',
-                          fontSize: window.innerWidth < 768 ? '13px' : '14px',
-                          fontWeight: '600',
-                          color: '#475569',
-                          marginBottom: '8px'
-                        }}>
-                          Select New Student
-                        </label>
-                        <select
-                          value={editData.studentId}
-                          onChange={(e) => setEditData({
-                            ...editData,
-                            studentId: e.target.value
+                          value={selectedStudent[link.id] || ''}
+                          onChange={(e) => setSelectedStudent({
+                            ...selectedStudent,
+                            [link.id]: e.target.value
                           })}
                           style={{
                             width: '100%',
@@ -1397,51 +1486,57 @@ const ParentVerificationPanel = () => {
                           }}
                         >
                           <option value="">-- Select Student --</option>
-                          {getFilteredStudents(editData.yearGroup).map((student) => (
+                          {matchingStudents.map((student) => (
                             <option key={student.id} value={student.id}>
                               {student.student_name} - {student.classes?.name}
                             </option>
                           ))}
                         </select>
+                        <div style={{
+                          marginTop: '8px',
+                          fontSize: window.innerWidth < 768 ? '11px' : '12px',
+                          color: '#64748b'
+                        }}>
+                          {matchingStudents.length} student{matchingStudents.length !== 1 ? 's' : ''} in Year {link.year_group}
+                        </div>
                       </div>
 
-                      {/* Action Buttons */}
                       <div style={{
                         display: 'flex',
                         gap: window.innerWidth < 768 ? '6px' : '8px',
-                        width: '100%',
-                        boxSizing: 'border-box'
+                        alignItems: 'flex-start',
+                        width: window.innerWidth < 768 ? '100%' : 'auto',
+                        flexWrap: 'wrap'
                       }}>
                         <button
-                          onClick={() => handleSaveEdit(link.id)}
-                          disabled={processing === link.id || !editData.studentId}
+                          onClick={() => handleVerify(link.id, link.parent_id)}
+                          disabled={processing === link.id || !selectedStudent[link.id]}
                           style={{
-                            padding: window.innerWidth < 768 ? '8px 14px' : '10px 16px',
-                            background: editData.studentId ? '#10b981' : '#94a3b8',
+                            padding: window.innerWidth < 768 ? '8px 14px' : '10px 18px',
+                            background: selectedStudent[link.id] ? '#10b981' : '#94a3b8',
                             color: 'white',
                             border: 'none',
                             borderRadius: '8px',
                             fontSize: window.innerWidth < 768 ? '12px' : '14px',
                             fontWeight: '600',
-                            cursor: editData.studentId ? 'pointer' : 'not-allowed',
+                            cursor: selectedStudent[link.id] ? 'pointer' : 'not-allowed',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '6px',
                             opacity: processing === link.id ? 0.5 : 1,
-                            flex: '1',
-                            justifyContent: 'center',
-                            boxSizing: 'border-box'
+                            flex: window.innerWidth < 768 ? '1 1 auto' : '0 0 auto',
+                            justifyContent: 'center'
                           }}
                         >
                           <Check style={{ width: '14px', height: '14px', flexShrink: 0 }} />
-                          Save
+                          Verify
                         </button>
                         <button
-                          onClick={cancelEditing}
+                          onClick={() => handleReject(link.id)}
                           disabled={processing === link.id}
                           style={{
-                            padding: window.innerWidth < 768 ? '8px 14px' : '10px 16px',
-                            background: '#6b7280',
+                            padding: window.innerWidth < 768 ? '8px 14px' : '10px 18px',
+                            background: '#ef4444',
                             color: 'white',
                             border: 'none',
                             borderRadius: '8px',
@@ -1451,96 +1546,206 @@ const ParentVerificationPanel = () => {
                             display: 'flex',
                             alignItems: 'center',
                             gap: '6px',
-                            flex: '1',
-                            justifyContent: 'center',
-                            boxSizing: 'border-box'
+                            opacity: processing === link.id ? 0.5 : 1,
+                            flex: window.innerWidth < 768 ? '1 1 auto' : '0 0 auto',
+                            justifyContent: 'center'
                           }}
                         >
                           <X style={{ width: '14px', height: '14px', flexShrink: 0 }} />
-                          Cancel
+                          Reject
                         </button>
                       </div>
                     </div>
                   </div>
-                ) : (
-                  // Display Mode
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: window.innerWidth < 768 ? '12px' : '16px',
-                    flexWrap: 'wrap'
-                  }}>
-                    <div style={{ flex: '1', minWidth: window.innerWidth < 768 ? '100%' : '200px' }}>
-                      <div style={{
-                        fontSize: window.innerWidth < 768 ? '14px' : '15px',
-                        fontWeight: '600',
-                        color: '#1e293b',
-                        marginBottom: '4px',
-                        wordBreak: 'break-word'
-                      }}>
-                        {link.parent?.full_name} → {link.students?.student_name || '⚠️ Student Not Found'}
-                      </div>
-                      <div style={{
-                        fontSize: window.innerWidth < 768 ? '12px' : '13px',
-                        color: '#64748b',
-                        wordBreak: 'break-word'
-                      }}>
-                        {link.parent?.email} • {link.students?.classes?.name || `Year ${link.year_group}`}
-                      </div>
-                      {link.verified_at && (
-                        <div style={{
-                          fontSize: window.innerWidth < 768 ? '11px' : '12px',
-                          color: '#94a3b8',
-                          marginTop: '4px'
-                        }}>
-                          Verified: {new Date(link.verified_at).toLocaleDateString()}
-                        </div>
-                      )}
-                    </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
+      {/* Verified Links Section */}
+      {activeTab === 'verified' && (
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: window.innerWidth < 768 ? '16px' : '24px',
+          border: '1px solid #e2e8f0',
+          width: '100%',
+          boxSizing: 'border-box'
+        }}>
+          <h2 style={{
+            fontSize: window.innerWidth < 768 ? '18px' : '20px',
+            fontWeight: '700',
+            color: '#1e293b',
+            marginBottom: window.innerWidth < 768 ? '12px' : '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: window.innerWidth < 768 ? '8px' : '12px',
+            flexWrap: 'wrap'
+          }}>
+            <Check style={{ 
+              width: window.innerWidth < 768 ? '20px' : '24px', 
+              height: window.innerWidth < 768 ? '20px' : '24px', 
+              color: '#10b981',
+              flexShrink: 0 
+            }} />
+            <span style={{ wordBreak: 'break-word' }}>Verified Parent-Child Relationships</span>
+          </h2>
+
+          {getGroupedVerifiedLinks().length === 0 ? (
+            <div style={{
+              textAlign: 'center',
+              padding: '60px 20px',
+              color: '#64748b'
+            }}>
+              <Users size={48} color="#cbd5e1" style={{ marginBottom: '16px' }} />
+              <p style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
+                {searchText || filterClass ? 'No matching relationships found' : 'No verified links yet'}
+              </p>
+              <p style={{ fontSize: '14px', margin: 0 }}>
+                {searchText || filterClass ? 'Try adjusting your filters' : 'Verified parent-child relationships will appear here'}
+              </p>
+            </div>
+          ) : (
+            <div style={{
+              display: 'grid',
+              gap: window.innerWidth < 768 ? '10px' : '12px'
+            }}>
+              {getGroupedVerifiedLinks().map((parentGroup) => {
+                const allLinked = parentGroup.children.every(link => link.students);
+                const hasbroken = parentGroup.children.some(link => !link.students);
+                
+                return (
+                  <div
+                    key={parentGroup.parentId}
+                    style={{
+                      padding: window.innerWidth < 768 ? '16px' : '20px',
+                      background: hasbroken ? '#fef2f2' : '#f0fdf4',
+                      borderRadius: '12px',
+                      border: `2px solid ${hasbroken ? '#fca5a5' : '#86efac'}`,
+                      width: '100%',
+                      boxSizing: 'border-box'
+                    }}
+                  >
                     <div style={{
                       display: 'flex',
-                      alignItems: 'center',
-                      gap: window.innerWidth < 768 ? '8px' : '12px',
-                      width: window.innerWidth < 768 ? '100%' : 'auto',
-                      flexWrap: 'wrap',
-                      justifyContent: window.innerWidth < 768 ? 'space-between' : 'flex-start'
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      gap: window.innerWidth < 768 ? '12px' : '16px',
+                      flexWrap: 'wrap'
                     }}>
-                      {/* Status Badge */}
-                      <div style={{
-                        padding: window.innerWidth < 768 ? '4px 10px' : '6px 12px',
-                        background: link.students ? '#d1fae5' : '#fee2e2',
-                        color: link.students ? '#065f46' : '#991b1b',
-                        borderRadius: '6px',
-                        fontSize: window.innerWidth < 768 ? '11px' : '12px',
-                        fontWeight: '700',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {link.students ? 'LINKED' : 'BROKEN'}
+                      {/* Parent Info */}
+                      <div style={{ flex: '1', minWidth: window.innerWidth < 768 ? '100%' : '250px' }}>
+                        <div style={{
+                          fontSize: window.innerWidth < 768 ? '16px' : '18px',
+                          fontWeight: '700',
+                          color: '#1e293b',
+                          marginBottom: '8px',
+                          wordBreak: 'break-word',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <span style={{ fontSize: '20px' }}></span>
+                          {parentGroup.parent?.full_name}
+                        </div>
+                        <div style={{
+                          fontSize: window.innerWidth < 768 ? '13px' : '14px',
+                          color: '#64748b',
+                          marginBottom: '12px',
+                          wordBreak: 'break-word'
+                        }}>
+                          {parentGroup.parent?.email}
+                        </div>
+
+                        {/* Children List */}
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px',
+                          marginTop: '12px'
+                        }}>
+                          <div style={{
+                            fontSize: window.innerWidth < 768 ? '13px' : '14px',
+                            fontWeight: '600',
+                            color: '#475569',
+                            marginBottom: '4px'
+                          }}>
+                            Children ({parentGroup.children.length}):
+                          </div>
+                          {parentGroup.children.map((link, index) => (
+                            <div
+                              key={link.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '8px 12px',
+                                background: 'white',
+                                borderRadius: '8px',
+                                border: `1px solid ${link.students ? '#d1fae5' : '#fee2e2'}`,
+                                fontSize: window.innerWidth < 768 ? '13px' : '14px'
+                              }}
+                            >
+                              <span style={{ fontSize: '16px' }}></span>
+                              <span style={{
+                                flex: 1,
+                                fontWeight: '600',
+                                color: link.students ? '#065f46' : '#991b1b'
+                              }}>
+                                {link.students?.student_name || '⚠️ Student Not Found'}
+                              </span>
+                              {link.students && (
+                                <span style={{
+                                  fontSize: window.innerWidth < 768 ? '11px' : '12px',
+                                  color: '#64748b',
+                                  background: '#f8fafc',
+                                  padding: '2px 8px',
+                                  borderRadius: '4px'
+                                }}>
+                                  {link.students.classes?.name}
+                                </span>
+                              )}
+                              <span style={{
+                                fontSize: '10px',
+                                fontWeight: '700',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                background: link.students ? '#d1fae5' : '#fee2e2',
+                                color: link.students ? '#065f46' : '#991b1b'
+                              }}>
+                                {link.students ? '✓' : '✗'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
 
-                      {/* Action Buttons */}
+                      {/* Action Button */}
                       <div style={{
                         display: 'flex',
-                        gap: window.innerWidth < 768 ? '6px' : '8px'
+                        flexDirection: 'column',
+                        gap: '8px',
+                        alignItems: window.innerWidth < 768 ? 'stretch' : 'flex-end',
+                        width: window.innerWidth < 768 ? '100%' : 'auto'
                       }}>
                         <button
-                          onClick={() => startEditing(link)}
-                          disabled={processing === link.id || deletingLink === link.id}
+                          onClick={() => openChildrenModal(parentGroup)}
                           style={{
-                            padding: window.innerWidth < 768 ? '6px 10px' : '8px 12px',
+                            padding: window.innerWidth < 768 ? '10px 16px' : '12px 20px',
                             background: '#667eea',
                             color: 'white',
                             border: 'none',
-                            borderRadius: '6px',
-                            fontSize: window.innerWidth < 768 ? '11px' : '12px',
+                            borderRadius: '8px',
+                            fontSize: window.innerWidth < 768 ? '13px' : '14px',
                             fontWeight: '600',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '4px',
-                            transition: 'all 0.2s'
+                            gap: '8px',
+                            transition: 'all 0.2s',
+                            justifyContent: 'center'
                           }}
                           onMouseEnter={(e) => {
                             e.target.style.background = '#5568d3';
@@ -1549,50 +1754,451 @@ const ParentVerificationPanel = () => {
                             e.target.style.background = '#667eea';
                           }}
                         >
-                          <Edit2 style={{ width: '12px', height: '12px', flexShrink: 0 }} />
-                          Edit
+                          <Edit2 style={{ width: '16px', height: '16px', flexShrink: 0 }} />
+                          Manage Children
                         </button>
+
+                        {/* Summary Badge */}
+                        <div style={{
+                          padding: '6px 12px',
+                          background: hasbroken ? '#fee2e2' : '#d1fae5',
+                          color: hasbroken ? '#991b1b' : '#065f46',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: '700',
+                          textAlign: 'center',
+                          border: `2px solid ${hasbroken ? '#fca5a5' : '#86efac'}`
+                        }}>
+                          {allLinked ? `${parentGroup.children.length} Linked` : 
+                           `${parentGroup.children.filter(l => l.students).length}/${parentGroup.children.length} Linked`}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Manage Children Modal */}
+      {showChildrenModal && selectedParentLinks.length > 0 && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.6)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: window.innerWidth < 768 ? '16px' : '20px'
+          }}
+          onClick={(e) => {
+            // Close modal if clicking on backdrop
+            if (e.target === e.currentTarget) {
+              closeChildrenModal();
+            }
+          }}
+        >
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: window.innerWidth < 768 ? '20px' : '32px',
+            maxWidth: '800px',
+            width: '100%',
+            boxShadow: '0 24px 48px rgba(0, 0, 0, 0.3)',
+            position: 'relative',
+            boxSizing: 'border-box',
+            margin: 'auto',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '24px',
+              paddingBottom: '16px',
+              borderBottom: '2px solid #e2e8f0'
+            }}>
+              <h2 style={{
+                fontSize: window.innerWidth < 768 ? '20px' : '24px',
+                fontWeight: '700',
+                color: '#1e293b',
+                margin: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <Users style={{ width: '24px', height: '24px', color: '#667eea' }} />
+                Manage Children
+              </h2>
+              <button
+                onClick={closeChildrenModal}
+                style={{
+                  background: '#f1f5f9',
+                  border: 'none',
+                  borderRadius: '8px',
+                  width: '36px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.background = '#e2e8f0'}
+                onMouseLeave={(e) => e.target.style.background = '#f1f5f9'}
+              >
+                <X style={{ width: '20px', height: '20px', color: '#64748b' }} />
+              </button>
+            </div>
+
+            {/* Parent Info */}
+            <div style={{
+              background: '#f8fafc',
+              padding: '16px',
+              borderRadius: '12px',
+              marginBottom: '24px',
+              border: '2px solid #e2e8f0'
+            }}>
+              <div style={{
+                fontSize: '16px',
+                fontWeight: '700',
+                color: '#1e293b',
+                marginBottom: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <span style={{ fontSize: '20px' }}></span>
+                {selectedParentLinks[0]?.parent?.full_name}
+              </div>
+              <div style={{
+                fontSize: '14px',
+                color: '#64748b'
+              }}>
+                {selectedParentLinks[0]?.parent?.email}
+              </div>
+            </div>
+
+            {/* Children List */}
+            <div style={{
+              display: 'grid',
+              gap: '16px'
+            }}>
+              {selectedParentLinks.map((link) => (
+                <div
+                  key={link.id}
+                  style={{
+                    background: link.students ? '#f0fdf4' : '#fef2f2',
+                    padding: '20px',
+                    borderRadius: '12px',
+                    border: `2px solid ${link.students ? '#86efac' : '#fca5a5'}`,
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  {editingLink === link.id ? (
+                    // Edit Mode
+                    <div>
+                      <div style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#475569',
+                        marginBottom: '16px'
+                      }}>
+                        Editing Child Link
+                      </div>
+
+                      <div style={{
+                        marginBottom: '16px'
+                      }}>
+                        {/* Student Selector */}
+                        <div>
+                          <label style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: '#475569',
+                            marginBottom: '8px'
+                          }}>
+                            Select New Student
+                          </label>
+                          <select
+                            value={editData.studentId}
+                            onChange={(e) => setEditData({
+                              ...editData,
+                              studentId: e.target.value
+                            })}
+                            style={{
+                              width: '100%',
+                              padding: '10px 14px',
+                              fontSize: '14px',
+                              border: '2px solid #e2e8f0',
+                              borderRadius: '8px',
+                              outline: 'none',
+                              cursor: 'pointer',
+                              background: 'white',
+                              boxSizing: 'border-box'
+                            }}
+                          >
+                            <option value="">-- Select Student --</option>
+                            {getFilteredStudents('').map((student) => (
+                              <option key={student.id} value={student.id}>
+                                {student.student_name} - {student.classes?.name} (Year {student.classes?.year_level})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Edit Action Buttons */}
+                      <div style={{
+                        display: 'flex',
+                        gap: '8px',
+                        justifyContent: 'flex-end'
+                      }}>
                         <button
-                          onClick={() => handleDeleteLink(
-                            link.id, 
-                            link.parent?.full_name, 
-                            link.students?.student_name || link.child_name_submitted
-                          )}
-                          disabled={processing === link.id || deletingLink === link.id}
+                          onClick={cancelEditing}
+                          disabled={processing === link.id}
                           style={{
-                            padding: window.innerWidth < 768 ? '6px 10px' : '8px 12px',
-                            background: '#ef4444',
+                            padding: '10px 16px',
+                            background: '#6b7280',
                             color: 'white',
                             border: 'none',
-                            borderRadius: '6px',
-                            fontSize: window.innerWidth < 768 ? '11px' : '12px',
+                            borderRadius: '8px',
+                            fontSize: '14px',
                             fontWeight: '600',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '4px',
-                            transition: 'all 0.2s',
-                            opacity: deletingLink === link.id ? 0.5 : 1
-                          }}
-                          onMouseEnter={(e) => {
-                            e.target.style.background = '#dc2626';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.background = '#ef4444';
+                            gap: '6px'
                           }}
                         >
-                          <Trash2 style={{ width: '12px', height: '12px', flexShrink: 0 }} />
-                          Delete
+                          <X style={{ width: '14px', height: '14px' }} />
+                          Cancel
+                        </button>
+                        <button
+                          onClick={async () => {
+                            await handleSaveEdit(link.id);
+                            // Reload to update the modal
+                            const updatedLinks = selectedParentLinks.map(l => 
+                              l.id === link.id ? { ...l, students: students.find(s => s.id === editData.studentId) } : l
+                            );
+                            setSelectedParentLinks(updatedLinks);
+                          }}
+                          disabled={processing === link.id || !editData.studentId}
+                          style={{
+                            padding: '10px 16px',
+                            background: editData.studentId ? '#10b981' : '#94a3b8',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: editData.studentId ? 'pointer' : 'not-allowed',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            opacity: processing === link.id ? 0.5 : 1
+                          }}
+                        >
+                          <Check style={{ width: '14px', height: '14px' }} />
+                          {processing === link.id ? 'Saving...' : 'Save Changes'}
                         </button>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  ) : (
+                    // Display Mode
+                    <div>
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        gap: '12px',
+                        marginBottom: '12px'
+                      }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{
+                            fontSize: '16px',
+                            fontWeight: '700',
+                            color: link.students ? '#065f46' : '#991b1b',
+                            marginBottom: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                          }}>
+                            <span style={{ fontSize: '20px' }}></span>
+                            {link.students?.student_name || '⚠️ Student Not Found'}
+                          </div>
+                          {link.students && (
+                            <>
+                              <div style={{
+                                fontSize: '14px',
+                                color: '#64748b',
+                                marginBottom: '4px'
+                              }}>
+                                🏫 {link.students.classes?.name} (Year {link.students.classes?.year_level})
+                              </div>
+                              {link.verified_at && (
+                                <div style={{
+                                  fontSize: '12px',
+                                  color: '#94a3b8'
+                                }}>
+                                  ✓ Verified: {new Date(link.verified_at).toLocaleDateString()}
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {!link.students && (
+                            <div style={{
+                              fontSize: '13px',
+                              color: '#991b1b',
+                              background: '#fee2e2',
+                              padding: '8px 12px',
+                              borderRadius: '6px',
+                              marginTop: '8px'
+                            }}>
+                              ⚠ This student link is broken. Click Edit to reassign.
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Status Badge */}
+                        <div style={{
+                          padding: '6px 12px',
+                          background: link.students ? '#d1fae5' : '#fee2e2',
+                          color: link.students ? '#065f46' : '#991b1b',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: '700',
+                          border: `2px solid ${link.students ? '#86efac' : '#fca5a5'}`,
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {link.students ? '✓ LINKED' : '✗ BROKEN'}
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div style={{
+                        display: 'flex',
+                        gap: '8px',
+                        paddingTop: '12px',
+                        borderTop: '1px solid #e2e8f0'
+                      }}>
+                        <button
+                          onClick={() => {
+                            setEditingLink(link.id);
+                            setEditData({
+                              studentId: link.student_id || ''
+                            });
+                          }}
+                          disabled={processing === link.id || deletingLink === link.id}
+                          style={{
+                            flex: 1,
+                            padding: '10px 16px',
+                            background: '#667eea',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.target.style.background = '#5568d3'}
+                          onMouseLeave={(e) => e.target.style.background = '#667eea'}
+                        >
+                          <Edit2 style={{ width: '14px', height: '14px' }} />
+                          Edit Link
+                        </button>
+                        <button
+                          onClick={async () => {
+                            await handleDeleteLink(
+                              link.id,
+                              link.parent?.full_name,
+                              link.students?.student_name || link.child_name_submitted
+                            );
+                            // Remove from modal
+                            const updatedLinks = selectedParentLinks.filter(l => l.id !== link.id);
+                            if (updatedLinks.length === 0) {
+                              closeChildrenModal();
+                            } else {
+                              setSelectedParentLinks(updatedLinks);
+                            }
+                          }}
+                          disabled={processing === link.id || deletingLink === link.id}
+                          style={{
+                            flex: 1,
+                            padding: '10px 16px',
+                            background: '#ef4444',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s',
+                            opacity: deletingLink === link.id ? 0.5 : 1
+                          }}
+                          onMouseEnter={(e) => e.target.style.background = '#dc2626'}
+                          onMouseLeave={(e) => e.target.style.background = '#ef4444'}
+                        >
+                          <Trash2 style={{ width: '14px', height: '14px' }} />
+                          {deletingLink === link.id ? 'Deleting...' : 'Delete Link'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              marginTop: '24px',
+              paddingTop: '16px',
+              borderTop: '2px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={closeChildrenModal}
+                style={{
+                  padding: '12px 24px',
+                  background: '#667eea',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.background = '#5568d3'}
+                onMouseLeave={(e) => e.target.style.background = '#667eea'}
+              >
+                Close
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
