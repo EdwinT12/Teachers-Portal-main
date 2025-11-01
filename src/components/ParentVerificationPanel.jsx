@@ -1284,25 +1284,29 @@ const ParentVerificationPanel = () => {
               >
                 {editingLink === link.id ? (
                   // Edit Mode
-                  <div>
+                  <div style={{ width: '100%', boxSizing: 'border-box' }}>
                     <div style={{
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'flex-start',
-                      marginBottom: '16px'
+                      marginBottom: window.innerWidth < 768 ? '12px' : '16px',
+                      flexWrap: 'wrap',
+                      gap: '8px'
                     }}>
-                      <div>
+                      <div style={{ flex: '1', minWidth: window.innerWidth < 768 ? '100%' : 'auto' }}>
                         <h4 style={{
-                          fontSize: '16px',
+                          fontSize: window.innerWidth < 768 ? '15px' : '16px',
                           fontWeight: '700',
                           color: '#1e293b',
-                          marginBottom: '4px'
+                          marginBottom: '4px',
+                          wordBreak: 'break-word'
                         }}>
                           Editing: {link.parent?.full_name}
                         </h4>
                         <div style={{
-                          fontSize: '13px',
-                          color: '#64748b'
+                          fontSize: window.innerWidth < 768 ? '12px' : '13px',
+                          color: '#64748b',
+                          wordBreak: 'break-word'
                         }}>
                           {link.parent?.email}
                         </div>
@@ -1311,15 +1315,17 @@ const ParentVerificationPanel = () => {
 
                     <div style={{
                       display: 'grid',
-                      gridTemplateColumns: '1fr 2fr auto',
-                      gap: '16px',
-                      alignItems: 'end'
+                      gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 2fr auto',
+                      gap: window.innerWidth < 768 ? '12px' : '16px',
+                      alignItems: window.innerWidth < 768 ? 'stretch' : 'end',
+                      width: '100%',
+                      boxSizing: 'border-box'
                     }}>
                       {/* Year Group Selector */}
-                      <div>
+                      <div style={{ width: '100%', boxSizing: 'border-box' }}>
                         <label style={{
                           display: 'block',
-                          fontSize: '14px',
+                          fontSize: window.innerWidth < 768 ? '13px' : '14px',
                           fontWeight: '600',
                           color: '#475569',
                           marginBottom: '8px'
@@ -1335,13 +1341,17 @@ const ParentVerificationPanel = () => {
                           })}
                           style={{
                             width: '100%',
-                            padding: '10px 14px',
-                            fontSize: '14px',
+                            padding: window.innerWidth < 768 ? '8px 12px' : '10px 14px',
+                            fontSize: window.innerWidth < 768 ? '13px' : '14px',
                             border: '2px solid #e2e8f0',
                             borderRadius: '8px',
                             outline: 'none',
                             cursor: 'pointer',
-                            background: 'white'
+                            background: 'white',
+                            boxSizing: 'border-box',
+                            WebkitAppearance: 'none',
+                            MozAppearance: 'none',
+                            appearance: 'none'
                           }}
                         >
                           <option value="">All Years</option>
@@ -1355,10 +1365,10 @@ const ParentVerificationPanel = () => {
                       </div>
 
                       {/* Student Selector */}
-                      <div>
+                      <div style={{ width: '100%', boxSizing: 'border-box' }}>
                         <label style={{
                           display: 'block',
-                          fontSize: '14px',
+                          fontSize: window.innerWidth < 768 ? '13px' : '14px',
                           fontWeight: '600',
                           color: '#475569',
                           marginBottom: '8px'
@@ -1373,13 +1383,17 @@ const ParentVerificationPanel = () => {
                           })}
                           style={{
                             width: '100%',
-                            padding: '10px 14px',
-                            fontSize: '14px',
+                            padding: window.innerWidth < 768 ? '8px 12px' : '10px 14px',
+                            fontSize: window.innerWidth < 768 ? '13px' : '14px',
                             border: '2px solid #e2e8f0',
                             borderRadius: '8px',
                             outline: 'none',
                             cursor: 'pointer',
-                            background: 'white'
+                            background: 'white',
+                            boxSizing: 'border-box',
+                            WebkitAppearance: 'none',
+                            MozAppearance: 'none',
+                            appearance: 'none'
                           }}
                         >
                           <option value="">-- Select Student --</option>
@@ -1394,47 +1408,55 @@ const ParentVerificationPanel = () => {
                       {/* Action Buttons */}
                       <div style={{
                         display: 'flex',
-                        gap: '8px'
+                        gap: window.innerWidth < 768 ? '6px' : '8px',
+                        width: '100%',
+                        boxSizing: 'border-box'
                       }}>
                         <button
                           onClick={() => handleSaveEdit(link.id)}
                           disabled={processing === link.id || !editData.studentId}
                           style={{
-                            padding: '10px 16px',
+                            padding: window.innerWidth < 768 ? '8px 14px' : '10px 16px',
                             background: editData.studentId ? '#10b981' : '#94a3b8',
                             color: 'white',
                             border: 'none',
                             borderRadius: '8px',
-                            fontSize: '14px',
+                            fontSize: window.innerWidth < 768 ? '12px' : '14px',
                             fontWeight: '600',
                             cursor: editData.studentId ? 'pointer' : 'not-allowed',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '6px',
-                            opacity: processing === link.id ? 0.5 : 1
+                            opacity: processing === link.id ? 0.5 : 1,
+                            flex: '1',
+                            justifyContent: 'center',
+                            boxSizing: 'border-box'
                           }}
                         >
-                          <Check style={{ width: '14px', height: '14px' }} />
+                          <Check style={{ width: '14px', height: '14px', flexShrink: 0 }} />
                           Save
                         </button>
                         <button
                           onClick={cancelEditing}
                           disabled={processing === link.id}
                           style={{
-                            padding: '10px 16px',
+                            padding: window.innerWidth < 768 ? '8px 14px' : '10px 16px',
                             background: '#6b7280',
                             color: 'white',
                             border: 'none',
                             borderRadius: '8px',
-                            fontSize: '14px',
+                            fontSize: window.innerWidth < 768 ? '12px' : '14px',
                             fontWeight: '600',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '6px'
+                            gap: '6px',
+                            flex: '1',
+                            justifyContent: 'center',
+                            boxSizing: 'border-box'
                           }}
                         >
-                          <X style={{ width: '14px', height: '14px' }} />
+                          <X style={{ width: '14px', height: '14px', flexShrink: 0 }} />
                           Cancel
                         </button>
                       </div>

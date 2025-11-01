@@ -30,6 +30,8 @@ const ParentDashboard = () => {
   const [pendingChildren, setPendingChildren] = useState([]);
   const [brokenLinks, setBrokenLinks] = useState([]);
   const [showAllTiles, setShowAllTiles] = useState(false);
+  const [showLeftScroll, setShowLeftScroll] = useState(false);
+  const [showRightScroll, setShowRightScroll] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -39,6 +41,25 @@ const ParentDashboard = () => {
 
     loadParentData();
   }, [user, navigate]);
+
+  // Check scroll position to show/hide scroll indicators
+  const handleTabScroll = (e) => {
+    const container = e.target;
+    const scrollLeft = container.scrollLeft;
+    const maxScroll = container.scrollWidth - container.clientWidth;
+    
+    setShowLeftScroll(scrollLeft > 10);
+    setShowRightScroll(scrollLeft < maxScroll - 10);
+  };
+
+  // Check initial scroll state
+  useEffect(() => {
+    const tabContainer = document.getElementById('tab-container');
+    if (tabContainer) {
+      const maxScroll = tabContainer.scrollWidth - tabContainer.clientWidth;
+      setShowRightScroll(maxScroll > 0);
+    }
+  }, [linkedChildren]);
 
   /**
    * Enhanced function to load parent data with resilient student matching
@@ -644,15 +665,101 @@ const ParentDashboard = () => {
         {linkedChildren.length > 0 && (
           <>
             {/* Tab Navigation */}
-            <div style={{
-              background: 'white',
-              borderRadius: '12px 12px 0 0',
-              padding: '16px 24px',
-              display: 'flex',
-              gap: '8px',
-              overflowX: 'auto',
-              borderBottom: '2px solid #e2e8f0'
-            }}>
+            <div style={{ position: 'relative' }}>
+              {/* Left Scroll Indicator */}
+              {showLeftScroll && (
+                <div style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: '60px',
+                  background: 'linear-gradient(to right, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 100%)',
+                  zIndex: 2,
+                  pointerEvents: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  paddingLeft: '8px'
+                }}>
+                  <div style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: '#667eea',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 8px rgba(102, 126, 234, 0.4)',
+                    animation: 'pulse-left 2s ease-in-out infinite'
+                  }}>
+                    <div style={{
+                      width: 0,
+                      height: 0,
+                      borderTop: '5px solid transparent',
+                      borderBottom: '5px solid transparent',
+                      borderRight: '7px solid white',
+                      marginLeft: '-2px'
+                    }} />
+                  </div>
+                </div>
+              )}
+
+              {/* Right Scroll Indicator */}
+              {showRightScroll && (
+                <div style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: '60px',
+                  background: 'linear-gradient(to left, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 100%)',
+                  zIndex: 2,
+                  pointerEvents: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  paddingRight: '8px'
+                }}>
+                  <div style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: '#667eea',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 8px rgba(102, 126, 234, 0.4)',
+                    animation: 'pulse-right 2s ease-in-out infinite'
+                  }}>
+                    <div style={{
+                      width: 0,
+                      height: 0,
+                      borderTop: '5px solid transparent',
+                      borderBottom: '5px solid transparent',
+                      borderLeft: '7px solid white',
+                      marginRight: '-2px'
+                    }} />
+                  </div>
+                </div>
+              )}
+
+              <div 
+                id="tab-container"
+                onScroll={handleTabScroll}
+                style={{
+                  background: 'white',
+                  borderRadius: '12px 12px 0 0',
+                  padding: '16px 24px',
+                  display: 'flex',
+                  gap: '8px',
+                  overflowX: 'auto',
+                  borderBottom: '2px solid #e2e8f0',
+                  scrollBehavior: 'smooth',
+                  WebkitOverflowScrolling: 'touch',
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: '#667eea #e2e8f0'
+                }}
+              >
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -691,7 +798,53 @@ const ParentDashboard = () => {
                   </button>
                 );
               })}
+              </div>
             </div>
+
+            {/* Add CSS animations for scroll indicators */}
+            <style>
+              {`
+                @keyframes pulse-left {
+                  0%, 100% {
+                    transform: translateX(0);
+                    opacity: 0.8;
+                  }
+                  50% {
+                    transform: translateX(-4px);
+                    opacity: 1;
+                  }
+                }
+                
+                @keyframes pulse-right {
+                  0%, 100% {
+                    transform: translateX(0);
+                    opacity: 0.8;
+                  }
+                  50% {
+                    transform: translateX(4px);
+                    opacity: 1;
+                  }
+                }
+                
+                #tab-container::-webkit-scrollbar {
+                  height: 6px;
+                }
+                
+                #tab-container::-webkit-scrollbar-track {
+                  background: #e2e8f0;
+                  border-radius: 3px;
+                }
+                
+                #tab-container::-webkit-scrollbar-thumb {
+                  background: #667eea;
+                  border-radius: 3px;
+                }
+                
+                #tab-container::-webkit-scrollbar-thumb:hover {
+                  background: #5568d3;
+                }
+              `}
+            </style>
 
             {/* Tab Content */}
             <div style={{
