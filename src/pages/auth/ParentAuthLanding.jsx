@@ -11,6 +11,8 @@ const ParentAuthLanding = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [authMode, setAuthMode] = useState('signin'); // 'signin' or 'signup'
   const [showPassword, setShowPassword] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [countdown, setCountdown] = useState(5);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -49,6 +51,19 @@ const ParentAuthLanding = () => {
     if (window.studentData) delete window.studentData;
     if (window.csvData) delete window.csvData;
   }, [user, navigate]);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (showVerificationModal && countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (showVerificationModal && countdown === 0) {
+      setShowVerificationModal(false);
+      setAuthMode('signin');
+    }
+  }, [showVerificationModal, countdown]);
 
   const handleEmailPasswordAuth = async (e) => {
     e.preventDefault();
@@ -121,8 +136,20 @@ const ParentAuthLanding = () => {
               });
           }
 
-          toast.success('Account created! Please check your email to verify your account.');
-          // Don't navigate yet - they need to verify email first
+          // Sign out the user immediately so they must verify email first
+          await supabase.auth.signOut();
+          
+          // Show verification modal with countdown
+          setShowVerificationModal(true);
+          setCountdown(5);
+          
+          // Keep the email so they can sign in easily
+          setFormData({
+            email: formData.email,
+            password: '',
+            confirmPassword: '',
+            fullName: ''
+          });
         }
       } else {
         // Sign in with email and password
@@ -664,6 +691,130 @@ const ParentAuthLanding = () => {
         </p>
       </div>
 
+      {/* Email Verification Modal */}
+      {showVerificationModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          animation: 'fadeIn 0.3s ease-out'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '24px',
+            padding: '48px',
+            maxWidth: '480px',
+            width: '90%',
+            boxShadow: '0 24px 48px rgba(0, 0, 0, 0.3)',
+            textAlign: 'center',
+            animation: 'scaleIn 0.4s ease-out',
+            position: 'relative'
+          }}>
+            {/* Success Icon */}
+            <div style={{
+              width: '80px',
+              height: '80px',
+              margin: '0 auto 24px',
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 8px 24px rgba(16, 185, 129, 0.4)',
+              animation: 'scaleIn 0.5s ease-out 0.2s both'
+            }}>
+              <CheckCircle size={48} color="white" strokeWidth={2.5} />
+            </div>
+
+            {/* Title */}
+            <h2 style={{
+              color: '#1e293b',
+              fontSize: '28px',
+              fontWeight: '800',
+              marginBottom: '16px',
+              lineHeight: '1.2'
+            }}>
+              Account Created!
+            </h2>
+
+            {/* Message */}
+            <p style={{
+              color: '#475569',
+              fontSize: '16px',
+              lineHeight: '1.6',
+              marginBottom: '24px',
+              fontWeight: '500'
+            }}>
+              Please check your email and click the verification link to activate your account.
+            </p>
+
+            {/* Email Icon */}
+            <div style={{
+              background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+              padding: '20px',
+              borderRadius: '16px',
+              marginBottom: '24px',
+              border: '2px solid #bfdbfe'
+            }}>
+              <Mail size={32} color="#0ea5e9" style={{ marginBottom: '12px' }} />
+              <p style={{
+                color: '#1e40af',
+                fontSize: '14px',
+                fontWeight: '600',
+                margin: 0
+              }}>
+                Verification email sent to:<br />
+                <span style={{ color: '#0ea5e9', wordBreak: 'break-all' }}>
+                  {formData.email}
+                </span>
+              </p>
+            </div>
+
+            {/* Countdown */}
+            <div style={{
+              background: '#f8fafc',
+              padding: '16px',
+              borderRadius: '12px',
+              marginBottom: '8px'
+            }}>
+              <p style={{
+                color: '#64748b',
+                fontSize: '14px',
+                margin: 0,
+                fontWeight: '600'
+              }}>
+                Redirecting to sign in page in{' '}
+                <span style={{
+                  display: 'inline-block',
+                  backgroundColor: '#0ea5e9',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  lineHeight: '32px',
+                  textAlign: 'center',
+                  fontSize: '16px',
+                  fontWeight: '700',
+                  margin: '0 4px',
+                  animation: 'pulse 1s ease-in-out infinite'
+                }}>
+                  {countdown}
+                </span>
+                {countdown === 1 ? 'second' : 'seconds'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>
         {`
           @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -706,6 +857,17 @@ const ParentAuthLanding = () => {
             to {
               opacity: 1;
               transform: scale(1);
+            }
+          }
+          
+          @keyframes pulse {
+            0%, 100% {
+              transform: scale(1);
+              box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.7);
+            }
+            50% {
+              transform: scale(1.05);
+              box-shadow: 0 0 0 8px rgba(14, 165, 233, 0);
             }
           }
         `}
