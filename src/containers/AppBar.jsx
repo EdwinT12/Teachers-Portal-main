@@ -104,6 +104,21 @@ function ResponsiveAppBar() {
     navigate('/teacher/lesson-plans');
   };
 
+  const handleLogoClick = () => {
+    if (!profile) return;
+    
+    // Determine dashboard based on role
+    if (profile.role === 'admin') {
+      navigate('/teacher'); // Admin goes to teacher dashboard
+    } else if (profile.role === 'parent') {
+      navigate('/parent'); // Parent goes to parent dashboard
+    } else if (profile.role === 'teacher') {
+      navigate('/teacher'); // Teacher goes to teacher dashboard
+    } else {
+      navigate('/'); // Fallback to home
+    }
+  };
+
   if (location.pathname.startsWith('/auth')) {
     return null;
   }
@@ -150,7 +165,7 @@ function ResponsiveAppBar() {
             flexShrink: 0,
             minWidth: 'fit-content'
           }}
-          onClick={() => handleNavigation('/teacher')}
+          onClick={handleLogoClick}
         >
           <div style={{
             width: '52px',
@@ -402,9 +417,9 @@ function ResponsiveAppBar() {
                   {/* Navigation Links */}
                   {profile.role === 'admin' ? (
                     <>
+                      {/* Admin Dashboard */}
                       <button
                         onClick={() => handleNavigation('/admin')}
-            
                         style={{
                           width: '100%',
                           padding: '12px 16px',
@@ -429,6 +444,36 @@ function ResponsiveAppBar() {
                         <Shield style={{ width: '16px', height: '16px' }} />
                         Admin Dashboard
                       </button>
+
+                      {/* Parent Dashboard for Dual Role Admins */}
+                      {profile.roles && Array.isArray(profile.roles) && profile.roles.includes('parent') && (
+                        <button
+                          onClick={() => handleNavigation('/parent')}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            border: 'none',
+                            backgroundColor: 'white',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            textAlign: 'left',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            transition: 'background-color 0.2s ease',
+                            borderBottom: '1px solid #f3f4f6'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#f9fafb';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'white';
+                          }}
+                        >
+                          <User style={{ width: '16px', height: '16px' }} />
+                          Parent Dashboard
+                        </button>
+                      )}
 
                       <button
                         onClick={() => handleNavigation('/teacher/extended-dashboard')}
@@ -510,8 +555,38 @@ function ResponsiveAppBar() {
                         <HelpCircle style={{ width: '16px', height: '16px' }} />
                         Help
                       </button>
+                    </>
+                  ) : profile.role === 'teacher' ? (
+                    <>
+                      {/* Teacher Dashboard */}
+                      <button
+                        onClick={() => handleNavigation('/teacher')}
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          border: 'none',
+                          backgroundColor: 'white',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          textAlign: 'left',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          transition: 'background-color 0.2s ease',
+                          borderBottom: '1px solid #f3f4f6'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#f9fafb';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'white';
+                        }}
+                      >
+                        <Home style={{ width: '16px', height: '16px' }} />
+                        Dashboard
+                      </button>
 
-                      {/* Parent Dashboard for Dual Role Users */}
+                      {/* Parent Dashboard for Dual Role Teachers */}
                       {profile.roles && Array.isArray(profile.roles) && profile.roles.includes('parent') && (
                         <button
                           onClick={() => handleNavigation('/parent')}
@@ -540,35 +615,6 @@ function ResponsiveAppBar() {
                           Parent Dashboard
                         </button>
                       )}
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => handleNavigation('/teacher')}
-                        style={{
-                          width: '100%',
-                          padding: '12px 16px',
-                          border: 'none',
-                          backgroundColor: 'white',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          textAlign: 'left',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          transition: 'background-color 0.2s ease',
-                          borderBottom: '1px solid #f3f4f6'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#f9fafb';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'white';
-                        }}
-                      >
-                        <Home style={{ width: '16px', height: '16px' }} />
-                        Dashboard
-                      </button>
 
                       {profile.default_class_id && (
                         <>
@@ -654,38 +700,38 @@ function ResponsiveAppBar() {
                         <HelpCircle style={{ width: '16px', height: '16px' }} />
                         Help
                       </button>
-
-                      {/* Parent Dashboard for Dual Role Users */}
-                      {profile.roles && Array.isArray(profile.roles) && profile.roles.includes('parent') && (
-                        <button
-                          onClick={() => handleNavigation('/parent')}
-                          style={{
-                            width: '100%',
-                            padding: '12px 16px',
-                            border: 'none',
-                            backgroundColor: 'white',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                            textAlign: 'left',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            transition: 'background-color 0.2s ease',
-                            borderBottom: '1px solid #f3f4f6'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#f9fafb';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'white';
-                          }}
-                        >
-                          <User style={{ width: '16px', height: '16px' }} />
-                          Parent Dashboard
-                        </button>
-                      )}
                     </>
-                  )}
+                  ) : profile.role === 'parent' ? (
+                    <>
+                      {/* Parent Dashboard Only */}
+                      <button
+                        onClick={() => handleNavigation('/parent')}
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          border: 'none',
+                          backgroundColor: 'white',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          textAlign: 'left',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          transition: 'background-color 0.2s ease',
+                          borderBottom: '1px solid #f3f4f6'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#f9fafb';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'white';
+                        }}
+                      >
+                        <User style={{ width: '16px', height: '16px' }} />
+                        Parent Dashboard
+                      </button>
+                    </>
+                  ) : null}
 
                   {/* Sign Out */}
                   <button
