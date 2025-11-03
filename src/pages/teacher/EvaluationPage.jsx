@@ -293,8 +293,11 @@ const EvaluationPage = () => {
                 eval_student_id: evalStudent.id,
                 teacher_id: user.id,
                 class_id: selectedClassId,
+                student_name: evalStudent.student_name,        // ADD THIS
+                stored_class_id: selectedClassId,              // ADD THIS
                 chapter_number: selectedChapter,
                 category: category.key,
+                stored_category: category.key,                 // ADD THIS
                 rating: evaluation.rating,
                 teacher_notes: studentNotes[evalStudent.id] || null,
                 synced_to_sheets: false

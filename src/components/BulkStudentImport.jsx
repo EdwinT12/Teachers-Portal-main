@@ -3,8 +3,10 @@ import { AuthContext } from '../context/AuthContext';
 import supabase from '../utils/supabase';
 import { readSheetData, getSpreadsheetMetadata } from '../utils/googleSheetsAPI';
 import { remapParentStudentLinks } from '../utils/remapParentLinks';
+import { remapAbsenceRequests, getAbsenceRequestsStats } from '../utils/remapAbsenceRequests';
+import { remapLessonEvaluations, getLessonEvaluationsStats } from '../utils/remapLessonEvaluations';
 import toast from 'react-hot-toast';
-import { Trash2, RefreshCw, AlertCircle } from 'lucide-react';
+import { Trash2, RefreshCw, AlertCircle, FileText, BookOpen } from 'lucide-react';
 
 const BulkStudentImport = () => {
   const { user } = useContext(AuthContext);
@@ -15,9 +17,16 @@ const BulkStudentImport = () => {
   const [attendanceSheets, setAttendanceSheets] = useState([]);
   const [evaluationSheets, setEvaluationSheets] = useState([]);
   const [importResults, setImportResults] = useState(null);
-  const [studentCounts, setStudentCounts] = useState({ students: 0, evalStudents: 0 });
+  const [studentCounts, setStudentCounts] = useState({ 
+    students: 0, 
+    evalStudents: 0, 
+    absenceRequests: 0,
+    lessonEvaluations: 0
+  });
+  const [absenceStats, setAbsenceStats] = useState(null);
+  const [evaluationStats, setEvaluationStats] = useState(null);
   
-  // NEW: Progress tracking states
+  // Progress tracking states
   const [progress, setProgress] = useState({
     currentStep: '',
     percentage: 0,
@@ -27,7 +36,7 @@ const BulkStudentImport = () => {
     details: []
   });
 
-  // Load student counts
+  // Load student counts, absence request stats, and evaluation stats
   const loadStudentCounts = async () => {
     try {
       const { count: studentsCount, error: studentsError } = await supabase
@@ -38,13 +47,30 @@ const BulkStudentImport = () => {
         .from('eval_students')
         .select('*', { count: 'exact', head: true });
 
+      const { count: absenceRequestsCount, error: absenceError } = await supabase
+        .from('absence_requests')
+        .select('*', { count: 'exact', head: true });
+
+      const { count: evaluationsCount, error: evaluationsError } = await supabase
+        .from('lesson_evaluations')
+        .select('*', { count: 'exact', head: true });
+
       if (studentsError) throw studentsError;
       if (evalError) throw evalError;
 
       setStudentCounts({
         students: studentsCount || 0,
-        evalStudents: evalStudentsCount || 0
+        evalStudents: evalStudentsCount || 0,
+        absenceRequests: absenceRequestsCount || 0,
+        lessonEvaluations: evaluationsCount || 0
       });
+
+      // Load detailed stats
+      const absStats = await getAbsenceRequestsStats();
+      setAbsenceStats(absStats);
+
+      const evalStats = await getLessonEvaluationsStats();
+      setEvaluationStats(evalStats);
     } catch (error) {
       console.error('Error loading student counts:', error);
     }
@@ -410,6 +436,11 @@ const BulkStudentImport = () => {
     try {
       console.log(`Importing historical evaluations from ${sheetName}...`);
       
+      // IMPORTANT: When creating evaluation records, we MUST include student_name, 
+      // stored_class_id, and stored_category fields. These fields allow the system 
+      // to remap evaluations back to students after bulk imports (when students get 
+      // new UUIDs). Without these fields, teacher notes and evaluations will be lost!
+      
       // Read the evaluation sheet structure:
       // Row 2: Class name (C), Mid Term Total (D), Final Term Total (E), Chapter numbers (F+)
       // Row 3: Student header (C), Totals (D,E), Category headers D/B/HW/AP repeating (F+)
@@ -526,8 +557,11 @@ const BulkStudentImport = () => {
                 eval_student_id: matchingStudent.id,
                 teacher_id: user.id,
                 class_id: classId,
+                student_name: matchingStudent.student_name,        // ADD: For remapping after bulk import
+                stored_class_id: classId,                          // ADD: For remapping after bulk import
                 chapter_number: chapterCol.chapterNumber,
                 category: category,
+                stored_category: category,                         // ADD: For remapping after bulk import
                 rating: cleanedValue,
                 teacher_notes: null,
                 synced_to_sheets: true
@@ -556,15 +590,18 @@ const BulkStudentImport = () => {
 
       if (attendanceError) throw attendanceError;
 
-      console.log('Clearing historical evaluation records...');
+      console.log('Clearing historical evaluation records (preserving teacher notes)...');
+      
+      // IMPORTANT: Only delete evaluations WITHOUT teacher notes
+      // This preserves any manually added teacher comments
       const { error: evaluationError } = await supabase
         .from('lesson_evaluations')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+        .or('teacher_notes.is.null,teacher_notes.eq.');
 
       if (evaluationError) throw evaluationError;
 
-      console.log('Successfully cleared historical data (students preserved)');
+      console.log('Successfully cleared historical data (students & teacher notes preserved)');
       return true;
     } catch (error) {
       console.error('Error clearing historical data:', error);
@@ -572,7 +609,7 @@ const BulkStudentImport = () => {
     }
   };
 
-  // NEW: Helper function to update progress
+  // Helper function to update progress
   const updateProgress = (currentStep, percentage, details = null, estimatedTime = '') => {
     setProgress(prev => ({
       ...prev,
@@ -586,6 +623,28 @@ const BulkStudentImport = () => {
 
   // Import historical data for all classes
   const importAllHistoricalData = async () => {
+    // Get count of evaluations with teacher notes
+    const { count: notesCount } = await supabase
+      .from('lesson_evaluations')
+      .select('*', { count: 'exact', head: true })
+      .not('teacher_notes', 'is', null)
+      .neq('teacher_notes', '');
+
+    // Warning confirmation
+    const warningMessage = notesCount > 0
+      ? `⚠️ WARNING: This will clear historical data from Google Sheets.\n\n` +
+        `✅ GOOD NEWS: ${notesCount} evaluation(s) with teacher notes will be PRESERVED.\n` +
+        `❌ All other evaluations will be deleted and re-imported from sheets.\n\n` +
+        `This is meant for initial setup or refreshing data from Google Sheets.\n` +
+        `Are you sure you want to continue?`
+      : `⚠️ WARNING: This will DELETE all historical attendance and evaluation data, then re-import from Google Sheets.\n\n` +
+        `This is meant for initial setup or refreshing data.\n` +
+        `Are you sure you want to continue?`;
+
+    if (!window.confirm(warningMessage)) {
+      return;
+    }
+
     try {
       setImporting(true);
       const startTime = Date.now();
@@ -759,13 +818,16 @@ const BulkStudentImport = () => {
               }
 
               if (existing) {
-                // Update existing record
+                // Update existing record (including remapping fields for consistency)
                 const { error: updateError } = await supabase
                   .from('lesson_evaluations')
                   .update({
                     rating: record.rating,
                     teacher_id: record.teacher_id,
-                    synced_to_sheets: record.synced_to_sheets
+                    synced_to_sheets: record.synced_to_sheets,
+                    student_name: record.student_name,        // Ensure remapping fields are current
+                    stored_class_id: record.stored_class_id,  // Ensure remapping fields are current
+                    stored_category: record.stored_category   // Ensure remapping fields are current
                   })
                   .eq('id', existing.id);
 
@@ -818,6 +880,7 @@ const BulkStudentImport = () => {
     }
   };
 
+  // MAIN IMPORT FUNCTION: Clear all students and re-import with absence requests AND evaluation remapping
   const handleUpdateSheet = async () => {
     if (attendanceSheets.length === 0 || evaluationSheets.length === 0) {
       toast.error('Please load sheet tabs first');
@@ -828,7 +891,11 @@ const BulkStudentImport = () => {
       `⚠️ WARNING: This will DELETE ALL existing students from both tables and re-import from sheets.\n\n` +
       `Current data:\n` +
       `- Attendance students: ${studentCounts.students}\n` +
-      `- Evaluation students: ${studentCounts.evalStudents}\n\n` +
+      `- Evaluation students: ${studentCounts.evalStudents}\n` +
+      `- Absence requests: ${studentCounts.absenceRequests}\n` +
+      `- Lesson evaluations: ${studentCounts.lessonEvaluations}\n\n` +
+      `✅ Absence requests will be PRESERVED and automatically remapped.\n` +
+      `✅ Lesson evaluations and teacher notes will be PRESERVED and automatically remapped.\n\n` +
       `Are you sure you want to continue?`
     );
 
@@ -842,29 +909,60 @@ const BulkStudentImport = () => {
     setProgress({
       currentStep: 'Starting import...',
       percentage: 0,
-      totalSteps: attendanceSheets.length + evaluationSheets.length + 1,
+      totalSteps: attendanceSheets.length + evaluationSheets.length + 4, // +4 for clear, parent remap, absence remap, eval remap
       completedSteps: 0,
       estimatedTimeRemaining: 'Calculating...',
       details: []
     });
 
     try {
-      // Step 1: Clear all existing students
+      // Step 1: Show absence requests and evaluations before deletion
+      updateProgress('Checking data to preserve...', 2);
+      const statsBeforeDelete = await getAbsenceRequestsStats();
+      const evalStatsBeforeDelete = await getLessonEvaluationsStats();
+      
+      if (statsBeforeDelete && statsBeforeDelete.total > 0) {
+        console.log(`📋 Found ${statsBeforeDelete.total} absence requests that will be preserved`);
+        toast.success(`📋 ${statsBeforeDelete.total} absence requests will be preserved`, { duration: 3000 });
+      }
+      
+      if (evalStatsBeforeDelete && evalStatsBeforeDelete.total > 0) {
+        console.log(`📝 Found ${evalStatsBeforeDelete.total} lesson evaluations (${evalStatsBeforeDelete.with_notes} with notes) that will be preserved`);
+        toast.success(`📝 ${evalStatsBeforeDelete.total} evaluations (${evalStatsBeforeDelete.with_notes} with notes) will be preserved`, { duration: 3000 });
+      }
+
+      // Step 2: Clear all existing students
+      // This will set student_id to NULL in absence_requests and eval_student_id to NULL in lesson_evaluations
+      // but keep the student_name and class_id for remapping
       updateProgress('Clearing existing student data...', 5);
       toast.loading('Clearing existing student data...');
       await clearAllStudents();
       toast.dismiss();
-      toast.success('Existing data cleared');
+      toast.success('Existing data cleared (absence requests & evaluations preserved)');
       
-      updateProgress('Data cleared successfully', 10);
+      updateProgress('Data cleared successfully', 8);
 
-      // Step 2: Import attendance students
+      // Step 3: Verify data is orphaned but not deleted
+      const statsAfterDelete = await getAbsenceRequestsStats();
+      const evalStatsAfterDelete = await getLessonEvaluationsStats();
+      console.log('Absence requests after deletion:', statsAfterDelete);
+      console.log('Lesson evaluations after deletion:', evalStatsAfterDelete);
+      
+      if (statsAfterDelete && statsAfterDelete.orphaned > 0) {
+        console.log(`✓ ${statsAfterDelete.orphaned} absence requests are orphaned and ready for remapping`);
+      }
+      
+      if (evalStatsAfterDelete && evalStatsAfterDelete.orphaned > 0) {
+        console.log(`✓ ${evalStatsAfterDelete.orphaned} lesson evaluations are orphaned and ready for remapping`);
+      }
+
+      // Step 4: Import attendance students
       toast.loading('Importing attendance students...');
       const totalSheets = attendanceSheets.length + evaluationSheets.length;
       let processedSheets = 0;
 
       for (const sheet of attendanceSheets) {
-        const progressPercent = 10 + Math.round((processedSheets / totalSheets) * 70);
+        const progressPercent = 10 + Math.round((processedSheets / totalSheets) * 55);
         const elapsed = (Date.now() - startTime) / 1000;
         const estimatedTotal = processedSheets > 0 ? (elapsed / processedSheets) * totalSheets : totalSheets * 3;
         const remaining = Math.max(0, estimatedTotal - elapsed);
@@ -899,12 +997,12 @@ const BulkStudentImport = () => {
         processedSheets++;
       }
 
-      // Step 3: Import evaluation students
+      // Step 5: Import evaluation students
       toast.dismiss();
       toast.loading('Importing evaluation students...');
       
       for (const sheet of evaluationSheets) {
-        const progressPercent = 10 + Math.round((processedSheets / totalSheets) * 70);
+        const progressPercent = 10 + Math.round((processedSheets / totalSheets) * 55);
         const elapsed = (Date.now() - startTime) / 1000;
         const estimatedTotal = (elapsed / processedSheets) * totalSheets;
         const remaining = Math.max(0, estimatedTotal - elapsed);
@@ -939,11 +1037,11 @@ const BulkStudentImport = () => {
         processedSheets++;
       }
 
-      updateProgress('Finalizing import...', 90);
+      updateProgress('Students imported successfully', 70);
       setImportResults(results);
 
-      // Step 4: Remap parent-student relationships
-      updateProgress('Re-linking parent-child relationships...', 95);
+      // Step 6: Remap parent-student relationships
+      updateProgress('Re-linking parent-child relationships...', 75);
       toast.dismiss();
       toast.loading('Re-linking parent-child relationships...');
       
@@ -960,7 +1058,75 @@ const BulkStudentImport = () => {
         }
       } catch (error) {
         console.error('Error remapping parent-student links:', error);
-        toast.error('Warning: Could not re-link some parent-child relationships. Please check the Parent Verification panel.');
+        toast.error('Warning: Could not re-link some parent-child relationships.');
+      }
+
+      // Step 7: Remap absence requests to new student IDs
+      updateProgress('Re-linking absence requests...', 85);
+      toast.dismiss();
+      toast.loading('Re-linking absence requests to new student records...');
+      
+      try {
+        const absenceRemapResult = await remapAbsenceRequests();
+        console.log('Absence request remapping result:', absenceRemapResult);
+        
+        if (absenceRemapResult.remapped_count > 0) {
+          toast.success(
+            `✅ Successfully remapped ${absenceRemapResult.remapped_count} absence request${absenceRemapResult.remapped_count > 1 ? 's' : ''}!`,
+            { duration: 5000 }
+          );
+        }
+        
+        if (absenceRemapResult.failed_count > 0) {
+          toast.error(
+            `⚠️ ${absenceRemapResult.failed_count} absence request${absenceRemapResult.failed_count > 1 ? 's' : ''} could not be remapped. ` +
+            `This may be because the student was removed from the Google Sheet.`,
+            { duration: 7000 }
+          );
+        }
+
+        if (absenceRemapResult.remapped_count === 0 && absenceRemapResult.failed_count === 0) {
+          console.log('No absence requests needed remapping');
+        }
+      } catch (error) {
+        console.error('Error remapping absence requests:', error);
+        toast.error('Warning: Some absence requests could not be remapped. Please check the absence requests panel.');
+      }
+
+      // Step 8: NEW - Remap lesson evaluations (including teacher notes)
+      updateProgress('Re-linking lesson evaluations and teacher notes...', 92);
+      toast.dismiss();
+      toast.loading('Re-linking lesson evaluations and preserving teacher notes...');
+      
+      try {
+        const evalRemapResult = await remapLessonEvaluations();
+        console.log('Lesson evaluation remapping result:', evalRemapResult);
+        
+        if (evalRemapResult.remapped_count > 0) {
+          const notesMsg = evalRemapResult.notes_preserved > 0 
+            ? ` (${evalRemapResult.notes_preserved} with teacher notes preserved!)` 
+            : '';
+          
+          toast.success(
+            `✅ Successfully remapped ${evalRemapResult.remapped_count} lesson evaluation${evalRemapResult.remapped_count > 1 ? 's' : ''}${notesMsg}`,
+            { duration: 5000 }
+          );
+        }
+        
+        if (evalRemapResult.failed_count > 0) {
+          toast.error(
+            `⚠️ ${evalRemapResult.failed_count} lesson evaluation${evalRemapResult.failed_count > 1 ? 's' : ''} could not be remapped. ` +
+            `This may be because the student was removed from the Google Sheet.`,
+            { duration: 7000 }
+          );
+        }
+
+        if (evalRemapResult.remapped_count === 0 && evalRemapResult.failed_count === 0) {
+          console.log('No lesson evaluations needed remapping');
+        }
+      } catch (error) {
+        console.error('Error remapping lesson evaluations:', error);
+        toast.error('Warning: Some lesson evaluations could not be remapped.');
       }
 
       const successCount = results.filter(r => r.success).length;
@@ -993,7 +1159,7 @@ const BulkStudentImport = () => {
       padding: '20px',
       position: 'relative'
     }}>
-      {/* NEW: Loading Modal */}
+      {/* Loading Modal */}
       {importing && (
         <div style={{
           position: 'fixed',
@@ -1001,12 +1167,11 @@ const BulkStudentImport = () => {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
           zIndex: 9999,
-          backdropFilter: 'blur(4px)'
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center'
         }}>
           <div style={{
             backgroundColor: 'white',
@@ -1014,167 +1179,339 @@ const BulkStudentImport = () => {
             padding: '32px',
             maxWidth: '500px',
             width: '90%',
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-            animation: 'slideIn 0.3s ease-out'
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
           }}>
-            {/* Loading Spinner */}
             <div style={{
-              display: 'flex',
-              justifyContent: 'center',
-              marginBottom: '24px'
+              width: '100%',
+              backgroundColor: '#e0e7ff',
+              borderRadius: '8px',
+              height: '12px',
+              overflow: 'hidden',
+              marginBottom: '20px'
             }}>
               <div style={{
-                width: '60px',
-                height: '60px',
-                border: '4px solid #e5e7eb',
-                borderTop: '4px solid #3b82f6',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite'
-              }} />
+                width: `${progress.percentage}%`,
+                backgroundColor: '#667eea',
+                height: '100%',
+                transition: 'width 0.3s ease',
+                borderRadius: '8px'
+              }}></div>
             </div>
-
-            {/* Progress Title */}
+            
             <h3 style={{
-              fontSize: '20px',
+              fontSize: '18px',
               fontWeight: '700',
               color: '#1a1a1a',
-              marginBottom: '8px',
-              textAlign: 'center'
+              marginBottom: '8px'
             }}>
-              Import in Progress
+              {progress.currentStep}
             </h3>
-
-            {/* Current Step */}
+            
             <p style={{
               fontSize: '14px',
               color: '#666',
-              marginBottom: '20px',
-              textAlign: 'center',
-              minHeight: '40px'
+              marginBottom: '4px'
             }}>
-              {progress.currentStep}
+              Progress: {progress.percentage}%
             </p>
-
-            {/* Progress Bar */}
-            <div style={{
-              width: '100%',
-              height: '12px',
-              backgroundColor: '#e5e7eb',
-              borderRadius: '6px',
-              overflow: 'hidden',
-              marginBottom: '12px'
-            }}>
-              <div style={{
-                height: '100%',
-                backgroundColor: '#3b82f6',
-                width: `${progress.percentage}%`,
-                transition: 'width 0.3s ease',
-                borderRadius: '6px',
-                background: 'linear-gradient(90deg, #3b82f6, #60a5fa)'
-              }} />
-            </div>
-
-            {/* Progress Stats */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: '13px',
-              color: '#666',
-              marginBottom: '20px'
-            }}>
-              <span style={{ fontWeight: '600' }}>{progress.percentage}% Complete</span>
-              <span>{progress.estimatedTimeRemaining}</span>
-            </div>
-
-            {/* Step Counter */}
-            <div style={{
-              textAlign: 'center',
-              fontSize: '12px',
-              color: '#888',
-              padding: '12px',
-              backgroundColor: '#f8f9fa',
-              borderRadius: '8px'
-            }}>
-              Processing {progress.completedSteps} of {progress.totalSteps} steps
-            </div>
-
-            {/* Info Message */}
-            <div style={{
-              marginTop: '20px',
-              padding: '12px',
-              backgroundColor: '#dbeafe',
-              borderRadius: '8px',
-              fontSize: '12px',
-              color: '#1e40af',
-              textAlign: 'center'
-            }}>
-              ℹ️ Please don't close this window. Large imports may take several minutes.
-            </div>
+            
+            {progress.estimatedTimeRemaining && (
+              <p style={{
+                fontSize: '13px',
+                color: '#888',
+                marginTop: '8px'
+              }}>
+                {progress.estimatedTimeRemaining}
+              </p>
+            )}
           </div>
         </div>
       )}
 
-      {/* Animations */}
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateY(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
-
-      <h2 style={{
-        fontSize: '24px',
-        fontWeight: '700',
+      {/* Title */}
+      <h1 style={{
+        fontSize: '32px',
+        fontWeight: '800',
         color: '#1a1a1a',
-        marginBottom: '24px'
+        marginBottom: '8px'
       }}>
-        Bulk Student Import from Google Sheets
-      </h2>
+        Bulk Student Import
+      </h1>
 
-      {/* Current Student Counts */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '16px',
+      <p style={{
+        fontSize: '14px',
+        color: '#666',
         marginBottom: '24px'
       }}>
-        <div style={{
-          padding: '16px',
-          backgroundColor: '#f0f9ff',
-          borderRadius: '8px',
-          border: '1px solid #bfdbfe'
+        Import students from Google Sheets into both attendance and evaluation systems
+      </p>
+
+      {/* Current Database Stats */}
+      <div style={{
+        backgroundColor: '#f8f9fa',
+        padding: '20px',
+        borderRadius: '8px',
+        marginBottom: '20px',
+        border: '1px solid #e5e7eb',
+        overflow: 'hidden'
+      }}>
+        <h3 style={{
+          fontSize: '14px',
+          fontWeight: '600',
+          color: '#1a1a1a',
+          marginBottom: '16px'
         }}>
-          <div style={{ fontSize: '14px', color: '#1e40af', marginBottom: '4px' }}>
-            📊 Attendance Students
-          </div>
-          <div style={{ fontSize: '28px', fontWeight: '700', color: '#1e3a8a' }}>
-            {studentCounts.students}
-          </div>
-        </div>
-        <div style={{
-          padding: '16px',
-          backgroundColor: '#f0fdf4',
-          borderRadius: '8px',
-          border: '1px solid #bbf7d0'
+          Current Database
+        </h3>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
+          gap: '12px',
+          width: '100%'
         }}>
-          <div style={{ fontSize: '14px', color: '#15803d', marginBottom: '4px' }}>
-            ⭐ Evaluation Students
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+            padding: '16px 8px',
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            minHeight: '100px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <p style={{ 
+              fontSize: '11px', 
+              color: '#666', 
+              marginBottom: '10px', 
+              minHeight: '28px', 
+              display: 'flex', 
+              alignItems: 'center',
+              justifyContent: 'center',
+              lineHeight: '1.3',
+              fontWeight: '500',
+              textTransform: 'uppercase',
+              letterSpacing: '0.3px'
+            }}>
+              Attendance<br/>Students
+            </p>
+            <p style={{ 
+              fontSize: '32px', 
+              fontWeight: '800', 
+              color: '#667eea', 
+              margin: 0,
+              lineHeight: '1'
+            }}>
+              {studentCounts.students}
+            </p>
           </div>
-          <div style={{ fontSize: '28px', fontWeight: '700', color: '#166534' }}>
-            {studentCounts.evalStudents}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+            padding: '16px 8px',
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            minHeight: '100px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <p style={{ 
+              fontSize: '11px', 
+              color: '#666', 
+              marginBottom: '10px', 
+              minHeight: '28px', 
+              display: 'flex', 
+              alignItems: 'center',
+              justifyContent: 'center',
+              lineHeight: '1.3',
+              fontWeight: '500',
+              textTransform: 'uppercase',
+              letterSpacing: '0.3px'
+            }}>
+              Evaluation<br/>Students
+            </p>
+            <p style={{ 
+              fontSize: '32px', 
+              fontWeight: '800', 
+              color: '#764ba2', 
+              margin: 0,
+              lineHeight: '1'
+            }}>
+              {studentCounts.evalStudents}
+            </p>
+          </div>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+            padding: '16px 8px',
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            minHeight: '100px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <p style={{ 
+              fontSize: '11px', 
+              color: '#666', 
+              marginBottom: '10px', 
+              minHeight: '28px', 
+              display: 'flex', 
+              alignItems: 'center',
+              justifyContent: 'center',
+              lineHeight: '1.3',
+              fontWeight: '500',
+              textTransform: 'uppercase',
+              letterSpacing: '0.3px'
+            }}>
+              Absence<br/>Requests
+            </p>
+            <p style={{ 
+              fontSize: '32px', 
+              fontWeight: '800', 
+              color: '#10b981', 
+              margin: 0,
+              lineHeight: '1'
+            }}>
+              {studentCounts.absenceRequests}
+            </p>
+          </div>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+            padding: '16px 8px',
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            minHeight: '100px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <p style={{ 
+              fontSize: '11px', 
+              color: '#666', 
+              marginBottom: '10px', 
+              minHeight: '28px', 
+              display: 'flex', 
+              alignItems: 'center',
+              justifyContent: 'center',
+              lineHeight: '1.3',
+              fontWeight: '500',
+              textTransform: 'uppercase',
+              letterSpacing: '0.3px'
+            }}>
+              Evaluations
+            </p>
+            <p style={{ 
+              fontSize: '32px', 
+              fontWeight: '800', 
+              color: '#f59e0b', 
+              margin: 0,
+              lineHeight: '1'
+            }}>
+              {studentCounts.lessonEvaluations}
+            </p>
           </div>
         </div>
       </div>
+
+      {/* Absence Requests Status Box */}
+      {absenceStats && absenceStats.total > 0 && (
+        <div style={{
+          backgroundColor: '#eff6ff',
+          padding: '16px',
+          borderRadius: '8px',
+          border: '1px solid #3b82f6',
+          marginBottom: '20px',
+          fontSize: '13px',
+          color: '#1e40af',
+          lineHeight: '1.6'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <FileText style={{ width: '20px', height: '20px' }} />
+            <strong>Absence Requests Status:</strong>
+          </div>
+          <ul style={{ margin: '4px 0 0 28px', padding: 0 }}>
+            <li>Total absence requests: <strong>{absenceStats.total}</strong></li>
+            <li>Properly linked: <strong style={{ color: '#10b981' }}>{absenceStats.linked}</strong></li>
+            {absenceStats.orphaned > 0 && (
+              <li>
+                Orphaned (need remapping): <strong style={{ color: '#f59e0b' }}>{absenceStats.orphaned}</strong>
+                <div style={{ fontSize: '12px', marginTop: '4px', color: '#92400e' }}>
+                  ⚠️ Run bulk import to remap these requests
+                </div>
+              </li>
+            )}
+            {absenceStats.broken > 0 && (
+              <li>
+                Invalid (no student info): <strong style={{ color: '#ef4444' }}>{absenceStats.broken}</strong>
+              </li>
+            )}
+          </ul>
+          <div style={{ 
+            marginTop: '12px', 
+            paddingTop: '12px', 
+            borderTop: '1px solid #bfdbfe',
+            fontSize: '12px'
+          }}>
+            ✅ <strong>Good news:</strong> All absence requests will be preserved during bulk import and automatically 
+            remapped to the correct students based on student name and class.
+          </div>
+        </div>
+      )}
+
+      {/* Evaluation Stats Status Box */}
+      {evaluationStats && evaluationStats.total > 0 && (
+        <div style={{
+          backgroundColor: '#fef3c7',
+          padding: '16px',
+          borderRadius: '8px',
+          border: '1px solid #f59e0b',
+          marginBottom: '20px',
+          fontSize: '13px',
+          color: '#92400e',
+          lineHeight: '1.6'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <BookOpen style={{ width: '20px', height: '20px' }} />
+            <strong>Lesson Evaluations Status:</strong>
+          </div>
+          <ul style={{ margin: '4px 0 0 28px', padding: 0 }}>
+            <li>Total evaluations: <strong>{evaluationStats.total}</strong></li>
+            <li>Properly linked: <strong style={{ color: '#10b981' }}>{evaluationStats.linked}</strong></li>
+            <li>With teacher notes: <strong style={{ color: '#3b82f6' }}>{evaluationStats.with_notes}</strong></li>
+            {evaluationStats.orphaned > 0 && (
+              <li>
+                Orphaned (need remapping): <strong style={{ color: '#f59e0b' }}>{evaluationStats.orphaned}</strong>
+                {evaluationStats.orphaned_with_notes > 0 && (
+                  <div style={{ fontSize: '12px', marginTop: '4px', color: '#92400e' }}>
+                    ⚠️ {evaluationStats.orphaned_with_notes} have teacher notes!
+                  </div>
+                )}
+              </li>
+            )}
+            {evaluationStats.broken > 0 && (
+              <li>
+                Invalid (no student info): <strong style={{ color: '#ef4444' }}>{evaluationStats.broken}</strong>
+              </li>
+            )}
+          </ul>
+          <div style={{ 
+            marginTop: '12px', 
+            paddingTop: '12px', 
+            borderTop: '1px solid #fde68a',
+            fontSize: '12px'
+          }}>
+            ✅ <strong>Good news:</strong> All lesson evaluations and teacher notes will be preserved during bulk import 
+            and automatically remapped to the correct students.
+          </div>
+        </div>
+      )}
 
       {/* Step 1: Enter Spreadsheet IDs */}
       <div style={{
@@ -1190,7 +1527,7 @@ const BulkStudentImport = () => {
           color: '#1a1a1a',
           marginBottom: '12px'
         }}>
-          Step 1: Enter Google Sheet IDs
+          Step 1: Enter Spreadsheet IDs
         </h3>
         
         <div style={{ marginBottom: '16px' }}>
@@ -1198,73 +1535,75 @@ const BulkStudentImport = () => {
             display: 'block',
             fontSize: '14px',
             fontWeight: '500',
-            color: '#374151',
+            color: '#475569',
             marginBottom: '6px'
           }}>
-            Attendance Spreadsheet ID:
+            Attendance Sheet ID
           </label>
           <input
             type="text"
             value={attendanceSheetId}
             onChange={(e) => setAttendanceSheetId(e.target.value)}
+            placeholder="Paste attendance spreadsheet ID"
             style={{
               width: '100%',
-              padding: '10px 12px',
-              border: '1px solid #d1d5db',
+              padding: '10px 14px',
+              fontSize: '14px',
+              border: '2px solid #e2e8f0',
               borderRadius: '6px',
-              fontSize: '14px'
+              outline: 'none'
             }}
-            placeholder="1kTbE3-JeukrhPMg46eEPqOagEK82olcLIUExqmKWhAs"
           />
         </div>
 
-        <div style={{ marginBottom: '16px' }}>
+        <div style={{ marginBottom: '20px' }}>
           <label style={{
             display: 'block',
             fontSize: '14px',
             fontWeight: '500',
-            color: '#374151',
+            color: '#475569',
             marginBottom: '6px'
           }}>
-            Evaluation Spreadsheet ID:
+            Evaluation Sheet ID
           </label>
           <input
             type="text"
             value={evaluationSheetId}
             onChange={(e) => setEvaluationSheetId(e.target.value)}
+            placeholder="Paste evaluation spreadsheet ID"
             style={{
               width: '100%',
-              padding: '10px 12px',
-              border: '1px solid #d1d5db',
+              padding: '10px 14px',
+              fontSize: '14px',
+              border: '2px solid #e2e8f0',
               borderRadius: '6px',
-              fontSize: '14px'
+              outline: 'none'
             }}
-            placeholder="1tVWRqyYrTHbYFPh4Yo8NVjjrxE3ZRYcsce0nwT0mcDc"
           />
         </div>
 
         <button
           onClick={loadSheetTabs}
+          disabled={importing}
           style={{
-            padding: '12px 20px',
-            backgroundColor: '#10b981',
+            padding: '12px 24px',
+            backgroundColor: importing ? '#ccc' : '#667eea',
             color: 'white',
             border: 'none',
             borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            width: '100%'
+            cursor: importing ? 'not-allowed' : 'pointer',
+            fontSize: '15px',
+            fontWeight: '600'
           }}
         >
-          Load Sheet Tabs
+          {importing ? 'Loading...' : 'Load Sheet Tabs'}
         </button>
       </div>
 
       {/* Step 2: Review and Import */}
       {attendanceSheets.length > 0 && evaluationSheets.length > 0 && (
         <div style={{
-          backgroundColor: '#fffbeb',
+          backgroundColor: '#fef3c7',
           padding: '20px',
           borderRadius: '8px',
           marginBottom: '20px',
@@ -1353,10 +1692,29 @@ const BulkStudentImport = () => {
               ) : (
                 <>
                   <AlertCircle style={{ width: '20px', height: '20px' }} />
-                  Import Historical Data Only
+                  Import Historical Data (Teacher Notes Preserved)
                 </>
               )}
             </button>
+          </div>
+
+          {/* Warning Box */}
+          <div style={{
+            marginTop: '16px',
+            padding: '12px',
+            backgroundColor: '#fef3c7',
+            border: '1px solid #f59e0b',
+            borderRadius: '6px',
+            fontSize: '13px',
+            color: '#92400e'
+          }}>
+            <strong>ℹ️ About Historical Import:</strong>
+            <ul style={{ margin: '8px 0 0 20px', padding: 0 }}>
+              <li>Deletes and re-imports attendance and evaluation data from Google Sheets</li>
+              <li><strong>✅ Teacher notes are automatically preserved</strong></li>
+              <li>Only use this for initial setup or to refresh data from sheets</li>
+              <li>For weekly updates, use "Clear All & Re-import Students" instead</li>
+            </ul>
           </div>
         </div>
       )}
@@ -1456,6 +1814,8 @@ const BulkStudentImport = () => {
         <ul style={{ margin: '8px 0 0 20px', padding: 0 }}>
           <li><strong>This will DELETE ALL existing students</strong> from both the <code>students</code> and <code>eval_students</code> tables</li>
           <li>All attendance and evaluation history will remain intact (only student records are deleted)</li>
+          <li><strong>✅ Absence requests will be preserved</strong> and automatically remapped to new student records</li>
+          <li><strong>✅ Lesson evaluations and teacher notes will be preserved</strong> and automatically remapped</li>
           <li>Sheet names must match class <code>sheet_name</code> exactly</li>
           <li>You must have Editor access to both Google Sheets</li>
           <li>This operation cannot be undone - make sure your sheets are up to date!</li>
@@ -1474,17 +1834,27 @@ const BulkStudentImport = () => {
       }}>
         <strong>ℹ️ Historical Data Import:</strong>
         <ul style={{ margin: '8px 0 0 20px', padding: 0 }}>
-          <li>After importing students, you can import historical attendance and evaluation data</li>
+          <li>Imports historical attendance and evaluation data from Google Sheets</li>
           <li>Reads all past catechism lesson dates and matches them with Google Sheets columns</li>
+          <li><strong>✅ Teacher notes are preserved</strong> - only evaluations WITHOUT notes are replaced</li>
           <li><strong>Attendance codes:</strong> P (Present), A (Absent), L (Late), U (Unexcused), UM (Unexcused Mass), E (Excused)</li>
           <li><strong>Evaluation ratings:</strong> E (Excellent), G (Good), I (Improving)</li>
           <li><strong>Evaluation categories:</strong> D (Discipline), B (Behaviour), HW (Homework), AP (Active Participation)</li>
           <li>Optimized to read entire sheets at once to avoid rate limits</li>
           <li>Includes small delays between classes to respect API quotas</li>
-          <li>You can run "Import Historical Data Only" anytime to backfill missed records</li>
+          <li><strong>⚠️ Note:</strong> Use this for initial setup only. For weekly updates, use "Clear All & Re-import Students"</li>
           <li>Tip: Log your catechism lessons first, then import historical data</li>
         </ul>
       </div>
+
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
     </div>
   );
 };

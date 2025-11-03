@@ -190,6 +190,10 @@ const ExtendedDashboard = () => {
       if (classError) throw classError;
       setClassInfo(classData);
 
+      // Determine if this is a senior or junior class
+      const isSeniorClass = classData.year_level >= 6;
+      const isJuniorClass = classData.year_level <= 5;
+
       // Load students
       const { data: studentsData, error: studentsError } = await supabase
         .from('students')
@@ -200,7 +204,7 @@ const ExtendedDashboard = () => {
       if (studentsError) throw studentsError;
       setStudents(studentsData || []);
 
-      // Load ALL attendance records for this class
+      // Load attendance records for this class
       const { data: attendanceRecords, error: attendanceError } = await supabase
         .from('attendance_records')
         .select('*')
@@ -211,8 +215,42 @@ const ExtendedDashboard = () => {
         throw attendanceError;
       }
 
-      // Extract unique dates and format as weeks
-      const uniqueDates = [...new Set((attendanceRecords || []).map(r => r.attendance_date))];
+      // Load catechism lesson logs to filter by group type
+      const { data: lessonLogs, error: lessonError } = await supabase
+        .from('catechism_lesson_logs')
+        .select('lesson_date, group_type')
+        .order('lesson_date', { ascending: false });
+
+      if (lessonError && lessonError.code !== 'PGRST116') {
+        console.error('Error loading lesson logs:', lessonError);
+      }
+
+      // Create a map of dates to their group types
+      const dateGroupMap = {};
+      (lessonLogs || []).forEach(log => {
+        dateGroupMap[log.lesson_date] = log.group_type;
+      });
+
+      // Filter attendance records based on class type and lesson group
+      const filteredAttendanceRecords = (attendanceRecords || []).filter(record => {
+        const groupType = dateGroupMap[record.attendance_date];
+        
+        // If no group type is set, include it (backward compatibility)
+        if (!groupType) return true;
+        
+        // Include if lesson is for "Both" groups
+        if (groupType === 'Both') return true;
+        
+        // Include if lesson matches the class type
+        if (isSeniorClass && groupType === 'Senior') return true;
+        if (isJuniorClass && groupType === 'Junior') return true;
+        
+        // Exclude otherwise
+        return false;
+      });
+
+      // Extract unique dates from filtered records and format as weeks
+      const uniqueDates = [...new Set(filteredAttendanceRecords.map(r => r.attendance_date))];
       const sortedDates = uniqueDates.sort();
       
       const formattedWeeks = sortedDates.map(date => ({
@@ -224,9 +262,9 @@ const ExtendedDashboard = () => {
       }));
       setWeeks(formattedWeeks);
 
-      // Create attendance map
+      // Create attendance map from filtered records
       const attendanceMap = {};
-      (attendanceRecords || []).forEach(record => {
+      filteredAttendanceRecords.forEach(record => {
         const key = `${record.student_id}-${record.attendance_date}`;
         attendanceMap[key] = record;
       });

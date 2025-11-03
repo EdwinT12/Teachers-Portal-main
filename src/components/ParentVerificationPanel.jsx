@@ -483,10 +483,21 @@ const ParentVerificationPanel = () => {
     }
   };
 
-  const getFilteredStudents = (classId) => {
-    if (!classId) return students;
+  const getFilteredStudents = (classIdOrYearLevel) => {
+    if (!classIdOrYearLevel) return students;
     
-    return students.filter(s => s.class_id === classId);
+    // If it's a UUID (classId), filter by class_id
+    if (typeof classIdOrYearLevel === 'string' && classIdOrYearLevel.includes('-')) {
+      return students.filter(s => s.class_id === classIdOrYearLevel);
+    }
+    
+    // Otherwise, treat it as a year level number or string
+    const yearLevel = parseInt(classIdOrYearLevel);
+    if (!isNaN(yearLevel)) {
+      return students.filter(s => s.classes?.year_level === yearLevel);
+    }
+    
+    return students;
   };
 
   /**

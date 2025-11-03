@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import supabase from '../../utils/supabase';
 import toast from 'react-hot-toast';
-import { FileText, Plus, Calendar, Check, X, Clock, AlertCircle } from 'lucide-react';
+import { FileText, Plus, Calendar, Check, X, Clock, AlertCircle, AlertTriangle, Edit2, Trash2 } from 'lucide-react';
 
 const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
   const [loading, setLoading] = useState(true);
@@ -9,6 +9,8 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
   const [requests, setRequests] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [absenceReasons, setAbsenceReasons] = useState([]);
+  const [editingRequest, setEditingRequest] = useState(null);
+  const [deletingRequest, setDeletingRequest] = useState(null);
   
   const [formData, setFormData] = useState({
     studentId: '',
@@ -44,8 +46,10 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
           .select(`
             *,
             students:student_id (
+              id,
               student_name,
               classes:class_id (
+                id,
                 name
               )
             ),
@@ -57,7 +61,22 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
           .order('created_at', { ascending: false });
 
         if (requestsError) throw requestsError;
-        setRequests(requestsData || []);
+        
+        // Also load any orphaned requests that match by student_name
+        // (in case student_id is null but we can still show the request)
+        const studentNames = linkedChildren.map(c => c.students?.student_name).filter(Boolean);
+        const { data: orphanedData, error: orphanedError } = await supabase
+          .from('absence_requests')
+          .select('*')
+          .is('student_id', null)
+          .in('student_name', studentNames);
+
+        if (!orphanedError && orphanedData && orphanedData.length > 0) {
+          // Combine regular and orphaned requests
+          setRequests([...(requestsData || []), ...orphanedData]);
+        } else {
+          setRequests(requestsData || []);
+        }
       }
 
       // Set default student if not set
@@ -109,28 +128,61 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
 
     try {
       const parentChild = linkedChildren.find(c => c.students?.id === formData.studentId);
+      const student = parentChild?.students;
       
-      const { error } = await supabase
-        .from('absence_requests')
-        .insert({
-          parent_id: parentChild.parent_id,
-          student_id: formData.studentId,
-          absence_date: formData.absenceDate,
-          reason: formData.reason,
-          custom_reason: formData.reason === 'Other' ? formData.customReason : null,
-          status: 'pending'
-        });
+      if (editingRequest) {
+        // Update existing request
+        const { error } = await supabase
+          .from('absence_requests')
+          .update({
+            student_id: formData.studentId,
+            student_name: student?.student_name,
+            class_id: student?.class_id,
+            absence_date: formData.absenceDate,
+            reason: formData.reason,
+            custom_reason: formData.reason === 'Other' ? formData.customReason : null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingRequest.id);
 
-      if (error) {
-        if (error.code === '23505') {
-          toast.error('An absence request already exists for this date');
-        } else {
-          throw error;
+        if (error) {
+          if (error.code === '23505') {
+            toast.error('An absence request already exists for this date');
+          } else {
+            throw error;
+          }
+          return;
         }
-        return;
-      }
 
-      toast.success('Absence request submitted successfully!');
+        toast.success('Absence request updated successfully!');
+        setEditingRequest(null);
+      } else {
+        // Create new request
+        const { error } = await supabase
+          .from('absence_requests')
+          .insert({
+            parent_id: parentChild.parent_id,
+            student_id: formData.studentId,
+            student_name: student?.student_name,
+            class_id: student?.class_id,
+            absence_date: formData.absenceDate,
+            reason: formData.reason,
+            custom_reason: formData.reason === 'Other' ? formData.customReason : null,
+            status: 'pending'
+          });
+
+        if (error) {
+          if (error.code === '23505') {
+            toast.error('An absence request already exists for this date');
+          } else {
+            throw error;
+          }
+          return;
+        }
+
+        toast.success('Absence request submitted successfully!');
+      }
+      
       setShowForm(false);
       setFormData({
         studentId: linkedChildren[0]?.students?.id || '',
@@ -142,9 +194,57 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
       if (onRequestSubmitted) onRequestSubmitted();
     } catch (error) {
       console.error('Error submitting request:', error);
-      toast.error('Error submitting absence request');
+      toast.error(editingRequest ? 'Error updating absence request' : 'Error submitting absence request');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEdit = (request) => {
+    setEditingRequest(request);
+    setFormData({
+      studentId: request.student_id,
+      absenceDate: request.absence_date,
+      reason: request.reason,
+      customReason: request.custom_reason || ''
+    });
+    setShowForm(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingRequest(null);
+    setFormData({
+      studentId: linkedChildren[0]?.students?.id || '',
+      absenceDate: '',
+      reason: '',
+      customReason: ''
+    });
+    setShowForm(false);
+  };
+
+  const handleDelete = async (request) => {
+    if (!window.confirm(`Are you sure you want to withdraw the absence request for ${formatDate(request.absence_date)}?\n\nThis action cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingRequest(request.id);
+
+    try {
+      const { error } = await supabase
+        .from('absence_requests')
+        .delete()
+        .eq('id', request.id);
+
+      if (error) throw error;
+
+      toast.success('Absence request withdrawn successfully');
+      loadData();
+      if (onRequestSubmitted) onRequestSubmitted();
+    } catch (error) {
+      console.error('Error deleting request:', error);
+      toast.error('Error withdrawing absence request');
+    } finally {
+      setDeletingRequest(null);
     }
   };
 
@@ -164,6 +264,38 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
       month: 'long', 
       year: 'numeric' 
     });
+  };
+
+  // NEW: Check if a request is orphaned (no student_id but has student_name)
+  const isOrphaned = (request) => {
+    return !request.student_id && request.student_name;
+  };
+
+  // NEW: Get display info for a request (handling both regular and orphaned)
+  const getRequestDisplayInfo = (request) => {
+    if (request.students?.student_name) {
+      // Regular request with full student info
+      return {
+        studentName: request.students.student_name,
+        className: request.students.classes?.name || 'Unknown Class',
+        isOrphaned: false
+      };
+    } else if (request.student_name) {
+      // Orphaned request - use stored name
+      return {
+        studentName: request.student_name,
+        className: 'Class info unavailable',
+        isOrphaned: true
+      };
+    } else {
+      // Broken request
+      return {
+        studentName: 'Unknown Student',
+        className: 'Unknown Class',
+        isOrphaned: false,
+        isBroken: true
+      };
+    }
   };
 
   if (loading) {
@@ -204,7 +336,13 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
           Absence Requests
         </h2>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => {
+            if (showForm && editingRequest) {
+              handleCancelEdit();
+            } else {
+              setShowForm(!showForm);
+            }
+          }}
           style={{
             padding: '12px 20px',
             background: showForm ? '#94a3b8' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -244,12 +382,34 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
         </button>
       </div>
 
-      {/* Request Form */}
+      {/* NEW: Warning if there are orphaned requests */}
+      {requests.some(r => isOrphaned(r)) && (
+        <div style={{
+          backgroundColor: '#fef3c7',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          border: '1px solid #f59e0b',
+          marginBottom: '20px',
+          fontSize: '13px',
+          color: '#92400e',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '10px'
+        }}>
+          <AlertTriangle style={{ width: '18px', height: '18px', flexShrink: 0, marginTop: '2px' }} />
+          <div>
+            <strong>Note:</strong> Some of your absence requests need to be remapped after a recent student data update. 
+            Please contact an administrator to run the bulk import process to restore the student links.
+          </div>
+        </div>
+      )}
+
+      {/* Submission Form */}
       {showForm && (
         <div style={{
-          background: '#f8fafc',
-          borderRadius: '12px',
+          background: 'white',
           padding: '24px',
+          borderRadius: '12px',
           marginBottom: '24px',
           border: '2px solid #e2e8f0'
         }}>
@@ -257,13 +417,26 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
             fontSize: '18px',
             fontWeight: '700',
             color: '#1e293b',
-            marginBottom: '20px'
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
           }}>
-            Submit Absence Request
+            {editingRequest ? (
+              <>
+                <Edit2 style={{ width: '20px', height: '20px', color: '#667eea' }} />
+                Edit Absence Request
+              </>
+            ) : (
+              <>
+                <Plus style={{ width: '20px', height: '20px', color: '#667eea' }} />
+                Submit Absence Request
+              </>
+            )}
           </h3>
-          
+
           <form onSubmit={handleSubmit}>
-            {/* Child Selection */}
+            {/* Student Selection */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{
                 display: 'block',
@@ -272,7 +445,7 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
                 color: '#475569',
                 marginBottom: '8px'
               }}>
-                Child *
+                Student *
               </label>
               <select
                 required
@@ -290,7 +463,7 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
                 }}
               >
                 {linkedChildren.map((child) => (
-                  <option key={child.id} value={child.students?.id}>
+                  <option key={child.students?.id} value={child.students?.id}>
                     {child.students?.student_name} - {child.students?.classes?.name}
                   </option>
                 ))}
@@ -410,7 +583,7 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
                 transition: 'all 0.2s'
               }}
             >
-              {submitting ? 'Submitting...' : 'Submit Request'}
+              {submitting ? (editingRequest ? 'Updating...' : 'Submitting...') : (editingRequest ? 'Update Request' : 'Submit Request')}
             </button>
           </form>
         </div>
@@ -444,14 +617,33 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
             {requests.map((request) => {
               const statusInfo = getStatusInfo(request.status);
               const StatusIcon = statusInfo.icon;
+              const displayInfo = getRequestDisplayInfo(request);
               
               return (
                 <div key={request.id} style={{
                   background: 'white',
                   borderRadius: '12px',
                   padding: '20px',
-                  border: '2px solid #e2e8f0'
+                  border: displayInfo.isOrphaned ? '2px solid #fbbf24' : '2px solid #e2e8f0'
                 }}>
+                  {/* NEW: Orphaned request warning */}
+                  {displayInfo.isOrphaned && (
+                    <div style={{
+                      backgroundColor: '#fef3c7',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      marginBottom: '12px',
+                      fontSize: '12px',
+                      color: '#92400e',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      <AlertTriangle style={{ width: '14px', height: '14px' }} />
+                      Needs remapping after data update
+                    </div>
+                  )}
+
                   <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -465,14 +657,15 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
                         color: '#1e293b',
                         marginBottom: '4px'
                       }}>
-                        {request.students?.student_name}
+                        {displayInfo.studentName}
                       </h4>
                       <p style={{
                         fontSize: '13px',
-                        color: '#64748b',
-                        margin: 0
+                        color: displayInfo.isOrphaned ? '#92400e' : '#64748b',
+                        margin: 0,
+                        fontStyle: displayInfo.isOrphaned ? 'italic' : 'normal'
                       }}>
-                        {request.students?.classes?.name}
+                        {displayInfo.className}
                       </p>
                     </div>
                     <div style={{
@@ -536,6 +729,102 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
                       </div>
                     )}
                   </div>
+
+                  {/* Action buttons for pending requests */}
+                  {request.status === 'pending' && (
+                    <div style={{
+                      marginTop: '16px',
+                      paddingTop: '16px',
+                      borderTop: '1px solid #e2e8f0',
+                      display: 'flex',
+                      gap: '8px'
+                    }}>
+                      <button
+                        onClick={() => handleEdit(request)}
+                        disabled={deletingRequest === request.id}
+                        style={{
+                          flex: 1,
+                          padding: '10px 16px',
+                          background: 'white',
+                          color: '#667eea',
+                          border: '2px solid #667eea',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: deletingRequest === request.id ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s',
+                          opacity: deletingRequest === request.id ? 0.5 : 1
+                        }}
+                        onMouseEnter={(e) => {
+                          if (deletingRequest !== request.id) {
+                            e.target.style.background = '#667eea';
+                            e.target.style.color = 'white';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.background = 'white';
+                          e.target.style.color = '#667eea';
+                        }}
+                      >
+                        <Edit2 style={{ width: '16px', height: '16px' }} />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(request)}
+                        disabled={deletingRequest === request.id}
+                        style={{
+                          flex: 1,
+                          padding: '10px 16px',
+                          background: 'white',
+                          color: '#ef4444',
+                          border: '2px solid #ef4444',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: deletingRequest === request.id ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s',
+                          opacity: deletingRequest === request.id ? 0.5 : 1
+                        }}
+                        onMouseEnter={(e) => {
+                          if (deletingRequest !== request.id) {
+                            e.target.style.background = '#ef4444';
+                            e.target.style.color = 'white';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.background = 'white';
+                          e.target.style.color = '#ef4444';
+                        }}
+                      >
+                        {deletingRequest === request.id ? (
+                          <>
+                            <div style={{
+                              width: '16px',
+                              height: '16px',
+                              border: '2px solid #ef444440',
+                              borderTop: '2px solid #ef4444',
+                              borderRadius: '50%',
+                              animation: 'spin 1s linear infinite'
+                            }}></div>
+                            Withdrawing...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 style={{ width: '16px', height: '16px' }} />
+                            Withdraw
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
