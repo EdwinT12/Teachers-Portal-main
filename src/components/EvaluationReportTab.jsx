@@ -246,67 +246,6 @@ const EvaluationReportTab = ({ allClasses, allTeachers, chapters, selectedChapte
 
   return (
     <div>
-      {/* Info Banner */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        style={{
-          marginBottom: '24px',
-          padding: '20px',
-          background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-          borderRadius: '12px',
-          border: '1px solid #93c5fd',
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: '16px',
-          boxShadow: '0 2px 8px rgba(59, 130, 246, 0.1)'
-        }}
-      >
-        <div style={{
-          width: '40px',
-          height: '40px',
-          borderRadius: '10px',
-          background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0
-        }}>
-          <BookOpen style={{ width: '20px', height: '20px', color: 'white' }} />
-        </div>
-        <div>
-          <h3 style={{
-            margin: '0 0 8px 0',
-            fontSize: '16px',
-            fontWeight: '700',
-            color: '#1e40af'
-          }}>
-            📊 Evaluation Completion Status
-          </h3>
-          <p style={{
-            margin: 0,
-            fontSize: '14px',
-            color: '#1e3a8a',
-            lineHeight: '1.6'
-          }}>
-            Track evaluation progress across all chapters. Each chapter requires 4 categories 
-            (Discipline, Behaviour, Homework, Active Participation) per student.
-            {selectedChapters.length > 0 && (
-              <span style={{ 
-                display: 'block', 
-                marginTop: '8px',
-                fontWeight: '600',
-                color: '#3730a3'
-              }}>
-                📚 Filtered by: {selectedChapters.length === 1 
-                  ? `Chapter ${selectedChapters[0]}` 
-                  : `${selectedChapters.length} chapters`}
-              </span>
-            )}
-          </p>
-        </div>
-      </motion.div>
-
       {/* Empty State - No Chapters */}
       {allChapters.length === 0 && (
         <motion.div

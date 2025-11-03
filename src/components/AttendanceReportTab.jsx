@@ -255,56 +255,6 @@ const AttendanceReportTab = ({ allClasses, allTeachers, lessonDates, onStatsUpda
 
   return (
     <div>
-      {/* Info Banner */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        style={{
-          marginBottom: '24px',
-          padding: '20px',
-          background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
-          borderRadius: '12px',
-          border: '1px solid #6ee7b7',
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: '16px',
-          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.1)'
-        }}
-      >
-        <div style={{
-          width: '40px',
-          height: '40px',
-          borderRadius: '10px',
-          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0
-        }}>
-          <Calendar style={{ width: '20px', height: '20px', color: 'white' }} />
-        </div>
-        <div>
-          <h3 style={{
-            margin: '0 0 8px 0',
-            fontSize: '16px',
-            fontWeight: '700',
-            color: '#065f46'
-          }}>
-            📅 Attendance Report
-          </h3>
-          <p style={{
-            margin: 0,
-            fontSize: '14px',
-            color: '#047857',
-            lineHeight: '1.6'
-          }}>
-            Track attendance completion for actual catechism lesson dates. 
-            Junior classes (Reception-Year 5) see Junior and Both lessons. 
-            Senior classes (Year 6-12) see Senior and Both lessons.
-          </p>
-        </div>
-      </motion.div>
-
       {/* Empty State - No Lessons */}
       {lessonDates.length === 0 && (
         <motion.div

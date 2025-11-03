@@ -58,6 +58,21 @@ const WeeklyReportNew = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      const dropdown = document.getElementById('chapter-dropdown');
+      const button = event.target.closest('button');
+      
+      if (dropdown && dropdown.style.display === 'block' && !dropdown.contains(event.target) && !button) {
+        dropdown.style.display = 'none';
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   useEffect(() => {
     console.log('WeeklyReport: Component mounted, loading initial data');
     loadInitialData();
@@ -444,13 +459,17 @@ const WeeklyReportNew = () => {
                   onChange={(e) => setStartDate(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '10px 12px',
+                    maxWidth: '100%',
+                    padding: isMobile ? '8px 8px' : '10px 12px',
                     borderRadius: '8px',
                     border: '1px solid #e5e7eb',
-                    fontSize: '14px',
+                    fontSize: isMobile ? '13px' : '14px',
                     color: '#1e293b',
                     outline: 'none',
-                    transition: 'border-color 0.2s'
+                    transition: 'border-color 0.2s',
+                    boxSizing: 'border-box',
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'textfield'
                   }}
                 />
                 {startDate && !endDate && (
@@ -482,13 +501,17 @@ const WeeklyReportNew = () => {
                   onChange={(e) => setEndDate(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '10px 12px',
+                    maxWidth: '100%',
+                    padding: isMobile ? '8px 8px' : '10px 12px',
                     borderRadius: '8px',
                     border: '1px solid #e5e7eb',
-                    fontSize: '14px',
+                    fontSize: isMobile ? '13px' : '14px',
                     color: '#1e293b',
                     outline: 'none',
-                    transition: 'border-color 0.2s'
+                    transition: 'border-color 0.2s',
+                    boxSizing: 'border-box',
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'textfield'
                   }}
                 />
               </div>
@@ -497,7 +520,7 @@ const WeeklyReportNew = () => {
 
           {/* Evaluation Tab Filters */}
           {activeTab === 'evaluation' && (
-            <div>
+            <div style={{ position: 'relative' }}>
               <label style={{
                 display: 'block',
                 fontSize: '13px',
@@ -507,42 +530,162 @@ const WeeklyReportNew = () => {
               }}>
                 Chapters
               </label>
-              <select
-                multiple
-                value={selectedChapters.map(String)}
-                onChange={(e) => {
-                  const values = Array.from(e.target.selectedOptions, option => parseInt(option.value));
-                  setSelectedChapters(values);
-                }}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid #e5e7eb',
-                  fontSize: '14px',
-                  color: '#1e293b',
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                  backgroundColor: 'white',
-                  cursor: 'pointer',
-                  minHeight: '80px'
-                }}
-              >
-                <option value="">All Chapters</option>
-                {Array.from({ length: 20 }, (_, i) => i + 1).map(chapter => (
-                  <option key={chapter} value={chapter}>
-                    Chapter {chapter}
-                  </option>
-                ))}
-              </select>
-              <p style={{
-                fontSize: '11px',
-                color: '#8b5cf6',
-                margin: '4px 0 0 0',
-                fontWeight: '500'
-              }}>
-                📚 Hold Ctrl/Cmd to select multiple chapters
-              </p>
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={() => {
+                    const dropdown = document.getElementById('chapter-dropdown');
+                    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+                  }}
+                  style={{
+                    width: '100%',
+                    maxWidth: '100%',
+                    padding: isMobile ? '8px 8px' : '10px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb',
+                    fontSize: isMobile ? '13px' : '14px',
+                    color: '#1e293b',
+                    outline: 'none',
+                    backgroundColor: 'white',
+                    cursor: 'pointer',
+                    boxSizing: 'border-box',
+                    textAlign: 'left',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    fontWeight: '500'
+                  }}
+                >
+                  <span>
+                    {selectedChapters.length === 0 
+                      ? 'All Chapters' 
+                      : `${selectedChapters.length} chapter${selectedChapters.length > 1 ? 's' : ''} selected`}
+                  </span>
+                  <span style={{ fontSize: '12px' }}>▼</span>
+                </button>
+                
+                <div
+                  id="chapter-dropdown"
+                  style={{
+                    display: 'none',
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    marginTop: '4px',
+                    background: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                    zIndex: 1000,
+                    maxHeight: '250px',
+                    overflowY: 'auto',
+                    padding: '8px'
+                  }}
+                >
+                  {/* Select All / Clear All */}
+                  <div style={{
+                    padding: '8px 12px',
+                    borderBottom: '1px solid #e5e7eb',
+                    marginBottom: '4px',
+                    display: 'flex',
+                    gap: '8px'
+                  }}>
+                    <button
+                      onClick={() => {
+                        setSelectedChapters(Array.from({ length: 20 }, (_, i) => i + 1));
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid #3b82f6',
+                        background: 'white',
+                        color: '#3b82f6',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Select All
+                    </button>
+                    <button
+                      onClick={() => setSelectedChapters([])}
+                      style={{
+                        flex: 1,
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid #64748b',
+                        background: 'white',
+                        color: '#64748b',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                  
+                  {/* Chapter Options */}
+                  {Array.from({ length: 20 }, (_, i) => i + 1).map(chapter => {
+                    const isSelected = selectedChapters.includes(chapter);
+                    return (
+                      <label
+                        key={chapter}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '8px 12px',
+                          cursor: 'pointer',
+                          borderRadius: '6px',
+                          transition: 'background 0.2s',
+                          fontSize: isMobile ? '13px' : '14px',
+                          fontWeight: '500',
+                          color: isSelected ? '#3b82f6' : '#475569',
+                          background: isSelected ? '#eff6ff' : 'transparent'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isSelected) e.currentTarget.style.background = '#f8fafc';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected) e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedChapters([...selectedChapters, chapter].sort((a, b) => a - b));
+                            } else {
+                              setSelectedChapters(selectedChapters.filter(c => c !== chapter));
+                            }
+                          }}
+                          style={{
+                            width: '16px',
+                            height: '16px',
+                            marginRight: '10px',
+                            cursor: 'pointer',
+                            accentColor: '#3b82f6'
+                          }}
+                        />
+                        Chapter {chapter}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              {selectedChapters.length > 0 && (
+                <p style={{
+                  fontSize: '11px',
+                  color: '#3b82f6',
+                  margin: '6px 0 0 0',
+                  fontWeight: '600'
+                }}>
+                  📚 Selected: {selectedChapters.sort((a, b) => a - b).join(', ')}
+                </p>
+              )}
             </div>
           )}
 
@@ -562,15 +705,17 @@ const WeeklyReportNew = () => {
               onChange={(e) => setClassType(e.target.value)}
               style={{
                 width: '100%',
-                padding: '10px 12px',
+                maxWidth: '100%',
+                padding: isMobile ? '8px 8px' : '10px 12px',
                 borderRadius: '8px',
                 border: '1px solid #e5e7eb',
-                fontSize: '14px',
+                fontSize: isMobile ? '13px' : '14px',
                 color: '#1e293b',
                 outline: 'none',
                 transition: 'border-color 0.2s',
                 backgroundColor: 'white',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                boxSizing: 'border-box'
               }}
             >
               <option value="all">All Classes</option>
