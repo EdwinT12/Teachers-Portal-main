@@ -1669,8 +1669,9 @@ const EvaluationPage = () => {
 
       {/* Main Content */}
       <div style={{
-        maxWidth: '1400px',
-        margin: '0 auto'
+        maxWidth: isMobile ? '100%' : '800px',
+        margin: '0 auto',
+        width: '100%'
       }}>
         {/* Header */}
         <motion.div
@@ -1954,8 +1955,8 @@ const EvaluationPage = () => {
         {/* Student Cards */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(350px, 1fr))',
-          gap: '16px',
+          gridTemplateColumns: '1fr',
+          gap: isMobile ? '12px' : '16px',
           marginBottom: '100px'
         }}>
           <AnimatePresence>
@@ -1975,8 +1976,8 @@ const EvaluationPage = () => {
                       ? 'rgba(255, 255, 255, 0.98)' 
                       : 'rgba(255, 255, 255, 0.95)',
                     backdropFilter: 'blur(20px)',
-                    borderRadius: '16px',
-                    padding: isMobile ? '14px' : '16px',
+                    borderRadius: isMobile ? '12px' : '16px',
+                    padding: isMobile ? '12px' : '16px',
                     boxShadow: hasAnyEval 
                       ? '0 8px 24px rgba(16, 185, 129, 0.15)'
                       : '0 4px 16px rgba(0,0,0,0.08)',
@@ -2014,20 +2015,20 @@ const EvaluationPage = () => {
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '10px',
-                    marginBottom: '12px',
-                    paddingBottom: '12px',
+                    gap: isMobile ? '8px' : '10px',
+                    marginBottom: isMobile ? '10px' : '12px',
+                    paddingBottom: isMobile ? '10px' : '12px',
                     borderBottom: '1.5px solid #e2e8f0'
                   }}>
                     <div style={{
-                      width: '36px',
-                      height: '36px',
+                      width: isMobile ? '32px' : '36px',
+                      height: isMobile ? '32px' : '36px',
                       borderRadius: '50%',
                       background: 'linear-gradient(135deg, #667eea, #764ba2)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '14px',
+                      fontSize: isMobile ? '12px' : '14px',
                       fontWeight: '700',
                       color: 'white',
                       flexShrink: 0
@@ -2036,7 +2037,7 @@ const EvaluationPage = () => {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <h3 style={{
-                        fontSize: '15px',
+                        fontSize: isMobile ? '14px' : '15px',
                         fontWeight: '700',
                         color: '#1e293b',
                         margin: 0,
@@ -2049,7 +2050,7 @@ const EvaluationPage = () => {
                       </h3>
                       {student.house && (
                         <p style={{
-                          fontSize: '12px',
+                          fontSize: isMobile ? '11px' : '12px',
                           color: '#64748b',
                           margin: 0,
                           fontWeight: '500'
@@ -2064,9 +2065,9 @@ const EvaluationPage = () => {
                         whileTap={{ scale: 0.9 }}
                         onClick={() => handleOpenStudentCriteriaModal(student)}
                         style={{
-                          minWidth: '32px',
-                          height: '32px',
-                          padding: '6px',
+                          minWidth: isMobile ? '28px' : '32px',
+                          height: isMobile ? '28px' : '32px',
+                          padding: isMobile ? '4px' : '6px',
                           borderRadius: '8px',
                           background: studentCriteriaOverrides[student.id] ? 'linear-gradient(135deg, #667eea, #764ba2)' : '#f1f5f9',
                           border: studentCriteriaOverrides[student.id] ? 'none' : '1.5px solid #cbd5e1',
@@ -2077,12 +2078,12 @@ const EvaluationPage = () => {
                           flexShrink: 0,
                           boxShadow: studentCriteriaOverrides[student.id] ? '0 4px 12px rgba(102, 126, 234, 0.3)' : 'none',
                           transition: 'all 0.2s ease',
-                          marginRight: hasAnyEval ? '36px' : '0'
+                          marginRight: hasAnyEval ? (isMobile ? '30px' : '36px') : '0'
                         }}
                         title="Add/Remove criteria for this student"
                       >
                         <Plus 
-                          size={18}
+                          size={isMobile ? 16 : 18}
                           strokeWidth={3}
                           style={{
                             color: studentCriteriaOverrides[student.id] ? '#ffffff' : '#475569'
@@ -2096,8 +2097,8 @@ const EvaluationPage = () => {
                   <div style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(2, 1fr)',
-                    gap: '10px',
-                    marginBottom: '12px'
+                    gap: isMobile ? '8px' : '10px',
+                    marginBottom: isMobile ? '10px' : '12px'
                   }}>
                     {getStudentCategories(student.id).map((category) => {
                       const Icon = category.icon;
@@ -2108,17 +2109,17 @@ const EvaluationPage = () => {
                           <div style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '6px',
-                            marginBottom: '6px'
+                            gap: isMobile ? '4px' : '6px',
+                            marginBottom: isMobile ? '4px' : '6px'
                           }}>
                             <Icon style={{
-                              width: '14px',
-                              height: '14px',
+                              width: isMobile ? '12px' : '14px',
+                              height: isMobile ? '12px' : '14px',
                               color: category.color,
                               flexShrink: 0
                             }} />
                             <span style={{
-                              fontSize: '11px',
+                              fontSize: isMobile ? '10px' : '11px',
                               fontWeight: '700',
                               color: '#475569',
                               letterSpacing: '0.3px',
@@ -2131,7 +2132,7 @@ const EvaluationPage = () => {
                           </div>
                           <div style={{
                             display: 'flex',
-                            gap: '4px'
+                            gap: isMobile ? '3px' : '4px'
                           }}>
                             {ratings.map((rating) => {
                               const isSelected = currentRating === rating.value;
@@ -2145,14 +2146,14 @@ const EvaluationPage = () => {
                                   style={{
                                     flex: 1,
                                     minWidth: 0,
-                                    padding: '6px',
+                                    padding: isMobile ? '8px 4px' : '6px',
                                     border: isSelected 
                                       ? 'none'
                                       : `1.5px solid ${rating.color}30`,
                                     background: isSelected 
                                       ? rating.color
                                       : rating.bg,
-                                    borderRadius: '6px',
+                                    borderRadius: isMobile ? '6px' : '6px',
                                     cursor: saving ? 'not-allowed' : 'pointer',
                                     transition: 'all 0.2s ease',
                                     display: 'flex',
@@ -2165,7 +2166,7 @@ const EvaluationPage = () => {
                                   }}
                                 >
                                   <span style={{
-                                    fontSize: '12px',
+                                    fontSize: isMobile ? '13px' : '12px',
                                     fontWeight: '800',
                                     color: isSelected ? 'white' : rating.color
                                   }}>
@@ -2184,18 +2185,18 @@ const EvaluationPage = () => {
                   <div style={{
                     background: '#fef3c7',
                     border: '1.5px solid #f59e0b25',
-                    borderRadius: '10px',
-                    padding: '8px'
+                    borderRadius: isMobile ? '8px' : '10px',
+                    padding: isMobile ? '8px' : '8px'
                   }}>
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: '4px',
-                      marginBottom: '6px'
+                      marginBottom: isMobile ? '4px' : '6px'
                     }}>
-                      <FileText style={{ width: '14px', height: '14px', color: '#f59e0b' }} />
+                      <FileText style={{ width: isMobile ? '12px' : '14px', height: isMobile ? '12px' : '14px', color: '#f59e0b' }} />
                       <span style={{
-                        fontSize: '11px',
+                        fontSize: isMobile ? '10px' : '11px',
                         fontWeight: '700',
                         color: '#92400e'
                       }}>
@@ -2208,11 +2209,11 @@ const EvaluationPage = () => {
                       placeholder="Add notes about this student..."
                       style={{
                         width: '100%',
-                        minHeight: '60px',
-                        padding: '8px',
+                        minHeight: isMobile ? '50px' : '60px',
+                        padding: isMobile ? '6px' : '8px',
                         border: '1.5px solid #fde68a',
                         borderRadius: '6px',
-                        fontSize: '12px',
+                        fontSize: isMobile ? '11px' : '12px',
                         fontFamily: 'inherit',
                         color: '#78350f',
                         background: 'white',
