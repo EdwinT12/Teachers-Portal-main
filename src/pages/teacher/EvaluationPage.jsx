@@ -462,7 +462,8 @@ const EvaluationPage = () => {
       for (const evalStudent of evalStudents) {
         const studentEvals = evaluations[evalStudent.id];
         if (studentEvals) {
-          for (const category of categories) {
+          // Loop through ALL categories that have data, not just visible ones
+          for (const category of allCategories) {
             const evaluation = studentEvals[category.key];
             if (evaluation?.rating) {
               records.push({
