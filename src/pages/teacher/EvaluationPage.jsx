@@ -2183,22 +2183,40 @@ const EvaluationPage = () => {
 
                   {/* Notes Field */}
                   <div style={{
-                    background: '#fef3c7',
-                    border: '1.5px solid #f59e0b25',
-                    borderRadius: isMobile ? '8px' : '10px',
-                    padding: isMobile ? '8px' : '8px'
+                    background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
+                    border: '2px solid #c4b5fd30',
+                    borderRadius: isMobile ? '10px' : '12px',
+                    padding: isMobile ? '10px' : '12px',
+                    boxShadow: '0 2px 8px rgba(139, 92, 246, 0.08)'
                   }}>
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px',
-                      marginBottom: isMobile ? '4px' : '6px'
+                      gap: '6px',
+                      marginBottom: isMobile ? '6px' : '8px'
                     }}>
-                      <FileText style={{ width: isMobile ? '12px' : '14px', height: isMobile ? '12px' : '14px', color: '#f59e0b' }} />
+                      <div style={{
+                        width: isMobile ? '20px' : '22px',
+                        height: isMobile ? '20px' : '22px',
+                        borderRadius: '6px',
+                        background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <FileText style={{ 
+                          width: isMobile ? '11px' : '12px', 
+                          height: isMobile ? '11px' : '12px', 
+                          color: 'white',
+                          strokeWidth: 2.5
+                        }} />
+                      </div>
                       <span style={{
-                        fontSize: isMobile ? '10px' : '11px',
+                        fontSize: isMobile ? '11px' : '12px',
                         fontWeight: '700',
-                        color: '#92400e'
+                        color: '#5b21b6',
+                        letterSpacing: '0.3px'
                       }}>
                         Teacher Notes
                       </span>
@@ -2209,15 +2227,27 @@ const EvaluationPage = () => {
                       placeholder="Add notes about this student..."
                       style={{
                         width: '100%',
-                        minHeight: isMobile ? '50px' : '60px',
-                        padding: isMobile ? '6px' : '8px',
-                        border: '1.5px solid #fde68a',
-                        borderRadius: '6px',
-                        fontSize: isMobile ? '11px' : '12px',
+                        minHeight: isMobile ? '55px' : '65px',
+                        padding: isMobile ? '8px 10px' : '10px 12px',
+                        border: '2px solid #c4b5fd',
+                        borderRadius: '8px',
+                        fontSize: isMobile ? '12px' : '13px',
                         fontFamily: 'inherit',
-                        color: '#78350f',
+                        color: '#4c1d95',
                         background: 'white',
-                        resize: 'vertical'
+                        resize: 'vertical',
+                        lineHeight: '1.5',
+                        transition: 'all 0.2s ease',
+                        outline: 'none',
+                        boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.05)'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#8b5cf6';
+                        e.target.style.boxShadow = '0 0 0 3px rgba(139, 92, 246, 0.1), inset 0 1px 3px rgba(0,0,0,0.05)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#c4b5fd';
+                        e.target.style.boxShadow = 'inset 0 1px 3px rgba(0,0,0,0.05)';
                       }}
                     />
                   </div>
