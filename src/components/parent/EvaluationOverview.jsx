@@ -583,7 +583,7 @@ const EvaluationOverview = ({ linkedChildren }) => {
                   opacity: 0,
                   animation: 'slideInUp 0.3s ease 0.1s forwards'
                 }}>
-                  {categories.map((category, index) => {
+                  {categories.filter(category => category.key === 'HW').map((category, index) => {
                     const categoryStats = currentData.stats.categoryAverages[category.key];
                     const Icon = category.icon;
                     
