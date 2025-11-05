@@ -576,10 +576,7 @@ const EvaluationOverview = ({ linkedChildren }) => {
 
               {showAllStats && (
                 <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-                  gap: '16px',
-                  marginTop: '20px',
+                  marginTop: '24px',
                   opacity: 0,
                   animation: 'slideInUp 0.3s ease 0.1s forwards'
                 }}>
@@ -589,73 +586,157 @@ const EvaluationOverview = ({ linkedChildren }) => {
                     
                     return (
                       <div key={category.key} style={{
-                        padding: '20px',
-                        background: categoryStats ? category.bg : '#f8fafc',
+                        padding: '24px',
+                        background: 'white',
                         borderRadius: '12px',
-                        border: `2px solid ${categoryStats ? category.color : '#e2e8f0'}`,
+                        border: `2px solid ${categoryStats ? category.color : '#cbd5e1'}`,
+                        boxShadow: categoryStats 
+                          ? '0 4px 12px rgba(245, 158, 11, 0.15), 0 2px 4px rgba(0, 0, 0, 0.08)' 
+                          : '0 2px 8px rgba(0, 0, 0, 0.1)',
                         opacity: 0,
-                        animation: `fadeInScale 0.3s ease ${0.2 + index * 0.1}s forwards`
+                        animation: `fadeInScale 0.4s ease ${0.2 + index * 0.1}s forwards`,
+                        transition: 'all 0.3s ease',
+                        maxWidth: '500px',
+                        margin: '0 auto'
                       }}>
                         <div style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '8px',
-                          marginBottom: '12px'
+                          justifyContent: 'space-between',
+                          marginBottom: '16px'
                         }}>
-                          <Icon style={{ width: '20px', height: '20px', color: category.color }} />
                           <div style={{
-                            fontSize: '13px',
-                            fontWeight: '600',
-                            color: categoryStats ? category.color : '#64748b'
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px'
                           }}>
-                            {category.label}
+                            <div style={{
+                              width: '40px',
+                              height: '40px',
+                              borderRadius: '10px',
+                              background: categoryStats ? category.color : '#64748b',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
+                            }}>
+                              <Icon style={{ width: '24px', height: '24px', color: 'white' }} />
+                            </div>
+                            <div>
+                              <div style={{
+                                fontSize: '18px',
+                                fontWeight: '700',
+                                color: categoryStats ? '#92400e' : '#64748b',
+                                marginBottom: '2px'
+                              }}>
+                                {category.label}
+                              </div>
+                              <div style={{
+                                fontSize: '12px',
+                                fontWeight: '500',
+                                color: categoryStats ? '#b45309' : '#94a3b8',
+                                opacity: 0.9
+                              }}>
+                                {categoryStats 
+                                  ? `${categoryStats.count} evaluation${categoryStats.count !== 1 ? 's' : ''}`
+                                  : 'No evaluations yet'
+                                }
+                              </div>
+                            </div>
                           </div>
+                          
+                          {categoryStats && (
+                            <div style={{
+                              textAlign: 'right'
+                            }}>
+                              <div style={{
+                                fontSize: '36px',
+                                fontWeight: '900',
+                                color: category.color,
+                                lineHeight: '1',
+                                textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+                              }}>
+                                {categoryStats.percentage}%
+                              </div>
+                            </div>
+                          )}
                         </div>
                         
                         {categoryStats ? (
                           <>
                             <div style={{
-                              fontSize: '28px',
-                              fontWeight: '800',
-                              color: category.color,
-                              marginBottom: '2px'
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '12px',
+                              padding: '20px',
+                              background: 'rgba(255, 255, 255, 0.7)',
+                              borderRadius: '12px',
+                              border: '2px solid rgba(245, 158, 11, 0.3)',
+                              backdropFilter: 'blur(10px)'
                             }}>
-                              {categoryStats.percentage}%
-                            </div>
-                            <div style={{
-                              fontSize: '13px',
-                              fontWeight: '600',
-                              color: category.color,
-                              opacity: 0.9,
-                              marginBottom: '4px'
-                            }}>
-                              {categoryStats.totalScore} / {categoryStats.maxScore} pts
-                            </div>
-                            <div style={{
-                              fontSize: '12px',
-                              color: category.color,
-                              opacity: 0.8
-                            }}>
-                              {categoryStats.count} evaluation{categoryStats.count !== 1 ? 's' : ''}
+                              <div style={{
+                                fontSize: '18px',
+                                fontWeight: '700',
+                                color: '#78350f'
+                              }}>
+                                Score:
+                              </div>
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'baseline',
+                                gap: '6px'
+                              }}>
+                                <span style={{
+                                  fontSize: '32px',
+                                  fontWeight: '900',
+                                  color: category.color
+                                }}>
+                                  {categoryStats.totalScore}
+                                </span>
+                                <span style={{
+                                  fontSize: '24px',
+                                  fontWeight: '600',
+                                  color: '#92400e',
+                                  opacity: 0.7
+                                }}>
+                                  / {categoryStats.maxScore}
+                                </span>
+                                <span style={{
+                                  fontSize: '16px',
+                                  fontWeight: '600',
+                                  color: '#b45309',
+                                  marginLeft: '4px'
+                                }}>
+                                  points
+                                </span>
+                              </div>
                             </div>
                           </>
                         ) : (
-                          <>
+                          <div style={{
+                            textAlign: 'center',
+                            padding: '32px',
+                            background: 'rgba(255, 255, 255, 0.5)',
+                            borderRadius: '12px',
+                            border: '2px dashed #cbd5e1'
+                          }}>
                             <div style={{
-                              fontSize: '28px',
+                              fontSize: '48px',
                               fontWeight: '800',
-                              color: '#64748b',
-                              marginBottom: '4px'
+                              color: '#cbd5e1',
+                              marginBottom: '8px'
                             }}>
                               —
                             </div>
                             <div style={{
-                              fontSize: '12px',
-                              color: '#64748b'
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              color: '#94a3b8'
                             }}>
-                              No evaluations
+                              No homework evaluations recorded yet
                             </div>
-                          </>
+                          </div>
                         )}
                       </div>
                     );
