@@ -626,7 +626,7 @@ const EvaluationOverview = ({ linkedChildren }) => {
                               <div style={{
                                 fontSize: '18px',
                                 fontWeight: '700',
-                                color: categoryStats ? '#92400e' : '#64748b',
+                                color: categoryStats ? '#6b21a8' : '#64748b',
                                 marginBottom: '2px'
                               }}>
                                 {category.label}
@@ -634,7 +634,7 @@ const EvaluationOverview = ({ linkedChildren }) => {
                               <div style={{
                                 fontSize: '12px',
                                 fontWeight: '500',
-                                color: categoryStats ? '#b45309' : '#94a3b8',
+                                color: categoryStats ? '#7e22ce' : '#94a3b8',
                                 opacity: 0.9
                               }}>
                                 {categoryStats 
@@ -668,17 +668,17 @@ const EvaluationOverview = ({ linkedChildren }) => {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              gap: '12px',
-                              padding: '20px',
-                              background: 'rgba(255, 255, 255, 0.7)',
-                              borderRadius: '12px',
-                              border: '2px solid rgba(245, 158, 11, 0.3)',
-                              backdropFilter: 'blur(10px)'
+                              gap: '10px',
+                              padding: '16px',
+                              background: 'white',
+                              borderRadius: '10px',
+                              border: '2px solid rgba(168, 85, 247, 0.2)',
+                              boxShadow: '0 2px 8px rgba(168, 85, 247, 0.1)'
                             }}>
                               <div style={{
-                                fontSize: '18px',
+                                fontSize: '16px',
                                 fontWeight: '700',
-                                color: '#78350f'
+                                color: '#6b21a8'
                               }}>
                                 Score:
                               </div>
@@ -688,24 +688,24 @@ const EvaluationOverview = ({ linkedChildren }) => {
                                 gap: '6px'
                               }}>
                                 <span style={{
-                                  fontSize: '32px',
+                                  fontSize: '28px',
                                   fontWeight: '900',
                                   color: category.color
                                 }}>
                                   {categoryStats.totalScore}
                                 </span>
                                 <span style={{
-                                  fontSize: '24px',
+                                  fontSize: '20px',
                                   fontWeight: '600',
-                                  color: '#92400e',
+                                  color: '#7e22ce',
                                   opacity: 0.7
                                 }}>
                                   / {categoryStats.maxScore}
                                 </span>
                                 <span style={{
-                                  fontSize: '16px',
+                                  fontSize: '14px',
                                   fontWeight: '600',
-                                  color: '#b45309',
+                                  color: '#9333ea',
                                   marginLeft: '4px'
                                 }}>
                                   points
@@ -716,13 +716,13 @@ const EvaluationOverview = ({ linkedChildren }) => {
                         ) : (
                           <div style={{
                             textAlign: 'center',
-                            padding: '32px',
+                            padding: '24px',
                             background: 'rgba(255, 255, 255, 0.5)',
-                            borderRadius: '12px',
+                            borderRadius: '10px',
                             border: '2px dashed #cbd5e1'
                           }}>
                             <div style={{
-                              fontSize: '48px',
+                              fontSize: '36px',
                               fontWeight: '800',
                               color: '#cbd5e1',
                               marginBottom: '8px'
@@ -730,7 +730,7 @@ const EvaluationOverview = ({ linkedChildren }) => {
                               —
                             </div>
                             <div style={{
-                              fontSize: '14px',
+                              fontSize: '13px',
                               fontWeight: '600',
                               color: '#94a3b8'
                             }}>
