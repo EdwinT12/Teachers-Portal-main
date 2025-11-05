@@ -10,6 +10,7 @@ import ParentVerificationPanel from '../../components/ParentVerificationPanel';
 import DualRoleManager from '../../components/DualRoleManager';
 import AdminAbsenceRequestsPanel from '../../components/AdminAbsenceRequestsPanel';
 import EvaluationCriteriaSettings from '../../components/EvaluationCriteriaSettings';
+import ParentEvaluationCriteriaSettings from '../../components/ParentEvaluationCriteriaSettings';
 import { 
   Users, 
   Clock, 
@@ -916,7 +917,8 @@ const AdminDashboard = () => {
             { id: 'weekly-report', label: 'Weekly Report' },
             { id: 'catechism-tracker', label: 'Log Catechism' },
             { id: 'update-sheets', label: 'Update Sheets' },
-            { id: 'evaluation-criteria', label: 'Evaluation Criteria' }
+            { id: 'evaluation-criteria', label: 'Teacher Criteria' },
+            { id: 'parent-criteria', label: 'Parent Criteria' }
           ].map((tab) => (
             <motion.button
               key={tab.id}
@@ -1026,6 +1028,18 @@ const AdminDashboard = () => {
                 border: '2px solid #f1f5f9'
               }}>
                 <EvaluationCriteriaSettings />
+              </div>
+            )}
+            {activeTab === 'parent-criteria' && (
+              <div style={{
+                background: 'rgba(255,255,255,0.95)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: '16px',
+                padding: isMobile ? '16px' : '20px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                border: '2px solid #f1f5f9'
+              }}>
+                <ParentEvaluationCriteriaSettings />
               </div>
             )}
           </motion.div>

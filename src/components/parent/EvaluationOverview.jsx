@@ -1,20 +1,32 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import supabase from '../../utils/supabase';
 import toast from 'react-hot-toast';
-import { Award, BookOpen, Heart, Zap, Calendar, TrendingUp, Filter, ChevronDown, Star, BarChart3 } from 'lucide-react';
+import { Award, BookOpen, Heart, Zap, Calendar, TrendingUp, Filter, ChevronDown, Star, BarChart3, EyeOff } from 'lucide-react';
+import { AuthContext } from '../../context/AuthContext';
+import { getParentVisibilitySettings } from '../../utils/parentEvaluationVisibilityUtils';
 
 const EvaluationOverview = ({ linkedChildren }) => {
+  const { user } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
   const [evaluationData, setEvaluationData] = useState({});
   const [selectedChild, setSelectedChild] = useState(null);
   const [selectedChapter, setSelectedChapter] = useState('all');
   const [showAllStats, setShowAllStats] = useState(false);
+  const [visibilitySettings, setVisibilitySettings] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const categories = [
-    { key: 'D', label: 'Discipline', color: '#3b82f6', bg: '#dbeafe', icon: Award },
-    { key: 'B', label: 'Behaviour', color: '#10b981', bg: '#d1fae5', icon: Heart },
-    { key: 'HW', label: 'Homework', color: '#f59e0b', bg: '#fef3c7', icon: BookOpen },
-    { key: 'AP', label: 'Active Participation', color: '#8b5cf6', bg: '#ede9fe', icon: Zap }
+    { key: 'D', label: 'Discipline', color: '#3b82f6', bg: '#dbeafe', icon: Award, settingKey: 'show_discipline' },
+    { key: 'B', label: 'Behaviour', color: '#10b981', bg: '#d1fae5', icon: Heart, settingKey: 'show_behaviour' },
+    { key: 'HW', label: 'Homework', color: '#f59e0b', bg: '#fef3c7', icon: BookOpen, settingKey: 'show_homework' },
+    { key: 'AP', label: 'Active Participation', color: '#8b5cf6', bg: '#ede9fe', icon: Zap, settingKey: 'show_participation' }
   ];
 
   const ratings = [
@@ -22,6 +34,25 @@ const EvaluationOverview = ({ linkedChildren }) => {
     { value: 'G', label: 'Good', color: '#3b82f6', bg: '#dbeafe', score: 2 },
     { value: 'I', label: 'Improving', color: '#f59e0b', bg: '#fef3c7', score: 1 }
   ];
+
+  // Get visible categories based on parent settings
+  const getVisibleCategories = () => {
+    if (!visibilitySettings) return categories;
+    
+    return categories.filter(category => {
+      return visibilitySettings[category.settingKey] !== false;
+    });
+  };
+
+  useEffect(() => {
+    const loadVisibilitySettings = async () => {
+      if (user?.id) {
+        const settings = await getParentVisibilitySettings(user.id);
+        setVisibilitySettings(settings);
+      }
+    };
+    loadVisibilitySettings();
+  }, [user]);
 
   useEffect(() => {
     if (linkedChildren && linkedChildren.length > 0) {
@@ -276,16 +307,22 @@ const EvaluationOverview = ({ linkedChildren }) => {
       };
     }
 
-    const totalEvaluations = records.length;
+    const visibleCategories = getVisibleCategories();
+    const visibleCategoryKeys = visibleCategories.map(c => c.key);
+    
+    // Filter records to only include visible categories
+    const visibleRecords = records.filter(r => visibleCategoryKeys.includes(r.category));
+    
+    const totalEvaluations = visibleRecords.length;
     const categoryAverages = {};
     
     // Get unique chapters to calculate max possible score
-    const uniqueChapters = [...new Set(records.map(r => r.chapter_number))];
+    const uniqueChapters = [...new Set(visibleRecords.map(r => r.chapter_number))];
     const chaptersCompleted = uniqueChapters.length;
     const completedChaptersList = uniqueChapters.sort((a, b) => a - b); // Sort ascending
     
-    categories.forEach(category => {
-      const categoryRecords = records.filter(r => r.category === category.key);
+    visibleCategories.forEach(category => {
+      const categoryRecords = visibleRecords.filter(r => r.category === category.key);
       if (categoryRecords.length > 0) {
         const sum = categoryRecords.reduce((acc, record) => {
           const ratingInfo = ratings.find(r => r.value === record.rating);
@@ -301,24 +338,24 @@ const EvaluationOverview = ({ linkedChildren }) => {
       }
     });
 
-    const allScores = records.map(record => {
+    const allScores = visibleRecords.map(record => {
       const ratingInfo = ratings.find(r => r.value === record.rating);
       return ratingInfo ? ratingInfo.score : 0;
     });
     const totalScore = allScores.reduce((a, b) => a + b, 0);
     
-    // Max possible score = chapters completed × 4 categories × 3 points per category
-    const maxPossibleScore = chaptersCompleted * 12;
+    // Max possible score = chapters completed × visible categories × 3 points per category
+    const maxPossibleScore = chaptersCompleted * visibleCategories.length * 3;
     
     const overallAverage = allScores.length > 0 ? 
       (totalScore / allScores.length).toFixed(1) : 0;
 
-    const lastEvaluationDate = records.length > 0 ? records[0].created_at : null;
+    const lastEvaluationDate = visibleRecords.length > 0 ? visibleRecords[0].created_at : null;
 
     let recentTrend = 'neutral';
-    if (records.length >= 6) {
-      const recent = records.slice(0, 3);
-      const previous = records.slice(3, 6);
+    if (visibleRecords.length >= 6) {
+      const recent = visibleRecords.slice(0, 3);
+      const previous = visibleRecords.slice(3, 6);
       
       const recentAvg = recent.reduce((acc, r) => {
         const rating = ratings.find(rt => rt.value === r.rating);
@@ -338,7 +375,7 @@ const EvaluationOverview = ({ linkedChildren }) => {
       totalEvaluations,
       categoryAverages,
       overallAverage: parseFloat(overallAverage),
-      overallPercentage: Math.round((totalScore / maxPossibleScore) * 100),
+      overallPercentage: maxPossibleScore > 0 ? Math.round((totalScore / maxPossibleScore) * 100) : 0,
       totalScore,
       maxPossibleScore,
       chaptersCompleted,
@@ -578,53 +615,59 @@ const EvaluationOverview = ({ linkedChildren }) => {
                 <div style={{
                   marginTop: '24px',
                   opacity: 0,
-                  animation: 'slideInUp 0.3s ease 0.1s forwards'
+                  animation: 'slideInUp 0.3s ease 0.1s forwards',
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+                  gap: isMobile ? '12px' : '16px',
+                  maxWidth: '800px',
+                  margin: '24px auto 0',
+                  padding: isMobile ? '0 8px' : '0'
                 }}>
-                  {categories.filter(category => category.key === 'HW').map((category, index) => {
+                  {getVisibleCategories().map((category, index) => {
                     const categoryStats = currentData.stats.categoryAverages[category.key];
                     const Icon = category.icon;
                     
                     return (
                       <div key={category.key} style={{
-                        padding: '24px',
+                        padding: isMobile ? '16px' : '20px',
                         background: 'white',
-                        borderRadius: '12px',
+                        borderRadius: isMobile ? '10px' : '12px',
                         border: `2px solid ${categoryStats ? category.color : '#cbd5e1'}`,
                         boxShadow: categoryStats 
-                          ? '0 4px 12px rgba(245, 158, 11, 0.15), 0 2px 4px rgba(0, 0, 0, 0.08)' 
+                          ? `0 4px 12px ${category.color}26, 0 2px 4px rgba(0, 0, 0, 0.08)` 
                           : '0 2px 8px rgba(0, 0, 0, 0.1)',
                         opacity: 0,
                         animation: `fadeInScale 0.4s ease ${0.2 + index * 0.1}s forwards`,
                         transition: 'all 0.3s ease',
-                        maxWidth: '500px',
-                        margin: '0 auto'
+                        display: 'flex',
+                        flexDirection: 'column'
                       }}>
                         <div style={{
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          marginBottom: '16px'
+                          marginBottom: isMobile ? '10px' : '12px'
                         }}>
                           <div style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '10px'
+                            gap: isMobile ? '6px' : '8px'
                           }}>
                             <div style={{
-                              width: '40px',
-                              height: '40px',
-                              borderRadius: '10px',
+                              width: isMobile ? '32px' : '36px',
+                              height: isMobile ? '32px' : '36px',
+                              borderRadius: isMobile ? '8px' : '10px',
                               background: categoryStats ? category.color : '#64748b',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
                             }}>
-                              <Icon style={{ width: '24px', height: '24px', color: 'white' }} />
+                              <Icon style={{ width: isMobile ? '18px' : '20px', height: isMobile ? '18px' : '20px', color: 'white' }} />
                             </div>
                             <div>
                               <div style={{
-                                fontSize: '18px',
+                                fontSize: isMobile ? '13px' : '15px',
                                 fontWeight: '700',
                                 color: categoryStats ? '#6b21a8' : '#64748b',
                                 marginBottom: '2px'
@@ -632,14 +675,14 @@ const EvaluationOverview = ({ linkedChildren }) => {
                                 {category.label}
                               </div>
                               <div style={{
-                                fontSize: '12px',
+                                fontSize: isMobile ? '10px' : '11px',
                                 fontWeight: '500',
                                 color: categoryStats ? '#7e22ce' : '#94a3b8',
                                 opacity: 0.9
                               }}>
                                 {categoryStats 
-                                  ? `${categoryStats.count} evaluation${categoryStats.count !== 1 ? 's' : ''}`
-                                  : 'No evaluations yet'
+                                  ? `${categoryStats.count} eval${categoryStats.count !== 1 ? 's' : ''}`
+                                  : 'No evals yet'
                                 }
                               </div>
                             </div>
@@ -650,7 +693,7 @@ const EvaluationOverview = ({ linkedChildren }) => {
                               textAlign: 'right'
                             }}>
                               <div style={{
-                                fontSize: '36px',
+                                fontSize: isMobile ? '28px' : '32px',
                                 fontWeight: '900',
                                 color: category.color,
                                 lineHeight: '1',
@@ -668,15 +711,15 @@ const EvaluationOverview = ({ linkedChildren }) => {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              gap: '10px',
-                              padding: '16px',
+                              gap: isMobile ? '6px' : '8px',
+                              padding: isMobile ? '10px' : '12px',
                               background: 'white',
-                              borderRadius: '10px',
+                              borderRadius: isMobile ? '6px' : '8px',
                               border: '2px solid rgba(168, 85, 247, 0.2)',
                               boxShadow: '0 2px 8px rgba(168, 85, 247, 0.1)'
                             }}>
                               <div style={{
-                                fontSize: '16px',
+                                fontSize: isMobile ? '12px' : '14px',
                                 fontWeight: '700',
                                 color: '#6b21a8'
                               }}>
@@ -685,17 +728,17 @@ const EvaluationOverview = ({ linkedChildren }) => {
                               <div style={{
                                 display: 'flex',
                                 alignItems: 'baseline',
-                                gap: '6px'
+                                gap: isMobile ? '3px' : '4px'
                               }}>
                                 <span style={{
-                                  fontSize: '28px',
+                                  fontSize: isMobile ? '20px' : '24px',
                                   fontWeight: '900',
                                   color: category.color
                                 }}>
                                   {categoryStats.totalScore}
                                 </span>
                                 <span style={{
-                                  fontSize: '20px',
+                                  fontSize: isMobile ? '16px' : '18px',
                                   fontWeight: '600',
                                   color: '#7e22ce',
                                   opacity: 0.7
@@ -703,12 +746,12 @@ const EvaluationOverview = ({ linkedChildren }) => {
                                   / {categoryStats.maxScore}
                                 </span>
                                 <span style={{
-                                  fontSize: '14px',
+                                  fontSize: isMobile ? '11px' : '12px',
                                   fontWeight: '600',
                                   color: '#9333ea',
-                                  marginLeft: '4px'
+                                  marginLeft: isMobile ? '1px' : '2px'
                                 }}>
-                                  points
+                                  pts
                                 </span>
                               </div>
                             </div>
@@ -716,25 +759,25 @@ const EvaluationOverview = ({ linkedChildren }) => {
                         ) : (
                           <div style={{
                             textAlign: 'center',
-                            padding: '24px',
+                            padding: isMobile ? '16px' : '20px',
                             background: 'rgba(255, 255, 255, 0.5)',
-                            borderRadius: '10px',
+                            borderRadius: isMobile ? '6px' : '8px',
                             border: '2px dashed #cbd5e1'
                           }}>
                             <div style={{
-                              fontSize: '36px',
+                              fontSize: isMobile ? '28px' : '32px',
                               fontWeight: '800',
                               color: '#cbd5e1',
-                              marginBottom: '8px'
+                              marginBottom: isMobile ? '4px' : '6px'
                             }}>
                               —
                             </div>
                             <div style={{
-                              fontSize: '13px',
+                              fontSize: isMobile ? '10px' : '11px',
                               fontWeight: '600',
                               color: '#94a3b8'
                             }}>
-                              No homework evaluations recorded yet
+                              No {category.label.toLowerCase()} evaluations recorded yet
                             </div>
                           </div>
                         )}
