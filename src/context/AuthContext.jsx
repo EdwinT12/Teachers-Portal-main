@@ -14,6 +14,21 @@ const AuthProvider = ({ children }) => {
     // Get initial session and handle expired sessions
     const getInitialSession = async () => {
       try {
+        // Check if this is a password recovery flow FIRST
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const searchParams = new URLSearchParams(window.location.search);
+        const isRecovery = hashParams.get('type') === 'recovery' || searchParams.get('type') === 'recovery';
+        
+        if (isRecovery) {
+          console.log('🔐 Password recovery detected in initial load - redirecting to reset page');
+          const currentHash = window.location.hash;
+          const currentSearch = window.location.search;
+          setLoading(false);
+          // Use replace to avoid history issues
+          window.location.replace('/parent/reset-password' + (currentHash || currentSearch));
+          return;
+        }
+
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -83,6 +98,24 @@ const AuthProvider = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
+        
+        // Check if this is a password recovery flow
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const searchParams = new URLSearchParams(window.location.search);
+        const isRecovery = hashParams.get('type') === 'recovery' || 
+                          searchParams.get('type') === 'recovery' || 
+                          event === 'PASSWORD_RECOVERY';
+        
+        if (isRecovery && event === 'SIGNED_IN') {
+          console.log('🔐 Password recovery sign-in detected - redirecting to reset page');
+          setUser(session?.user ?? null);
+          setLoading(false);
+          const currentHash = window.location.hash;
+          const currentSearch = window.location.search;
+          // Redirect to password reset page with hash/search params
+          window.location.replace('/parent/reset-password' + (currentHash || currentSearch));
+          return;
+        }
         
         if (event === 'TOKEN_REFRESHED') {
           console.log('✅ Token was refreshed successfully');

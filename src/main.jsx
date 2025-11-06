@@ -17,6 +17,7 @@ import HomePage from "./pages/HomePage.jsx";
 import GoogleAuthLanding from "./pages/auth/GoogleAuthLanding.jsx";
 import ParentAuthLanding from "./pages/auth/ParentAuthLanding.jsx";
 import ParentSignUp from "./pages/auth/ParentSignUp.jsx";
+import ParentPasswordReset from "./pages/auth/ParentPasswordReset.jsx";
 
 // Dashboard pages
 import TeacherDashboard from "./pages/teacher/TeacherDashboard.jsx";
@@ -63,6 +64,9 @@ createRoot(document.getElementById("root")).render(
               
               {/* Public route - Parent OAuth landing page */}
               <Route path="/parent/auth" element={<ParentAuthLanding />} />
+              
+              {/* Public route - Parent password reset */}
+              <Route path="/parent/reset-password" element={<ParentPasswordReset />} />
               
               {/* Protected route - Parent signup/registration */}
               <Route path="/parent/signup" element={
