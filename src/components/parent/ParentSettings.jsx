@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import supabase from '../../utils/supabase';
 import toast from 'react-hot-toast';
-import { Settings, User, Mail, Users, CheckCircle, Clock, Plus, Trash2, X } from 'lucide-react';
+import { Settings, User, Mail, Users, CheckCircle, Clock, Plus, Trash2, X, Lock } from 'lucide-react';
 
 const ParentSettings = ({ profile, linkedChildren, onUpdate }) => {
   const [updating, setUpdating] = useState(false);
@@ -9,11 +9,23 @@ const ParentSettings = ({ profile, linkedChildren, onUpdate }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [deleting, setDeleting] = useState(null);
   
+  // For password change
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  
   // For adding new child
   const [newChild, setNewChild] = useState({
     name: '',
     yearGroup: ''
   });
+
+  // Check if user is admin or teacher (uses Google OAuth)
+  const isGoogleUser = profile?.role === 'admin' || profile?.role === 'teacher' || 
+                       profile?.roles?.includes('admin') || profile?.roles?.includes('teacher');
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
@@ -40,6 +52,88 @@ const ParentSettings = ({ profile, linkedChildren, onUpdate }) => {
       toast.error('Error updating profile');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const validatePassword = (password) => {
+    const minLength = 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    // Accept ANY character that is not a letter or number (including all special chars, symbols, unicode, etc.)
+    const hasSpecialChar = /[^a-zA-Z0-9]/.test(password);
+
+    if (password.length < minLength) {
+      return "Password must be at least 8 characters long.";
+    }
+    if (!hasUpperCase) {
+      return "Password must contain at least one uppercase letter.";
+    }
+    if (!hasLowerCase) {
+      return "Password must contain at least one lowercase letter.";
+    }
+    if (!hasNumbers) {
+      return "Password must contain at least one number.";
+    }
+    if (!hasSpecialChar) {
+      return "Password must contain at least one special character (any symbol, punctuation, or space).";
+    }
+    return null;
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      toast.error('Please fill in all password fields');
+      return;
+    }
+
+    // Validate password requirements
+    const passwordError = validatePassword(passwordData.newPassword);
+    if (passwordError) {
+      toast.error(passwordError);
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+
+    setChangingPassword(true);
+
+    try {
+      // First verify current password by attempting to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: profile.email,
+        password: passwordData.currentPassword
+      });
+
+      if (signInError) {
+        toast.error('Current password is incorrect');
+        setChangingPassword(false);
+        return;
+      }
+
+      // Update the password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: passwordData.newPassword
+      });
+
+      if (updateError) throw updateError;
+
+      toast.success('Password changed successfully!');
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+    } catch (error) {
+      console.error('Error changing password:', error);
+      toast.error('Error changing password');
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -229,6 +323,181 @@ const ParentSettings = ({ profile, linkedChildren, onUpdate }) => {
           </button>
         </form>
       </div>
+
+      {/* Change Password - Only for parent users */}
+      {isGoogleUser ? (
+        // Show message for Google OAuth users (admin/teacher)
+        <div style={{
+          background: '#eff6ff',
+          borderRadius: '12px',
+          padding: '24px',
+          marginBottom: '24px',
+          border: '2px solid #bfdbfe'
+        }}>
+          <h3 style={{
+            fontSize: '18px',
+            fontWeight: '700',
+            color: '#1e293b',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <Lock style={{ width: '22px', height: '22px', color: '#3b82f6' }} />
+            Password Management
+          </h3>
+          <div style={{
+            padding: '16px',
+            background: 'white',
+            borderRadius: '8px',
+            border: '1px solid #dbeafe'
+          }}>
+            <p style={{
+              fontSize: '14px',
+              color: '#1e40af',
+              margin: 0,
+              lineHeight: '1.6'
+            }}>
+              <strong>Google Account:</strong> Your password is managed through your Google <strong>csmegb.net</strong> account. 
+              Please visit <a href="https://myaccount.google.com/security" target="_blank" rel="noopener noreferrer" style={{
+                color: '#2563eb',
+                textDecoration: 'underline'
+              }}>Google Account Security</a> to change your password.
+            </p>
+          </div>
+        </div>
+      ) : (
+        // Show password change form for parent users
+        <div style={{
+          background: '#f8fafc',
+          borderRadius: '12px',
+          padding: '24px',
+          marginBottom: '24px',
+          border: '2px solid #e2e8f0'
+        }}>
+          <h3 style={{
+            fontSize: '18px',
+            fontWeight: '700',
+            color: '#1e293b',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <Lock style={{ width: '22px', height: '22px' }} />
+            Change Password
+          </h3>
+
+          <form onSubmit={handleChangePassword}>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#475569',
+                marginBottom: '8px'
+              }}>
+                Current Password
+              </label>
+              <input
+                type="password"
+                value={passwordData.currentPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                placeholder="Enter current password"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  fontSize: '15px',
+                  border: '2px solid #e2e8f0',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#475569',
+                marginBottom: '8px'
+              }}>
+                New Password
+              </label>
+              <input
+                type="password"
+                value={passwordData.newPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                placeholder="Enter new password"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  fontSize: '15px',
+                  border: '2px solid #e2e8f0',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+              <p style={{
+                fontSize: '12px',
+                color: '#64748b',
+                margin: '6px 0 0 0',
+                lineHeight: '1.5'
+              }}>
+                Must be 8+ characters with uppercase, lowercase, number, and any special character.
+              </p>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#475569',
+                marginBottom: '8px'
+              }}>
+                Confirm New Password
+              </label>
+              <input
+                type="password"
+                value={passwordData.confirmPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                placeholder="Confirm new password"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  fontSize: '15px',
+                  border: '2px solid #e2e8f0',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={changingPassword}
+              style={{
+                padding: '12px 24px',
+                background: changingPassword ? '#94a3b8' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '15px',
+                fontWeight: '600',
+                cursor: changingPassword ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              {changingPassword ? 'Changing Password...' : 'Change Password'}
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* Manage Children */}
       <div style={{

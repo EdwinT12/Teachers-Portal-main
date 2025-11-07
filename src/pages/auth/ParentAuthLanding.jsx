@@ -90,6 +90,7 @@ const ParentAuthLanding = () => {
     const hasUpperCase = /[A-Z]/.test(password);
     const hasLowerCase = /[a-z]/.test(password);
     const hasNumbers = /\d/.test(password);
+    // Accept ANY character that is not a letter or number (including all special chars, symbols, unicode, etc.)
     const hasSpecialChar = /[^a-zA-Z0-9]/.test(password);
 
     if (password.length < minLength) {
@@ -105,7 +106,7 @@ const ParentAuthLanding = () => {
       return "Password must contain at least one number.";
     }
     if (!hasSpecialChar) {
-      return "Password must contain at least one special character.";
+      return "Password must contain at least one special character (any symbol, punctuation, or space).";
     }
     return null;
   };
@@ -531,7 +532,7 @@ const ParentAuthLanding = () => {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     <span style={{ color: '#0ea5e9', marginRight: '5px', fontWeight: 'bold' }}>•</span>
-                    One special character
+                    One special character (any symbol)
                   </div>
                 </div>
               </div>

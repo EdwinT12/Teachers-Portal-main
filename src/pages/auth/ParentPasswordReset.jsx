@@ -68,6 +68,7 @@ const ParentPasswordReset = () => {
     const hasUpperCase = /[A-Z]/.test(password);
     const hasLowerCase = /[a-z]/.test(password);
     const hasNumbers = /\d/.test(password);
+    // Accept ANY character that is not a letter or number (including all special chars, symbols, unicode, etc.)
     const hasSpecialChar = /[^a-zA-Z0-9]/.test(password);
 
     if (password.length < minLength) {
@@ -83,7 +84,7 @@ const ParentPasswordReset = () => {
       return "Password must contain at least one number.";
     }
     if (!hasSpecialChar) {
-      return "Password must contain at least one special character.";
+      return "Password must contain at least one special character (any symbol, punctuation, or space).";
     }
     return null;
   };
@@ -329,7 +330,7 @@ const ParentPasswordReset = () => {
               </div>
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <span style={{ color: '#8b5cf6', marginRight: '6px', fontWeight: 'bold' }}>•</span>
-                Include special character (!@#$%^&*)
+                Include special character (any symbol)
               </div>
             </div>
           </div>
