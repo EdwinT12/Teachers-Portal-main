@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { AuthContext } from '../../context/AuthContext';
 import supabase from '../../utils/supabase';
 import toast from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Calendar, 
   FileText, 
@@ -10,7 +11,14 @@ import {
   Users, 
   AlertCircle, 
   Clock,
-  Award
+  Award,
+  LogOut,
+  Menu,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  LayoutDashboard,
+  PanelLeftOpen
 } from 'lucide-react';
 
 // Import child components
@@ -29,9 +37,28 @@ const ParentDashboard = () => {
   const [linkedChildren, setLinkedChildren] = useState([]);
   const [pendingChildren, setPendingChildren] = useState([]);
   const [brokenLinks, setBrokenLinks] = useState([]);
-  const [showAllTiles, setShowAllTiles] = useState(false);
-  const [showLeftScroll, setShowLeftScroll] = useState(false);
-  const [showRightScroll, setShowRightScroll] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+
+  // Sidebar navigation items
+  const sidebarItems = [
+    { id: 'attendance', label: 'Attendance', icon: Calendar },
+    { id: 'evaluations', label: 'Evaluations', icon: Award },
+    { id: 'absences', label: 'Absence Requests', icon: FileText },
+    { id: 'results', label: 'Test Results', icon: Clock },
+    { id: 'settings', label: 'Settings', icon: Settings }
+  ];
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -42,24 +69,15 @@ const ParentDashboard = () => {
     loadParentData();
   }, [user, navigate]);
 
-  // Check scroll position to show/hide scroll indicators
-  const handleTabScroll = (e) => {
-    const container = e.target;
-    const scrollLeft = container.scrollLeft;
-    const maxScroll = container.scrollWidth - container.clientWidth;
-    
-    setShowLeftScroll(scrollLeft > 10);
-    setShowRightScroll(scrollLeft < maxScroll - 10);
-  };
-
-  // Check initial scroll state
-  useEffect(() => {
-    const tabContainer = document.getElementById('tab-container');
-    if (tabContainer) {
-      const maxScroll = tabContainer.scrollWidth - tabContainer.clientWidth;
-      setShowRightScroll(maxScroll > 0);
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/parent/auth');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast.error('Error signing out');
     }
-  }, [linkedChildren]);
+  };
 
   /**
    * Enhanced function to load parent data with resilient student matching
@@ -326,6 +344,14 @@ const ParentDashboard = () => {
               0% { transform: rotate(0deg); }
               100% { transform: rotate(360deg); }
             }
+            @keyframes pulse-glow {
+              0%, 100% {
+                box-shadow: 0 0 40px rgba(102, 126, 234, 0.8), 0 0 80px rgba(102, 126, 234, 0.6), 0 0 120px rgba(102, 126, 234, 0.4), 0 8px 24px rgba(102, 126, 234, 0.6);
+              }
+              50% {
+                box-shadow: 0 0 60px rgba(102, 126, 234, 1), 0 0 100px rgba(102, 126, 234, 0.8), 0 0 140px rgba(102, 126, 234, 0.6), 0 8px 24px rgba(102, 126, 234, 0.8);
+              }
+            }
           `}
         </style>
       </div>
@@ -333,38 +359,358 @@ const ParentDashboard = () => {
   }
 
   return (
-    <div style={{
+    <div style={{ 
+      display: 'flex', 
       minHeight: '100vh',
+      height: '100vh',
       background: '#f8fafc',
-      padding: '24px',
-      paddingTop: '88px', // Add extra top padding to account for fixed AppBar
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+      paddingTop: isMobile ? '56px' : '64px', // Account for fixed AppBar
+      position: 'relative',
+      overflow: 'hidden'
     }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        
-        {/* Header */}
-        <div style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          borderRadius: '16px',
-          padding: '32px',
-          marginBottom: '24px',
-          color: 'white'
-        }}>
-          <h1 style={{
-            fontSize: '32px',
-            fontWeight: '800',
-            marginBottom: '8px'
+      {/* Desktop Sidebar */}
+      {!isMobile && (
+        <motion.div
+          initial={false}
+          animate={{ width: sidebarCollapsed ? '64px' : '240px' }}
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+          style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            display: 'flex',
+            flexDirection: 'column',
+            position: 'fixed',
+            left: 0,
+            top: '64px', // Position below AppBar
+            height: 'calc(100vh - 64px)', // Full height minus AppBar
+            zIndex: 900,
+            boxShadow: '2px 0 8px rgba(0,0,0,0.1)',
+            overflowY: 'auto',
+            overflowX: 'hidden'
+          }}
+        >
+          {/* Logo Section */}
+          <div style={{
+            padding: sidebarCollapsed ? '16px 12px' : '24px',
+            borderBottom: '1px solid rgba(255,255,255,0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: sidebarCollapsed ? 'center' : 'space-between'
           }}>
-            Welcome, {profile?.full_name || 'Parent'}!
-          </h1>
-          <p style={{
-            fontSize: '16px',
-            opacity: 0.9,
-            margin: 0
+            {!sidebarCollapsed && (
+              <div>
+                <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700' }}>Parent Portal</h2>
+                <p style={{ margin: 0, fontSize: '12px', opacity: 0.8 }}>{profile?.full_name || 'Parent'}</p>
+              </div>
+            )}
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              style={{
+                background: 'rgba(255,255,255,0.2)',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '8px',
+                cursor: 'pointer',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              {sidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+            </button>
+          </div>
+
+          {/* Navigation Items */}
+          <nav style={{ flex: 1, padding: sidebarCollapsed ? '12px 8px' : '16px', overflowY: 'auto' }}>
+            {sidebarItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  style={{
+                    width: '100%',
+                    padding: sidebarCollapsed ? '12px' : '12px 16px',
+                    marginBottom: '8px',
+                    background: isActive ? 'rgba(255,255,255,0.2)' : 'transparent',
+                    border: 'none',
+                    borderRadius: '8px',
+                    color: 'white',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                    fontSize: '14px',
+                    fontWeight: isActive ? '600' : '500',
+                    transition: 'all 0.2s',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  <Icon size={20} />
+                  {!sidebarCollapsed && <span>{item.label}</span>}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Sign Out Button */}
+          <div style={{
+            padding: sidebarCollapsed ? '12px 8px' : '16px',
+            borderTop: '1px solid rgba(255,255,255,0.2)'
           }}>
-            Track your {linkedChildren.length > 1 ? 'children\'s' : 'child\'s'} attendance, submit absence requests, and view test results
-          </p>
-        </div>
+            <button
+              onClick={handleSignOut}
+              style={{
+                width: '100%',
+                padding: sidebarCollapsed ? '12px' : '12px 16px',
+                background: 'rgba(255,255,255,0.1)',
+                border: 'none',
+                borderRadius: '8px',
+                color: 'white',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                fontSize: '14px',
+                fontWeight: '500',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+            >
+              <LogOut size={20} />
+              {!sidebarCollapsed && <span>Sign Out</span>}
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Mobile Overlay Sidebar */}
+      <AnimatePresence>
+        {isMobile && showMobileSidebar && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMobileSidebar(false)}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.5)',
+                zIndex: 899
+              }}
+            />
+            
+            {/* Sidebar */}
+            <motion.div
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              style={{
+                position: 'fixed',
+                left: 0,
+                top: '56px', // Position below AppBar on mobile
+                width: '280px',
+                height: 'calc(100vh - 56px)', // Full height minus AppBar
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                zIndex: 900,
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '4px 0 16px rgba(0,0,0,0.2)',
+                overflowY: 'auto',
+                overflowX: 'hidden'
+              }}
+            >
+              {/* Mobile Header */}
+              <div style={{
+                padding: '24px',
+                borderBottom: '1px solid rgba(255,255,255,0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700' }}>Parent Portal</h2>
+                  <p style={{ margin: 0, fontSize: '12px', opacity: 0.8 }}>{profile?.full_name || 'Parent'}</p>
+                </div>
+                <button
+                  onClick={() => setShowMobileSidebar(false)}
+                  style={{
+                    background: 'rgba(255,255,255,0.2)',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '8px',
+                    cursor: 'pointer',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Mobile Navigation */}
+              <nav style={{ flex: 1, padding: '16px', overflowY: 'auto' }}>
+                {sidebarItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setActiveTab(item.id);
+                        setShowMobileSidebar(false);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        marginBottom: '8px',
+                        background: isActive ? 'rgba(255,255,255,0.2)' : 'transparent',
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: 'white',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        fontSize: '14px',
+                        fontWeight: isActive ? '600' : '500',
+                        textAlign: 'left'
+                      }}
+                    >
+                      <Icon size={20} />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+
+              {/* Mobile Sign Out */}
+              <div style={{
+                padding: '16px',
+                borderTop: '1px solid rgba(255,255,255,0.2)'
+              }}>
+                <button
+                  onClick={handleSignOut}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: '8px',
+                    color: 'white',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}
+                >
+                  <LogOut size={20} />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Menu Button - Floating in corner */}
+      {isMobile && (
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setShowMobileSidebar(!showMobileSidebar)}
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 901,
+            width: '56px',
+            height: '56px',
+            background: showMobileSidebar 
+              ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+              : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            border: 'none',
+            borderRadius: '50%',
+            cursor: 'pointer',
+            boxShadow: showMobileSidebar
+              ? '0 0 40px rgba(239, 68, 68, 0.9), 0 0 80px rgba(239, 68, 68, 0.7), 0 0 120px rgba(239, 68, 68, 0.5), 0 8px 24px rgba(239, 68, 68, 0.6)'
+              : '0 0 40px rgba(102, 126, 234, 0.8), 0 0 80px rgba(102, 126, 234, 0.6), 0 0 120px rgba(102, 126, 234, 0.4), 0 8px 24px rgba(102, 126, 234, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.3s ease',
+            animation: 'pulse-glow 2s ease-in-out infinite'
+          }}
+        >
+          {showMobileSidebar ? (
+            <X style={{ width: '28px', height: '28px', color: 'white' }} />
+          ) : (
+            <PanelLeftOpen style={{ width: '28px', height: '28px', color: 'white' }} />
+          )}
+        </motion.button>
+      )}
+
+      {/* Main Content Area */}
+      <div style={{
+        flex: 1,
+        marginLeft: isMobile ? 0 : (sidebarCollapsed ? '64px' : '240px'),
+        transition: 'margin-left 0.3s ease-in-out',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflowY: 'auto',
+        overflowX: 'hidden'
+      }}>
+        {/* Content Container */}
+        <div style={{ padding: isMobile ? '16px' : '32px', flex: 1 }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            
+            {/* Welcome Header - Desktop Only */}
+            {!isMobile && (
+              <div style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: '16px',
+                padding: '32px',
+                marginBottom: '24px',
+                color: 'white'
+              }}>
+                <h1 style={{
+                  fontSize: '32px',
+                  fontWeight: '800',
+                  marginBottom: '8px'
+                }}>
+                  Welcome, {profile?.full_name || 'Parent'}!
+                </h1>
+                <p style={{
+                  fontSize: '16px',
+                  opacity: 0.9,
+                  margin: 0
+                }}>
+                  Track your {linkedChildren.length > 1 ? 'children\'s' : 'child\'s'} attendance, submit absence requests, and view test results
+                </p>
+              </div>
+            )}
 
         {/* Broken Links Alert */}
         {brokenLinks.length > 0 && (
@@ -661,216 +1007,34 @@ const ParentDashboard = () => {
           </div>
         )}
 
-        {/* Main Content Area with Tabs */}
-        {linkedChildren.length > 0 && (
-          <>
-            {/* Tab Navigation */}
-            <div style={{ position: 'relative' }}>
-              {/* Left Scroll Indicator */}
-              {showLeftScroll && (
-                <div style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: '60px',
-                  background: 'linear-gradient(to right, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 100%)',
-                  zIndex: 2,
-                  pointerEvents: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  paddingLeft: '8px'
-                }}>
-                  <div style={{
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: '50%',
-                    background: '#667eea',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 2px 8px rgba(102, 126, 234, 0.4)',
-                    animation: 'pulse-left 2s ease-in-out infinite'
-                  }}>
-                    <div style={{
-                      width: 0,
-                      height: 0,
-                      borderTop: '5px solid transparent',
-                      borderBottom: '5px solid transparent',
-                      borderRight: '7px solid white',
-                      marginLeft: '-2px'
-                    }} />
-                  </div>
-                </div>
-              )}
-
-              {/* Right Scroll Indicator */}
-              {showRightScroll && (
-                <div style={{
-                  position: 'absolute',
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: '60px',
-                  background: 'linear-gradient(to left, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 100%)',
-                  zIndex: 2,
-                  pointerEvents: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'flex-end',
-                  paddingRight: '8px'
-                }}>
-                  <div style={{
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: '50%',
-                    background: '#667eea',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 2px 8px rgba(102, 126, 234, 0.4)',
-                    animation: 'pulse-right 2s ease-in-out infinite'
-                  }}>
-                    <div style={{
-                      width: 0,
-                      height: 0,
-                      borderTop: '5px solid transparent',
-                      borderBottom: '5px solid transparent',
-                      borderLeft: '7px solid white',
-                      marginRight: '-2px'
-                    }} />
-                  </div>
-                </div>
-              )}
-
-              <div 
-                id="tab-container"
-                onScroll={handleTabScroll}
-                style={{
-                  background: 'white',
-                  borderRadius: '12px 12px 0 0',
-                  padding: '16px 24px',
-                  display: 'flex',
-                  gap: '8px',
-                  overflowX: 'auto',
-                  borderBottom: '2px solid #e2e8f0',
-                  scrollBehavior: 'smooth',
-                  WebkitOverflowScrolling: 'touch',
-                  scrollbarWidth: 'thin',
-                  scrollbarColor: '#667eea #e2e8f0'
-                }}
-              >
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    style={{
-                      padding: '12px 20px',
-                      background: isActive ? '#667eea' : 'transparent',
-                      color: isActive ? 'white' : '#64748b',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      transition: 'all 0.2s',
-                      whiteSpace: 'nowrap'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isActive) {
-                        e.target.style.background = '#f1f5f9';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) {
-                        e.target.style.background = 'transparent';
-                      }
-                    }}
-                  >
-                    <Icon style={{ width: '18px', height: '18px' }} />
-                    {tab.label}
-                  </button>
-                );
-              })}
+            {/* Main Content Card */}
+            {linkedChildren.length > 0 && (
+              <div style={{
+                background: 'white',
+                borderRadius: '12px',
+                padding: isMobile ? '20px' : '32px',
+                minHeight: '400px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+              }}>
+                {activeTab === 'attendance' && (
+                  <AttendanceOverview linkedChildren={linkedChildren} />
+                )}
+                {activeTab === 'evaluations' && (
+                  <EvaluationOverview linkedChildren={linkedChildren} />
+                )}
+                {activeTab === 'absences' && (
+                  <AbsenceRequests linkedChildren={linkedChildren} onRequestSubmitted={loadParentData} />
+                )}
+                {activeTab === 'results' && (
+                  <TestResults linkedChildren={linkedChildren} />
+                )}
+                {activeTab === 'settings' && (
+                  <ParentSettings profile={profile} linkedChildren={linkedChildren} onUpdate={loadParentData} />
+                )}
               </div>
-            </div>
-
-            {/* Add CSS animations for scroll indicators */}
-            <style>
-              {`
-                @keyframes pulse-left {
-                  0%, 100% {
-                    transform: translateX(0);
-                    opacity: 0.8;
-                  }
-                  50% {
-                    transform: translateX(-4px);
-                    opacity: 1;
-                  }
-                }
-                
-                @keyframes pulse-right {
-                  0%, 100% {
-                    transform: translateX(0);
-                    opacity: 0.8;
-                  }
-                  50% {
-                    transform: translateX(4px);
-                    opacity: 1;
-                  }
-                }
-                
-                #tab-container::-webkit-scrollbar {
-                  height: 6px;
-                }
-                
-                #tab-container::-webkit-scrollbar-track {
-                  background: #e2e8f0;
-                  border-radius: 3px;
-                }
-                
-                #tab-container::-webkit-scrollbar-thumb {
-                  background: #667eea;
-                  border-radius: 3px;
-                }
-                
-                #tab-container::-webkit-scrollbar-thumb:hover {
-                  background: #5568d3;
-                }
-              `}
-            </style>
-
-            {/* Tab Content */}
-            <div style={{
-              background: 'white',
-              borderRadius: '0 0 12px 12px',
-              padding: '24px',
-              minHeight: '400px'
-            }}>
-              {activeTab === 'attendance' && (
-                <AttendanceOverview linkedChildren={linkedChildren} />
-              )}
-              {activeTab === 'evaluations' && (
-                <EvaluationOverview linkedChildren={linkedChildren} />
-              )}
-              {activeTab === 'absences' && (
-                <AbsenceRequests linkedChildren={linkedChildren} onRequestSubmitted={loadParentData} />
-              )}
-              {activeTab === 'results' && (
-                <TestResults linkedChildren={linkedChildren} />
-              )}
-              {activeTab === 'settings' && (
-                <ParentSettings profile={profile} linkedChildren={linkedChildren} onUpdate={loadParentData} />
-              )}
-            </div>
-          </>
-        )}
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
