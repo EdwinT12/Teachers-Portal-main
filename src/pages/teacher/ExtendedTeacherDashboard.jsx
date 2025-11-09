@@ -334,6 +334,7 @@ const ExtendedDashboard = () => {
       let excused = 0;
       let unattendedMass = 0;
       let totalSessions = weeksData.length;
+      let totalPoints = 0;
 
       weeksData.forEach(week => {
         const key = `${student.id}-${week.date}`;
@@ -341,17 +342,37 @@ const ExtendedDashboard = () => {
         
         if (record) {
           switch (record.status) {
-            case 'P': present++; break;
-            case 'L': late++; break;
-            case 'U': absent++; break;
-            case 'E': excused++; break;
-            case 'UM': unattendedMass++; break;
+            case 'P': 
+              present++; 
+              totalPoints += 4; // Present = 4 points
+              break;
+            case 'L': 
+              late++; 
+              totalPoints += 3; // Late = 3 points
+              break;
+            case 'UM': 
+              unattendedMass++; 
+              totalPoints += 2; // Unattended Mass = 2 points
+              break;
+            case 'E': 
+              excused++; 
+              totalPoints += 1; // Excused = 1 point
+              break;
+            case 'U': 
+              absent++; 
+              totalPoints += 0; // Unexcused = 0 points
+              break;
           }
         }
       });
 
       const attendancePercentage = totalSessions > 0
         ? (((present + late) / totalSessions) * 100).toFixed(1)
+        : '0.0';
+
+      const maxPossiblePoints = totalSessions * 4; // Maximum is 4 points per session
+      const pointsPercentage = maxPossiblePoints > 0
+        ? ((totalPoints / maxPossiblePoints) * 100).toFixed(1)
         : '0.0';
 
       return {
@@ -363,11 +384,20 @@ const ExtendedDashboard = () => {
         excused,
         unattendedMass,
         totalSessions,
-        attendancePercentage
+        attendancePercentage,
+        totalPoints,
+        maxPossiblePoints,
+        pointsPercentage: parseFloat(pointsPercentage)
       };
     });
 
-    studentStats.sort((a, b) => parseFloat(b.attendancePercentage) - parseFloat(a.attendancePercentage));
+    // Sort by points percentage first (primary), then by attendance percentage (secondary)
+    studentStats.sort((a, b) => {
+      if (b.pointsPercentage !== a.pointsPercentage) {
+        return b.pointsPercentage - a.pointsPercentage;
+      }
+      return parseFloat(b.attendancePercentage) - parseFloat(a.attendancePercentage);
+    });
 
     const totalRecords = studentStats.reduce((sum, s) => sum + s.totalSessions, 0);
     const totalPresent = studentStats.reduce((sum, s) => sum + s.present + s.late, 0);

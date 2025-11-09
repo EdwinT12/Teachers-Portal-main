@@ -420,7 +420,7 @@ const AttendanceSummary = ({ summaryData, classInfo, students, weeks, attendance
               color: '#1a1a1a',
               margin: 0
             }}>
-              Top 3 Performers
+              Top 5 Performers
             </h3>
           </div>
           <div style={{
@@ -428,46 +428,89 @@ const AttendanceSummary = ({ summaryData, classInfo, students, weeks, attendance
             flexDirection: 'column',
             gap: '12px'
           }}>
-            {summaryData.studentStats.slice(0, 3).map((student, idx) => (
-              <div key={student.studentId} style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '12px',
-                backgroundColor: '#f0fdf4',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}
-              onClick={() => setSelectedStudent(student)}>
-                <div style={{
+            {summaryData.studentStats.slice(0, 5).map((student, idx) => {
+              const hasLate = student.late > 0;
+              const hasUM = student.unattendedMass > 0;
+              const hasIssues = hasLate || hasUM;
+              
+              return (
+                <div key={student.studentId} style={{
                   display: 'flex',
+                  justifyContent: 'space-between',
                   alignItems: 'center',
-                  gap: '8px'
-                }}>
+                  padding: '12px',
+                  backgroundColor: '#f0fdf4',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  position: 'relative'
+                }}
+                onClick={() => setSelectedStudent(student)}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    flex: 1
+                  }}>
+                    <span style={{
+                      fontSize: '16px',
+                      fontWeight: '700',
+                      color: idx === 0 ? '#fbbf24' : idx === 1 ? '#c0c0c0' : idx === 2 ? '#cd7f32' : '#94a3b8'
+                    }}>
+                      #{idx + 1}
+                    </span>
+                    <div style={{ flex: 1 }}>
+                      <span style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#1a1a1a',
+                        display: 'block'
+                      }}>
+                        {student.studentName}
+                      </span>
+                      {hasIssues && (
+                        <div style={{
+                          display: 'flex',
+                          gap: '6px',
+                          marginTop: '4px'
+                        }}>
+                          {hasLate && (
+                            <span style={{
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              color: '#f59e0b',
+                              backgroundColor: '#fef3c7',
+                              padding: '2px 6px',
+                              borderRadius: '4px'
+                            }}>
+                              {student.late} Late
+                            </span>
+                          )}
+                          {hasUM && (
+                            <span style={{
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              color: '#8b5cf6',
+                              backgroundColor: '#ede9fe',
+                              padding: '2px 6px',
+                              borderRadius: '4px'
+                            }}>
+                              {student.unattendedMass} UM
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   <span style={{
                     fontSize: '16px',
                     fontWeight: '700',
-                    color: idx === 0 ? '#fbbf24' : '#94a3b8'
+                    color: '#10b981'
                   }}>
-                    #{idx + 1}
-                  </span>
-                  <span style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#1a1a1a'
-                  }}>
-                    {student.studentName}
+                    {student.attendancePercentage}%
                   </span>
                 </div>
-                <span style={{
-                  fontSize: '16px',
-                  fontWeight: '700',
-                  color: '#10b981'
-                }}>
-                  {student.attendancePercentage}%
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
