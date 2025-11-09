@@ -581,7 +581,7 @@ const EvaluationSummary = ({ summaryData, classInfo, evalStudents, chapters, eva
               color: '#1a1a1a',
               margin: 0
             }}>
-              Top 3 Performers
+              Top 5 Performers
             </h3>
           </div>
           <div style={{
@@ -589,7 +589,7 @@ const EvaluationSummary = ({ summaryData, classInfo, evalStudents, chapters, eva
             flexDirection: 'column',
             gap: '12px'
           }}>
-            {summaryData.studentStats.slice(0, 3).map((student, idx) => (
+            {summaryData.studentStats.slice(0, 5).map((student, idx) => (
               <div key={student.studentId} style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -608,7 +608,7 @@ const EvaluationSummary = ({ summaryData, classInfo, evalStudents, chapters, eva
                   <span style={{
                     fontSize: isMobile ? '14px' : '16px',
                     fontWeight: '700',
-                    color: idx === 0 ? '#fbbf24' : '#94a3b8'
+                    color: idx === 0 ? '#fbbf24' : idx === 1 ? '#c0c0c0' : idx === 2 ? '#cd7f32' : '#94a3b8'
                   }}>
                     #{idx + 1}
                   </span>
