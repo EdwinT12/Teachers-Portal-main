@@ -1798,54 +1798,7 @@ const BulkStudentImport = () => {
         </div>
       )}
 
-      {/* Instructions */}
-      <div style={{
-        marginTop: '24px',
-        padding: '16px',
-        backgroundColor: '#fee2e2',
-        border: '1px solid #ef4444',
-        borderRadius: '8px',
-        fontSize: '13px',
-        color: '#7f1d1d',
-        lineHeight: '1.6',
-        marginBottom: '16px'
-      }}>
-        <strong>⚠️ IMPORTANT WARNING:</strong>
-        <ul style={{ margin: '8px 0 0 20px', padding: 0 }}>
-          <li><strong>This will DELETE ALL existing students</strong> from both the <code>students</code> and <code>eval_students</code> tables</li>
-          <li>All attendance and evaluation history will remain intact (only student records are deleted)</li>
-          <li><strong>✅ Absence requests will be preserved</strong> and automatically remapped to new student records</li>
-          <li><strong>✅ Lesson evaluations and teacher notes will be preserved</strong> and automatically remapped</li>
-          <li>Sheet names must match class <code>sheet_name</code> exactly</li>
-          <li>You must have Editor access to both Google Sheets</li>
-          <li>This operation cannot be undone - make sure your sheets are up to date!</li>
-        </ul>
-      </div>
 
-      {/* Historical Import Info */}
-      <div style={{
-        padding: '16px',
-        backgroundColor: '#dbeafe',
-        border: '1px solid #3b82f6',
-        borderRadius: '8px',
-        fontSize: '13px',
-        color: '#1e40af',
-        lineHeight: '1.6'
-      }}>
-        <strong>ℹ️ Historical Data Import:</strong>
-        <ul style={{ margin: '8px 0 0 20px', padding: 0 }}>
-          <li>Imports historical attendance and evaluation data from Google Sheets</li>
-          <li>Reads all past catechism lesson dates and matches them with Google Sheets columns</li>
-          <li><strong>✅ Teacher notes are preserved</strong> - only evaluations WITHOUT notes are replaced</li>
-          <li><strong>Attendance codes:</strong> P (Present), A (Absent), L (Late), U (Unexcused), UM (Unexcused Mass), E (Excused)</li>
-          <li><strong>Evaluation ratings:</strong> E (Excellent), G (Good), I (Improving)</li>
-          <li><strong>Evaluation categories:</strong> D (Discipline), B (Behaviour), HW (Homework), AP (Active Participation)</li>
-          <li>Optimized to read entire sheets at once to avoid rate limits</li>
-          <li>Includes small delays between classes to respect API quotas</li>
-          <li><strong>⚠️ Note:</strong> Use this for initial setup only. For weekly updates, use "Clear All & Re-import Students"</li>
-          <li>Tip: Log your catechism lessons first, then import historical data</li>
-        </ul>
-      </div>
 
       <style>
         {`

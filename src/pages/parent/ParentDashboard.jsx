@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { AuthContext } from '../../context/AuthContext';
 import supabase from '../../utils/supabase';
@@ -18,7 +18,10 @@ import {
   ChevronLeft,
   ChevronRight,
   LayoutDashboard,
-  PanelLeftOpen
+  PanelLeftOpen,
+  ChevronUp,
+  ChevronDown,
+  ArrowRight
 } from 'lucide-react';
 
 // Import child components
@@ -40,6 +43,9 @@ const ParentDashboard = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [swipeProgress, setSwipeProgress] = useState(0);
+  const [isSwipeActive, setIsSwipeActive] = useState(false);
+  const swipeContainerRef = useRef(null);
 
   // Sidebar navigation items
   const sidebarItems = [
@@ -352,6 +358,14 @@ const ParentDashboard = () => {
                 box-shadow: 0 0 60px rgba(102, 126, 234, 1), 0 0 100px rgba(102, 126, 234, 0.8), 0 0 140px rgba(102, 126, 234, 0.6), 0 8px 24px rgba(102, 126, 234, 0.8);
               }
             }
+            @keyframes pulse-glow-green {
+              0%, 100% {
+                box-shadow: 0 0 40px rgba(16, 185, 129, 0.8), 0 0 80px rgba(16, 185, 129, 0.6), 0 0 120px rgba(16, 185, 129, 0.4), 0 8px 24px rgba(16, 185, 129, 0.6);
+              }
+              50% {
+                box-shadow: 0 0 60px rgba(16, 185, 129, 1), 0 0 100px rgba(16, 185, 129, 0.8), 0 0 140px rgba(16, 185, 129, 0.6), 0 8px 24px rgba(16, 185, 129, 0.8);
+              }
+            }
           `}
         </style>
       </div>
@@ -496,7 +510,7 @@ const ParentDashboard = () => {
         </motion.div>
       )}
 
-      {/* Mobile Overlay Sidebar */}
+      {/* Mobile Bottom Menu */}
       <AnimatePresence>
         {isMobile && showMobileSidebar && (
           <>
@@ -514,44 +528,74 @@ const ParentDashboard = () => {
               }}
             />
             
-            {/* Sidebar */}
+            {/* Bottom Menu Panel */}
             <motion.div
-              initial={{ x: -280 }}
-              animate={{ x: 0 }}
-              exit={{ x: -280 }}
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              onClick={(e) => e.stopPropagation()}
               style={{
                 position: 'fixed',
                 left: 0,
-                top: '56px', // Position below AppBar on mobile
-                width: '280px',
-                height: 'calc(100vh - 56px)', // Full height minus AppBar
+                right: 0,
+                bottom: 0,
+                maxHeight: '70vh',
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: 'white',
                 zIndex: 900,
                 display: 'flex',
                 flexDirection: 'column',
-                boxShadow: '4px 0 16px rgba(0,0,0,0.2)',
+                borderTopLeftRadius: '24px',
+                borderTopRightRadius: '24px',
+                boxShadow: '0 -4px 24px rgba(0,0,0,0.3)',
                 overflowY: 'auto',
                 overflowX: 'hidden'
               }}
             >
+              {/* Drag Handle */}
+              <div style={{
+                padding: '12px 0',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}>
+                <div style={{
+                  width: '40px',
+                  height: '4px',
+                  background: 'rgba(255,255,255,0.3)',
+                  borderRadius: '2px'
+                }}></div>
+              </div>
+
               {/* Mobile Header */}
               <div style={{
-                padding: '24px',
+                padding: '0 24px 20px',
                 borderBottom: '1px solid rgba(255,255,255,0.2)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between'
+                justifyContent: 'space-between',
+                position: 'relative',
+                zIndex: 902
               }}>
                 <div>
-                  <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700' }}>Parent Portal</h2>
-                  <p style={{ margin: 0, fontSize: '12px', opacity: 0.8 }}>{profile?.full_name || 'Parent'}</p>
+                  <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700' }}>Menu</h2>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '12px', opacity: 0.8 }}>{profile?.full_name || 'Parent'}</p>
                 </div>
-                <button
-                  onClick={() => setShowMobileSidebar(false)}
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => {
+                    console.log('X button clicked');
+                    setShowMobileSidebar(false);
+                  }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('X button touch');
+                    setShowMobileSidebar(false);
+                  }}
                   style={{
-                    background: 'rgba(255,255,255,0.2)',
+                    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
                     border: 'none',
                     borderRadius: '8px',
                     padding: '8px',
@@ -559,15 +603,17 @@ const ParentDashboard = () => {
                     color: 'white',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)',
+                    WebkitTapHighlightColor: 'transparent'
                   }}
                 >
                   <X size={20} />
-                </button>
+                </motion.button>
               </div>
 
               {/* Mobile Navigation */}
-              <nav style={{ flex: 1, padding: '16px', overflowY: 'auto' }}>
+              <nav style={{ flex: 1, padding: '16px 24px', overflowY: 'auto' }}>
                 {sidebarItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = activeTab === item.id;
@@ -581,65 +627,212 @@ const ParentDashboard = () => {
                       }}
                       style={{
                         width: '100%',
-                        padding: '12px 16px',
+                        padding: '16px',
                         marginBottom: '8px',
-                        background: isActive ? 'rgba(255,255,255,0.2)' : 'transparent',
+                        background: isActive ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)',
                         border: 'none',
-                        borderRadius: '8px',
+                        borderRadius: '12px',
                         color: 'white',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '12px',
-                        fontSize: '14px',
+                        gap: '16px',
+                        fontSize: '15px',
                         fontWeight: isActive ? '600' : '500',
-                        textAlign: 'left'
+                        textAlign: 'left',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onTouchStart={(e) => {
+                        e.currentTarget.style.transform = 'scale(0.98)';
+                      }}
+                      onTouchEnd={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
                       }}
                     >
-                      <Icon size={20} />
-                      <span>{item.label}</span>
+                      <div style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: '10px',
+                        background: 'rgba(255,255,255,0.15)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <Icon size={22} />
+                      </div>
+                      <span style={{ flex: 1 }}>{item.label}</span>
+                      {isActive && (
+                        <div style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          background: 'white'
+                        }}></div>
+                      )}
                     </button>
                   );
                 })}
               </nav>
 
-              {/* Mobile Sign Out */}
+              {/* Mobile Sign Out - Swipe to confirm */}
               <div style={{
-                padding: '16px',
+                padding: '16px 24px',
+                paddingBottom: '24px',
                 borderTop: '1px solid rgba(255,255,255,0.2)'
               }}>
-                <button
-                  onClick={handleSignOut}
+                <div 
+                  ref={swipeContainerRef}
                   style={{
+                    position: 'relative',
                     width: '100%',
-                    padding: '12px 16px',
+                    height: '64px',
                     background: 'rgba(255,255,255,0.1)',
-                    border: 'none',
-                    borderRadius: '8px',
-                    color: 'white',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    fontSize: '14px',
-                    fontWeight: '500'
+                    borderRadius: '12px',
+                    overflow: 'hidden'
                   }}
                 >
-                  <LogOut size={20} />
-                  <span>Sign Out</span>
-                </button>
+                  {/* Background instruction text with animation */}
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    color: 'rgba(255,255,255,0.7)',
+                    pointerEvents: 'none',
+                    opacity: swipeProgress > 0.3 ? 0 : 1,
+                    transition: 'opacity 0.2s ease',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      animation: 'swipeHint 2s ease-in-out infinite'
+                    }}>
+                      <ArrowRight size={16} style={{ marginRight: '6px' }} />
+                      <span>Swipe right to sign out</span>
+                    </div>
+                  </div>
+                  <style>
+                    {`
+                      @keyframes swipeHint {
+                        0%, 100% {
+                          transform: translateX(-20px);
+                          opacity: 0.5;
+                        }
+                        50% {
+                          transform: translateX(20px);
+                          opacity: 1;
+                        }
+                      }
+                    `}
+                  </style>
+
+                  {/* Progress bar */}
+                  <div style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: `${swipeProgress * 100}%`,
+                    background: 'linear-gradient(90deg, rgba(239, 68, 68, 0.3) 0%, rgba(239, 68, 68, 0.5) 100%)',
+                    transition: isSwipeActive ? 'none' : 'width 0.3s ease-out',
+                    pointerEvents: 'none'
+                  }}></div>
+
+                  {/* Swipeable button */}
+                  <motion.div
+                    drag="x"
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={0.02}
+                    dragMomentum={false}
+                    onDragStart={() => {
+                      setIsSwipeActive(true);
+                    }}
+                    onDrag={(event, info) => {
+                      const container = swipeContainerRef.current;
+                      if (!container) return;
+                      
+                      const containerWidth = container.offsetWidth;
+                      const maxDrag = containerWidth - 64;
+                      const currentX = Math.max(0, Math.min(maxDrag, info.offset.x));
+                      const progress = currentX / maxDrag;
+                      setSwipeProgress(progress);
+                    }}
+                    onDragEnd={(event, info) => {
+                      setIsSwipeActive(false);
+                      const container = swipeContainerRef.current;
+                      if (!container) return;
+                      
+                      const containerWidth = container.offsetWidth;
+                      const maxDrag = containerWidth - 64;
+                      const currentX = Math.max(0, info.offset.x);
+                      const progress = currentX / maxDrag;
+                      
+                      if (progress >= 0.7) {
+                        // Successful swipe - sign out
+                        handleSignOut();
+                      } else {
+                        // Reset
+                        setSwipeProgress(0);
+                      }
+                    }}
+                    animate={{
+                      x: isSwipeActive ? undefined : 0
+                    }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 500,
+                      damping: 30
+                    }}
+                    style={{
+                      position: 'absolute',
+                      left: '8px',
+                      top: '8px',
+                      width: '48px',
+                      height: '48px',
+                      background: swipeProgress > 0.5 
+                        ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                        : 'rgba(255,255,255,0.25)',
+                      borderRadius: '10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'grab',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                      transition: isSwipeActive ? 'none' : 'background 0.3s ease',
+                      touchAction: 'pan-x',
+                      userSelect: 'none',
+                      WebkitUserDrag: 'none'
+                    }}
+                  >
+                    <LogOut 
+                      size={22} 
+                      style={{ 
+                        color: 'white',
+                        transform: `rotate(${swipeProgress * 360}deg)`,
+                        transition: isSwipeActive ? 'none' : 'transform 0.3s ease',
+                        pointerEvents: 'none'
+                      }} 
+                    />
+                  </motion.div>
+                </div>
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
 
-      {/* Mobile Menu Button - Floating in corner */}
-      {isMobile && (
+      {/* Mobile Menu Button - Floating in corner - ALWAYS VISIBLE */}
+      {isMobile && !showMobileSidebar && (
         <motion.button
+          key="floating-menu-button"
+          initial={{ scale: 1, opacity: 1 }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => setShowMobileSidebar(!showMobileSidebar)}
+          onClick={() => setShowMobileSidebar(true)}
           style={{
             position: 'fixed',
             bottom: '24px',
@@ -647,27 +840,18 @@ const ParentDashboard = () => {
             zIndex: 901,
             width: '56px',
             height: '56px',
-            background: showMobileSidebar 
-              ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
-              : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
             border: 'none',
             borderRadius: '50%',
             cursor: 'pointer',
-            boxShadow: showMobileSidebar
-              ? '0 0 40px rgba(239, 68, 68, 0.9), 0 0 80px rgba(239, 68, 68, 0.7), 0 0 120px rgba(239, 68, 68, 0.5), 0 8px 24px rgba(239, 68, 68, 0.6)'
-              : '0 0 40px rgba(102, 126, 234, 0.8), 0 0 80px rgba(102, 126, 234, 0.6), 0 0 120px rgba(102, 126, 234, 0.4), 0 8px 24px rgba(102, 126, 234, 0.6)',
+            boxShadow: '0 0 40px rgba(16, 185, 129, 0.8), 0 0 80px rgba(16, 185, 129, 0.6), 0 0 120px rgba(16, 185, 129, 0.4), 0 8px 24px rgba(16, 185, 129, 0.6)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            transition: 'all 0.3s ease',
-            animation: 'pulse-glow 2s ease-in-out infinite'
+            animation: 'pulse-glow-green 2s ease-in-out infinite'
           }}
         >
-          {showMobileSidebar ? (
-            <X style={{ width: '28px', height: '28px', color: 'white' }} />
-          ) : (
-            <PanelLeftOpen style={{ width: '28px', height: '28px', color: 'white' }} />
-          )}
+          <ChevronUp style={{ width: '28px', height: '28px', color: 'white' }} />
         </motion.button>
       )}
 
@@ -742,27 +926,34 @@ const ParentDashboard = () => {
               }}>
                 The following children could not be found in the system. This may happen after student data is updated. Please contact an administrator to re-link your account.
               </p>
-              <ul style={{
-                margin: 0,
-                paddingLeft: '20px',
-                fontSize: '14px',
-                color: '#991b1b'
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '6px',
+                marginTop: '12px'
               }}>
-                {brokenLinks.map((link, index) => (
-                  <li key={index}>
-                    {link.child_name_submitted} (Year {link.year_group})
-                  </li>
+                {brokenLinks.map((link, idx) => (
+                  <div key={idx} style={{
+                    background: 'white',
+                    padding: '10px',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    color: '#991b1b',
+                    fontWeight: '600'
+                  }}>
+                    • {link.child_name_submitted} (Year {link.year_group})
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           </div>
         )}
 
         {/* Pending Verification Alert */}
-        {pendingChildren.length > 0 && (
+        {pendingChildren.length > 0 && linkedChildren.length === 0 && (
           <div style={{
             background: '#fef3c7',
-            border: '2px solid #fbbf24',
+            border: '2px solid #f59e0b',
             borderRadius: '12px',
             padding: '16px',
             marginBottom: '24px',
@@ -770,50 +961,15 @@ const ParentDashboard = () => {
             alignItems: 'flex-start',
             gap: '12px'
           }}>
-            <Clock style={{ width: '24px', height: '24px', color: '#f59e0b', flexShrink: 0 }} />
+            <Clock style={{ width: '24px', height: '24px', color: '#d97706', flexShrink: 0 }} />
             <div>
               <h3 style={{
                 fontSize: '15px',
                 fontWeight: '700',
-                color: '#92400e',
-                margin: '0 0 4px 0'
-              }}>
-                Account Verification Pending
-              </h3>
-              <p style={{
-                fontSize: '14px',
                 color: '#78350f',
-                margin: 0,
-                lineHeight: '1.5'
-              }}>
-                {pendingChildren.length} child{pendingChildren.length > 1 ? 'ren' : ''} pending admin verification. 
-                You'll receive access once an admin links your account.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* No Verified Children Alert */}
-        {linkedChildren.length === 0 && pendingChildren.length === 0 && brokenLinks.length === 0 && (
-          <div style={{
-            background: '#fee2e2',
-            border: '2px solid #ef4444',
-            borderRadius: '12px',
-            padding: '16px',
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '12px'
-          }}>
-            <AlertCircle style={{ width: '24px', height: '24px', color: '#dc2626', flexShrink: 0 }} />
-            <div>
-              <h3 style={{
-                fontSize: '15px',
-                fontWeight: '700',
-                color: '#7f1d1d',
                 margin: '0 0 4px 0'
               }}>
-                No Children Linked
+                Registration Pending Verification
               </h3>
               <p style={{
                 fontSize: '14px',

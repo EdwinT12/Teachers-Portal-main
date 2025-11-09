@@ -188,7 +188,7 @@ const TestResults = ({ linkedChildren }) => {
           {/* Stats Overview */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gridTemplateColumns: window.innerWidth < 768 ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(200px, 1fr))',
             gap: '16px',
             marginBottom: '32px'
           }}>
@@ -198,8 +198,7 @@ const TestResults = ({ linkedChildren }) => {
               borderRadius: '12px',
               color: 'white'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <TrendingUp style={{ width: '20px', height: '20px' }} />
+              <div style={{ marginBottom: '8px' }}>
                 <span style={{ fontSize: '13px', fontWeight: '600', opacity: 0.9 }}>Average Score</span>
               </div>
               <div style={{
@@ -230,17 +229,17 @@ const TestResults = ({ linkedChildren }) => {
 
             <div style={{
               padding: '20px',
-              background: '#fef3c7',
+              background: '#fee2e2',
               borderRadius: '12px',
-              border: '2px solid #fcd34d'
+              border: '2px solid #fca5a5'
             }}>
-              <div style={{ fontSize: '13px', color: '#b45309', fontWeight: '600', marginBottom: '8px' }}>
+              <div style={{ fontSize: '13px', color: '#991b1b', fontWeight: '600', marginBottom: '8px' }}>
                 Lowest Score
               </div>
               <div style={{
                 fontSize: '36px',
                 fontWeight: '800',
-                color: '#d97706'
+                color: '#dc2626'
               }}>
                 {currentData.stats.lowestScore}%
               </div>
