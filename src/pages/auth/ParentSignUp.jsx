@@ -4,6 +4,15 @@ import { AuthContext } from '../../context/AuthContext';
 import supabase from '../../utils/supabase';
 import toast from 'react-hot-toast';
 import { UserPlus, Users, CheckCircle } from 'lucide-react';
+import emailjs from '@emailjs/browser';
+
+// EmailJS configuration
+const EMAILJS_SERVICE_ID = 'service_77lcszr';
+const EMAILJS_TEMPLATE_ID = 'template_litvhfj';
+const EMAILJS_PUBLIC_KEY = 'fWof-EcizNlRVj-Lw';
+
+// Initialize EmailJS
+emailjs.init(EMAILJS_PUBLIC_KEY);
 
 const ParentSignUp = () => {
   const navigate = useNavigate();
@@ -107,6 +116,83 @@ const ParentSignUp = () => {
     setChildren(updated);
   };
 
+  // Function to get year group display name
+  const getYearGroupName = (yearGroup) => {
+    if (yearGroup === '0') return 'Reception';
+    return `Year ${yearGroup}`;
+  };
+
+  // Function to send email notification to admin users
+  const notifyAdminUsers = async (parentEmail, parentName, childrenData) => {
+    try {
+      console.log('Starting admin notification process...');
+      
+      // Fetch all admin users from the profiles table
+      const { data: adminUsers, error } = await supabase
+        .from('profiles')
+        .select('email, full_name')
+        .eq('role', 'admin')
+        .eq('status', 'active');
+
+      if (error) {
+        console.error('Error fetching admin users:', error);
+        return;
+      }
+
+      console.log('Admin users found:', adminUsers);
+
+      if (!adminUsers || adminUsers.length === 0) {
+        console.warn('No admin users found to notify');
+        return;
+      }
+
+      // Format children information for email
+      const childrenList = childrenData.map(child => 
+        `• ${child.name.trim()} - ${getYearGroupName(child.yearGroup)}`
+      ).join('\n');
+
+      // Send email to each admin
+      for (const admin of adminUsers) {
+        const templateParams = {
+          to_email: admin.email,
+          to_name: admin.full_name || 'Admin',
+          parent_email: parentEmail,
+          parent_name: parentName,
+          children_list: childrenList,
+          children_count: childrenData.length,
+          registration_date: new Date().toLocaleDateString('en-GB', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        };
+
+        console.log('Sending email to:', admin.email);
+        console.log('Template params:', templateParams);
+
+        try {
+          const response = await emailjs.send(
+            EMAILJS_SERVICE_ID,
+            EMAILJS_TEMPLATE_ID,
+            templateParams,
+            EMAILJS_PUBLIC_KEY
+          );
+          console.log('Email sent successfully to', admin.email, response);
+        } catch (emailError) {
+          console.error('Failed to send email to', admin.email, emailError);
+        }
+      }
+
+      console.log(`Email notification process completed for ${adminUsers.length} admin(s)`);
+    } catch (error) {
+      console.error('Error in notifyAdminUsers:', error);
+      // Don't throw - email notification failure shouldn't block registration
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -136,6 +222,10 @@ const ParentSignUp = () => {
       if (insertError) {
         throw insertError;
       }
+
+      // Send email notification to admin users
+      const parentName = user.user_metadata?.full_name || user.email.split('@')[0];
+      await notifyAdminUsers(user.email, parentName, children);
 
       toast.success('Registration submitted! An admin will verify your account soon.');
       navigate('/parent');
