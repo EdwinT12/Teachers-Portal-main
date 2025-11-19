@@ -2,6 +2,15 @@ import { useState } from 'react';
 import supabase from '../../utils/supabase';
 import toast from 'react-hot-toast';
 import { Settings, User, Mail, Users, CheckCircle, Clock, Plus, Trash2, X, Lock } from 'lucide-react';
+import emailjs from '@emailjs/browser';
+
+// EmailJS configuration
+const EMAILJS_SERVICE_ID = 'service_77lcszr';
+const EMAILJS_TEMPLATE_ID = 'template_litvhfj';
+const EMAILJS_PUBLIC_KEY = 'fWof-EcizNlRVj-Lw';
+
+// Initialize EmailJS
+emailjs.init(EMAILJS_PUBLIC_KEY);
 
 const ParentSettings = ({ profile, linkedChildren, onUpdate }) => {
   const [updating, setUpdating] = useState(false);
@@ -24,8 +33,86 @@ const ParentSettings = ({ profile, linkedChildren, onUpdate }) => {
   });
 
   // Check if user is admin or teacher (uses Google OAuth)
-  const isGoogleUser = profile?.role === 'admin' || profile?.role === 'teacher' || 
+  const isGoogleUser = profile?.role === 'admin' || profile?.role === 'teacher' ||
                        profile?.roles?.includes('admin') || profile?.roles?.includes('teacher');
+
+  // Function to get year group display name
+  const getYearGroupName = (yearGroup) => {
+    const yearGroupStr = yearGroup?.toString() || '';
+    if (yearGroupStr === '0' || yearGroupStr.toLowerCase() === 'r') return 'Reception';
+    return `Year ${yearGroupStr}`;
+  };
+
+  // Function to send email notification to admin users
+  const notifyAdminUsers = async (parentEmail, parentName, childrenData) => {
+    try {
+      console.log('Starting admin notification process...');
+
+      // Fetch all admin users from the profiles table
+      const { data: adminUsers, error } = await supabase
+        .from('profiles')
+        .select('email, full_name')
+        .eq('role', 'admin')
+        .eq('status', 'active');
+
+      if (error) {
+        console.error('Error fetching admin users:', error);
+        return;
+      }
+
+      console.log('Admin users found:', adminUsers);
+
+      if (!adminUsers || adminUsers.length === 0) {
+        console.warn('No admin users found to notify');
+        return;
+      }
+
+      // Format children information for email
+      const childrenList = childrenData.map(child =>
+        `• ${child.name.trim()} - ${getYearGroupName(child.yearGroup)}`
+      ).join('\n');
+
+      // Send email to each admin
+      for (const admin of adminUsers) {
+        const templateParams = {
+          to_email: admin.email,
+          to_name: admin.full_name || 'Admin',
+          parent_email: parentEmail,
+          parent_name: parentName,
+          children_list: childrenList,
+          children_count: childrenData.length,
+          registration_date: new Date().toLocaleDateString('en-GB', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        };
+
+        console.log('Sending email to:', admin.email);
+        console.log('Template params:', templateParams);
+
+        try {
+          const response = await emailjs.send(
+            EMAILJS_SERVICE_ID,
+            EMAILJS_TEMPLATE_ID,
+            templateParams,
+            EMAILJS_PUBLIC_KEY
+          );
+          console.log('Email sent successfully to', admin.email, response);
+        } catch (emailError) {
+          console.error('Failed to send email to', admin.email, emailError);
+        }
+      }
+
+      console.log(`Email notification process completed for ${adminUsers.length} admin(s)`);
+    } catch (error) {
+      console.error('Error in notifyAdminUsers:', error);
+      // Don't throw - email notification failure shouldn't block the operation
+    }
+  };
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
@@ -157,6 +244,14 @@ const ParentSettings = ({ profile, linkedChildren, onUpdate }) => {
         });
 
       if (error) throw error;
+
+      // Send email notification to admin users
+      const parentName = profile?.full_name || profile?.email?.split('@')[0] || 'Parent';
+      const childrenData = [{
+        name: newChild.name,
+        yearGroup: newChild.yearGroup
+      }];
+      await notifyAdminUsers(profile.email, parentName, childrenData);
 
       toast.success('Child added! Awaiting admin verification.');
       setShowAddModal(false);
