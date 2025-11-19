@@ -38,9 +38,9 @@ export const getAllParentsVisibility = async () => {
       return {
         parent_id: parent.id,
         show_homework: parentSettings?.show_homework ?? true,
-        show_discipline: parentSettings?.show_discipline ?? true,
-        show_participation: parentSettings?.show_participation ?? true,
-        show_behaviour: parentSettings?.show_behaviour ?? true,
+        show_discipline: parentSettings?.show_discipline ?? false,
+        show_participation: parentSettings?.show_participation ?? false,
+        show_behaviour: parentSettings?.show_behaviour ?? false,
         admin_override: parentSettings?.admin_override ?? false,
         created_at: parentSettings?.created_at || new Date().toISOString(),
         updated_at: parentSettings?.updated_at || new Date().toISOString(),
@@ -77,18 +77,18 @@ export const getParentVisibilitySettings = async (parentId) => {
 
     return data || {
       show_homework: true,
-      show_discipline: true,
-      show_participation: true,
-      show_behaviour: true,
+      show_discipline: false,
+      show_participation: false,
+      show_behaviour: false,
       admin_override: false
     };
   } catch (error) {
     console.error('Error fetching parent visibility settings:', error);
     return {
       show_homework: true,
-      show_discipline: true,
-      show_participation: true,
-      show_behaviour: true,
+      show_discipline: false,
+      show_participation: false,
+      show_behaviour: false,
       admin_override: false
     };
   }
