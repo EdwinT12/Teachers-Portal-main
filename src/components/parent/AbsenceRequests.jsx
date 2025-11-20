@@ -553,33 +553,36 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
       {/* Header */}
       <div style={{
         display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        flexDirection: 'column',
+        gap: '16px',
         marginBottom: '24px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
-            width: '48px',
-            height: '48px',
+            width: '40px',
+            height: '40px',
+            minWidth: '40px',
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            borderRadius: '12px',
+            borderRadius: '10px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
           }}>
-            <FileText style={{ width: '24px', height: '24px', color: 'white' }} />
+            <FileText style={{ width: '20px', height: '20px', color: 'white' }} />
           </div>
-          <div>
+          <div style={{ flex: 1 }}>
             <h2 style={{
-              fontSize: '20px',
+              fontSize: '18px',
               fontWeight: '700',
               color: '#1e293b',
-              margin: 0
+              margin: 0,
+              lineHeight: '1.3'
             }}>Absence Requests</h2>
             <p style={{
-              fontSize: '14px',
+              fontSize: '13px',
               color: '#64748b',
-              margin: 0
+              margin: 0,
+              lineHeight: '1.4'
             }}>Notify the school when your child will be absent</p>
           </div>
         </div>
@@ -599,8 +602,9 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
             style={{
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '8px',
-              padding: '12px 20px',
+              padding: '14px 20px',
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               color: 'white',
               border: 'none',
@@ -608,7 +612,8 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
               fontSize: '14px',
               fontWeight: '600',
               cursor: 'pointer',
-              boxShadow: '0 4px 6px rgba(102, 126, 234, 0.3)'
+              boxShadow: '0 4px 6px rgba(102, 126, 234, 0.3)',
+              width: '100%'
             }}
           >
             <Plus style={{ width: '18px', height: '18px' }} />
@@ -740,11 +745,10 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
                 >
                   <option value="" style={{ color: '#1e293b', background: 'white' }}>Select a reason...</option>
                   {absenceReasons.map(reason => (
-                    <option key={reason.id} value={reason.reason_text} style={{ color: '#1e293b', background: 'white' }}>
-                      {reason.reason_text}
+                    <option key={reason.id} value={reason.reason} style={{ color: '#1e293b', background: 'white' }}>
+                      {reason.reason}
                     </option>
                   ))}
-                  <option value="Other" style={{ color: '#1e293b', background: 'white' }}>Other (please specify)</option>
                 </select>
               </div>
 
@@ -863,7 +867,7 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
           <div style={{
             background: 'white',
             borderRadius: '16px',
-            padding: '40px 20px',
+            padding: '48px 24px',
             textAlign: 'center',
             border: '1px solid #e2e8f0'
           }}>
@@ -873,7 +877,12 @@ const AbsenceRequests = ({ linkedChildren, onRequestSubmitted }) => {
               marginBottom: '16px',
               color: '#94a3b8'
             }} />
-            <p style={{ color: '#64748b', margin: 0 }}>
+            <p style={{ 
+              color: '#64748b', 
+              margin: 0,
+              fontSize: '14px',
+              lineHeight: '1.5'
+            }}>
               You haven't submitted any absence requests yet.
             </p>
           </div>
