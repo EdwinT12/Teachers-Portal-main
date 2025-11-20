@@ -98,15 +98,19 @@ export const remapLessonEvaluations = async () => {
         // Found a matching student - update all evaluations for this student
         const originalName = originalNameMap.get(studentKey);
         console.log(`✓ Remapping ${evaluations.length} evaluation(s) for "${firstEval.student_name}" → "${originalName}"`);
-        
-        for (const evaluation of evaluations) {
-          const { error: updateError } = await supabase
-            .from('lesson_evaluations')
-            .update({ eval_student_id: newEvalStudentId })
-            .eq('id', evaluation.id);
 
-          if (updateError) {
-            console.error(`Failed to remap lesson evaluation ${evaluation.id}:`, updateError);
+        for (const evaluation of evaluations) {
+          // Check if an evaluation already exists for this student/chapter/category
+          const { data: existingEval, error: checkError } = await supabase
+            .from('lesson_evaluations')
+            .select('*')
+            .eq('eval_student_id', newEvalStudentId)
+            .eq('chapter_number', evaluation.chapter_number)
+            .eq('category', evaluation.stored_category || evaluation.category)
+            .maybeSingle();
+
+          if (checkError && checkError.code !== 'PGRST116') {
+            console.error(`Error checking for existing evaluation:`, checkError);
             failedCount++;
             remapResults.push({
               evaluation_id: evaluation.id,
@@ -115,24 +119,102 @@ export const remapLessonEvaluations = async () => {
               category: evaluation.stored_category || evaluation.category,
               has_notes: !!(evaluation.teacher_notes && evaluation.teacher_notes.trim()),
               status: 'failed',
-              error: updateError.message
+              error: checkError.message
             });
-          } else {
-            remappedCount++;
-            
-            if (evaluation.teacher_notes && evaluation.teacher_notes.trim()) {
-              notesPreserved++;
+            continue;
+          }
+
+          if (existingEval) {
+            // Duplicate exists - merge the data
+            console.log(`  → Duplicate found for Chapter ${evaluation.chapter_number} ${evaluation.category} - merging...`);
+
+            // Preserve teacher notes from the orphaned evaluation if they exist
+            const mergedNotes = evaluation.teacher_notes && evaluation.teacher_notes.trim()
+              ? evaluation.teacher_notes
+              : existingEval.teacher_notes;
+
+            // Update the existing evaluation with merged data
+            const { error: updateError } = await supabase
+              .from('lesson_evaluations')
+              .update({
+                teacher_notes: mergedNotes,
+                rating: evaluation.rating || existingEval.rating,
+                student_name: evaluation.student_name,
+                stored_class_id: evaluation.stored_class_id,
+                stored_category: evaluation.stored_category || evaluation.category
+              })
+              .eq('id', existingEval.id);
+
+            if (updateError) {
+              console.error(`Failed to merge evaluation ${evaluation.id}:`, updateError);
+              failedCount++;
+              remapResults.push({
+                evaluation_id: evaluation.id,
+                student_name: evaluation.student_name,
+                chapter: evaluation.chapter_number,
+                category: evaluation.stored_category || evaluation.category,
+                has_notes: !!(evaluation.teacher_notes && evaluation.teacher_notes.trim()),
+                status: 'failed',
+                error: `Merge failed: ${updateError.message}`
+              });
+            } else {
+              // Delete the orphaned duplicate
+              await supabase
+                .from('lesson_evaluations')
+                .delete()
+                .eq('id', evaluation.id);
+
+              remappedCount++;
+              if (evaluation.teacher_notes && evaluation.teacher_notes.trim()) {
+                notesPreserved++;
+              }
+
+              remapResults.push({
+                evaluation_id: evaluation.id,
+                student_name: evaluation.student_name,
+                chapter: evaluation.chapter_number,
+                category: evaluation.stored_category || evaluation.category,
+                has_notes: !!(evaluation.teacher_notes && evaluation.teacher_notes.trim()),
+                status: 'merged',
+                new_eval_student_id: newEvalStudentId
+              });
             }
-            
-            remapResults.push({
-              evaluation_id: evaluation.id,
-              student_name: evaluation.student_name,
-              chapter: evaluation.chapter_number,
-              category: evaluation.stored_category || evaluation.category,
-              has_notes: !!(evaluation.teacher_notes && evaluation.teacher_notes.trim()),
-              status: 'remapped',
-              new_eval_student_id: newEvalStudentId
-            });
+          } else {
+            // No duplicate - simply update the eval_student_id
+            const { error: updateError } = await supabase
+              .from('lesson_evaluations')
+              .update({ eval_student_id: newEvalStudentId })
+              .eq('id', evaluation.id);
+
+            if (updateError) {
+              console.error(`Failed to remap lesson evaluation ${evaluation.id}:`, updateError);
+              failedCount++;
+              remapResults.push({
+                evaluation_id: evaluation.id,
+                student_name: evaluation.student_name,
+                chapter: evaluation.chapter_number,
+                category: evaluation.stored_category || evaluation.category,
+                has_notes: !!(evaluation.teacher_notes && evaluation.teacher_notes.trim()),
+                status: 'failed',
+                error: updateError.message
+              });
+            } else {
+              remappedCount++;
+
+              if (evaluation.teacher_notes && evaluation.teacher_notes.trim()) {
+                notesPreserved++;
+              }
+
+              remapResults.push({
+                evaluation_id: evaluation.id,
+                student_name: evaluation.student_name,
+                chapter: evaluation.chapter_number,
+                category: evaluation.stored_category || evaluation.category,
+                has_notes: !!(evaluation.teacher_notes && evaluation.teacher_notes.trim()),
+                status: 'remapped',
+                new_eval_student_id: newEvalStudentId
+              });
+            }
           }
         }
       } else {

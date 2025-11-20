@@ -25,7 +25,9 @@ const BulkStudentImport = () => {
   });
   const [absenceStats, setAbsenceStats] = useState(null);
   const [evaluationStats, setEvaluationStats] = useState(null);
-  
+  const [remapping, setRemapping] = useState(false);
+  const [remapResults, setRemapResults] = useState(null);
+
   // Progress tracking states
   const [progress, setProgress] = useState({
     currentStep: '',
@@ -880,6 +882,65 @@ const BulkStudentImport = () => {
     }
   };
 
+  // Standalone function to remap orphaned evaluations
+  const handleRemapOrphanedEvaluations = async () => {
+    try {
+      setRemapping(true);
+      setRemapResults(null);
+      toast.loading('Analyzing orphaned evaluations...');
+
+      // Get current stats
+      const stats = await getLessonEvaluationsStats();
+
+      if (!stats || stats.orphaned === 0) {
+        toast.dismiss();
+        toast.success('No orphaned evaluations found - all evaluations are properly linked!');
+        setRemapping(false);
+        return;
+      }
+
+      toast.dismiss();
+      toast.loading(`Remapping ${stats.orphaned} orphaned evaluation${stats.orphaned > 1 ? 's' : ''}...`);
+
+      // Run the remapping
+      const result = await remapLessonEvaluations();
+
+      toast.dismiss();
+
+      // Store results for display
+      setRemapResults(result);
+
+      // Show summary toast
+      if (result.remapped_count > 0 && result.failed_count === 0) {
+        toast.success(
+          `✅ Successfully remapped all ${result.remapped_count} evaluation${result.remapped_count > 1 ? 's' : ''}!` +
+          (result.notes_preserved > 0 ? ` (${result.notes_preserved} with notes preserved)` : ''),
+          { duration: 5000 }
+        );
+      } else if (result.remapped_count > 0 && result.failed_count > 0) {
+        toast.success(
+          `Remapped ${result.remapped_count} evaluation${result.remapped_count > 1 ? 's' : ''}, but ${result.failed_count} failed.`,
+          { duration: 5000 }
+        );
+      } else {
+        toast.error(
+          `Failed to remap evaluations. See details below.`,
+          { duration: 5000 }
+        );
+      }
+
+      // Reload stats to show updated numbers
+      await loadStudentCounts();
+
+    } catch (error) {
+      console.error('Error remapping orphaned evaluations:', error);
+      toast.dismiss();
+      toast.error('Failed to remap evaluations: ' + error.message);
+    } finally {
+      setRemapping(false);
+    }
+  };
+
   // MAIN IMPORT FUNCTION: Clear all students and re-import with absence requests AND evaluation remapping
   const handleUpdateSheet = async () => {
     if (attendanceSheets.length === 0 || evaluationSheets.length === 0) {
@@ -1501,15 +1562,205 @@ const BulkStudentImport = () => {
               </li>
             )}
           </ul>
-          <div style={{ 
-            marginTop: '12px', 
-            paddingTop: '12px', 
+          <div style={{
+            marginTop: '12px',
+            paddingTop: '12px',
             borderTop: '1px solid #fde68a',
             fontSize: '12px'
           }}>
-            ✅ <strong>Good news:</strong> All lesson evaluations and teacher notes will be preserved during bulk import 
+            ✅ <strong>Good news:</strong> All lesson evaluations and teacher notes will be preserved during bulk import
             and automatically remapped to the correct students.
           </div>
+
+          {/* Remap Button - only show if there are orphaned evaluations */}
+          {evaluationStats.orphaned > 0 && (
+            <button
+              onClick={handleRemapOrphanedEvaluations}
+              disabled={remapping}
+              style={{
+                marginTop: '16px',
+                padding: '12px 20px',
+                backgroundColor: remapping ? '#ccc' : '#f59e0b',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: remapping ? 'not-allowed' : 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: remapping ? 'none' : '0 2px 8px rgba(245, 158, 11, 0.3)'
+              }}
+            >
+              {remapping ? (
+                <>
+                  <RefreshCw style={{ width: '16px', height: '16px', animation: 'spin 1s linear infinite' }} />
+                  Remapping...
+                </>
+              ) : (
+                <>
+                  <RefreshCw style={{ width: '16px', height: '16px' }} />
+                  Remap {evaluationStats.orphaned} Orphaned Evaluation{evaluationStats.orphaned > 1 ? 's' : ''}
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Remapping Results */}
+      {remapResults && (
+        <div style={{
+          backgroundColor: '#fff',
+          padding: '20px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          border: '2px solid #f59e0b'
+        }}>
+          <h3 style={{
+            fontSize: '16px',
+            fontWeight: '600',
+            color: '#1a1a1a',
+            marginBottom: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <RefreshCw style={{ width: '20px', height: '20px' }} />
+            Remapping Results
+          </h3>
+
+          {/* Summary */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            gap: '12px',
+            marginBottom: '16px'
+          }}>
+            <div style={{
+              padding: '12px',
+              backgroundColor: '#d1fae5',
+              borderRadius: '6px',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#059669' }}>
+                {remapResults.remapped_count}
+              </div>
+              <div style={{ fontSize: '12px', color: '#065f46' }}>Successfully Remapped</div>
+            </div>
+
+            {remapResults.notes_preserved > 0 && (
+              <div style={{
+                padding: '12px',
+                backgroundColor: '#dbeafe',
+                borderRadius: '6px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#2563eb' }}>
+                  {remapResults.notes_preserved}
+                </div>
+                <div style={{ fontSize: '12px', color: '#1e40af' }}>Notes Preserved</div>
+              </div>
+            )}
+
+            {remapResults.failed_count > 0 && (
+              <div style={{
+                padding: '12px',
+                backgroundColor: '#fee2e2',
+                borderRadius: '6px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: '#dc2626' }}>
+                  {remapResults.failed_count}
+                </div>
+                <div style={{ fontSize: '12px', color: '#991b1b' }}>Failed to Remap</div>
+              </div>
+            )}
+          </div>
+
+          {/* Failed Students List */}
+          {remapResults.failed_students && remapResults.failed_students.length > 0 && (
+            <div style={{
+              marginTop: '16px',
+              padding: '12px',
+              backgroundColor: '#fef2f2',
+              borderRadius: '6px',
+              border: '1px solid #fecaca'
+            }}>
+              <strong style={{ fontSize: '13px', color: '#991b1b' }}>
+                Students not found in database ({remapResults.failed_students.length}):
+              </strong>
+              <ul style={{
+                margin: '8px 0 0 20px',
+                fontSize: '12px',
+                color: '#7f1d1d'
+              }}>
+                {remapResults.failed_students.map((name, idx) => (
+                  <li key={idx}>{name}</li>
+                ))}
+              </ul>
+              <p style={{
+                fontSize: '12px',
+                color: '#7f1d1d',
+                marginTop: '8px',
+                fontStyle: 'italic'
+              }}>
+                These students may have been removed from your Google Sheets or renamed.
+                Their evaluations remain in the database but cannot be reconnected.
+              </p>
+            </div>
+          )}
+
+          {/* Detailed Results */}
+          {remapResults.details && remapResults.details.length > 0 && (
+            <details style={{ marginTop: '16px' }}>
+              <summary style={{
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '600',
+                color: '#475569',
+                padding: '8px',
+                backgroundColor: '#f8fafc',
+                borderRadius: '4px'
+              }}>
+                Show Detailed Results ({remapResults.details.length} evaluations)
+              </summary>
+              <div style={{
+                maxHeight: '300px',
+                overflowY: 'auto',
+                marginTop: '8px',
+                fontSize: '12px'
+              }}>
+                {remapResults.details.map((detail, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      padding: '8px',
+                      marginBottom: '4px',
+                      backgroundColor: (detail.status === 'remapped' || detail.status === 'merged') ? '#f0fdf4' : '#fef2f2',
+                      borderLeft: `3px solid ${(detail.status === 'remapped' || detail.status === 'merged') ? '#22c55e' : '#ef4444'}`,
+                      borderRadius: '4px'
+                    }}
+                  >
+                    <div style={{ fontWeight: '600', color: '#1a1a1a' }}>
+                      {detail.student_name}
+                      {detail.has_notes && ' 📝'}
+                    </div>
+                    <div style={{ color: '#64748b', marginTop: '2px' }}>
+                      Chapter {detail.chapter} - {detail.category}
+                      {detail.status === 'remapped' && ' ✓ Remapped'}
+                      {detail.status === 'merged' && ' ✓ Merged with existing'}
+                      {detail.status === 'no_match' && ' ✗ Student not found'}
+                      {detail.status === 'failed' && ` ✗ ${detail.error}`}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
         </div>
       )}
 

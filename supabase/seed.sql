@@ -1,1 +1,0 @@
--- Empty Supabase Seed file

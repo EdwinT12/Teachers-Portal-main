@@ -61,6 +61,17 @@ const ParentVerificationPanel = () => {
     };
   }, []);
 
+  /**
+   * Helper function to format year level display
+   * Handles Reception (year 0) vs numbered years
+   */
+  const formatYearLevel = (yearLevel) => {
+    if (yearLevel === 0 || yearLevel === '0' || yearLevel?.toString().toLowerCase() === 'reception') {
+      return 'Reception';
+    }
+    return `Year ${yearLevel}`;
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -484,19 +495,40 @@ const ParentVerificationPanel = () => {
   };
 
   const getFilteredStudents = (classIdOrYearLevel) => {
-    if (!classIdOrYearLevel) return students;
-    
+    if (!classIdOrYearLevel && classIdOrYearLevel !== 0) return students;
+
     // If it's a UUID (classId), filter by class_id
     if (typeof classIdOrYearLevel === 'string' && classIdOrYearLevel.includes('-')) {
       return students.filter(s => s.class_id === classIdOrYearLevel);
     }
-    
+
     // Otherwise, treat it as a year level number or string
     const yearLevel = parseInt(classIdOrYearLevel);
     if (!isNaN(yearLevel)) {
-      return students.filter(s => s.classes?.year_level === yearLevel);
+      // Special case: Reception can be stored as 0 in year_group but "Reception" in year_level
+      if (yearLevel === 0) {
+        return students.filter(s =>
+          s.classes?.year_level === 0 ||
+          s.classes?.year_level === '0' ||
+          s.classes?.year_level?.toString().toLowerCase() === 'reception'
+        );
+      }
+
+      // For other year levels, match by number or string
+      return students.filter(s =>
+        s.classes?.year_level === yearLevel ||
+        s.classes?.year_level === yearLevel.toString()
+      );
     }
-    
+
+    // If not a number, try matching as string (e.g., "Reception")
+    if (typeof classIdOrYearLevel === 'string') {
+      const normalizedInput = classIdOrYearLevel.toLowerCase();
+      return students.filter(s =>
+        s.classes?.year_level?.toString().toLowerCase() === normalizedInput
+      );
+    }
+
     return students;
   };
 
@@ -1005,7 +1037,7 @@ const ParentVerificationPanel = () => {
               {classes
                 .map(cls => (
                   <option key={cls.id} value={cls.id}>
-                    {cls.name} {cls.year_level ? `(Year ${cls.year_level})` : ''}
+                    {cls.name} {cls.year_level ? `(${formatYearLevel(cls.year_level)})` : ''}
                   </option>
                 ))
               }
@@ -1209,7 +1241,7 @@ const ParentVerificationPanel = () => {
                   <option value="">All Classes</option>
                   {classes.map(cls => (
                     <option key={cls.id} value={cls.id}>
-                      {cls.name} {cls.year_level ? `(Year ${cls.year_level})` : ''}
+                      {cls.name} {cls.year_level ? `(${formatYearLevel(cls.year_level)})` : ''}
                     </option>
                   ))}
                 </select>
@@ -1255,7 +1287,7 @@ const ParentVerificationPanel = () => {
                   <option value="">-- Select Student --</option>
                   {getFilteredStudents(newLink.classId).map((student) => (
                     <option key={student.id} value={student.id}>
-                      {student.student_name} - {student.classes?.name} (Year {student.classes?.year_level})
+                      {student.student_name} - {student.classes?.name} ({formatYearLevel(student.classes?.year_level)})
                     </option>
                   ))}
                 </select>
@@ -1457,7 +1489,7 @@ const ParentVerificationPanel = () => {
                             <span style={{ fontWeight: '600' }}>Child Name:</span> {link.child_name_submitted}
                           </div>
                           <div>
-                            <span style={{ fontWeight: '600' }}>Year Group:</span> Year {link.year_group}
+                            <span style={{ fontWeight: '600' }}>Year Group:</span> {formatYearLevel(link.year_group)}
                           </div>
                           <div style={{ fontSize: window.innerWidth < 768 ? '11px' : '12px', color: '#94a3b8' }}>
                             Submitted: {new Date(link.created_at).toLocaleDateString()}
@@ -1508,7 +1540,7 @@ const ParentVerificationPanel = () => {
                           fontSize: window.innerWidth < 768 ? '11px' : '12px',
                           color: '#64748b'
                         }}>
-                          {matchingStudents.length} student{matchingStudents.length !== 1 ? 's' : ''} in Year {link.year_group}
+                          {matchingStudents.length} student{matchingStudents.length !== 1 ? 's' : ''} in {formatYearLevel(link.year_group)}
                         </div>
                       </div>
 
@@ -1963,7 +1995,7 @@ const ParentVerificationPanel = () => {
                             <option value="">-- Select Student --</option>
                             {getFilteredStudents('').map((student) => (
                               <option key={student.id} value={student.id}>
-                                {student.student_name} - {student.classes?.name} (Year {student.classes?.year_level})
+                                {student.student_name} - {student.classes?.name} ({formatYearLevel(student.classes?.year_level)})
                               </option>
                             ))}
                           </select>
@@ -2056,7 +2088,7 @@ const ParentVerificationPanel = () => {
                                 color: '#64748b',
                                 marginBottom: '4px'
                               }}>
-                                🏫 {link.students.classes?.name} (Year {link.students.classes?.year_level})
+                                🏫 {link.students.classes?.name} ({formatYearLevel(link.students.classes?.year_level)})
                               </div>
                               {link.verified_at && (
                                 <div style={{
