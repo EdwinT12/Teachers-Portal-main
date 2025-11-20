@@ -1,0 +1,7 @@
+# Robots.txt for sjmvcatechism.com
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://sjmvcatechism.com/sitemap.xml
