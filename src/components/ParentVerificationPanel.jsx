@@ -105,10 +105,11 @@ const ParentVerificationPanel = () => {
       setStudents(studentsData || []);
 
       // Load all parents (for add functionality)
+      // Include users with 'parent' role AND teachers/admins who may also be parents
       const { data: parentsData, error: parentsError } = await supabase
         .from('profiles')
-        .select('id, full_name, email')
-        .eq('role', 'parent')
+        .select('id, full_name, email, role')
+        .in('role', ['parent', 'teacher', 'admin'])
         .order('full_name');
 
       if (parentsError) throw parentsError;
@@ -122,7 +123,8 @@ const ParentVerificationPanel = () => {
           parent:parent_id (
             id,
             full_name,
-            email
+            email,
+            role
           )
         `)
         .eq('verified', false)
@@ -139,7 +141,8 @@ const ParentVerificationPanel = () => {
           parent:parent_id (
             id,
             full_name,
-            email
+            email,
+            role
           ),
           students:student_id (
             id,
@@ -169,12 +172,12 @@ const ParentVerificationPanel = () => {
     }
   };
 
-  // Calculate student link stats when students or verifiedLinks change
+  // Calculate student link stats when students data is loaded
   useEffect(() => {
-    if (students.length > 0 || verifiedLinks.length > 0) {
+    if (students.length > 0) {
       calculateStudentLinkStats();
     }
-  }, [students, verifiedLinks]);
+  }, [students]);
 
   /**
    * Check the status of all parent-child links
@@ -201,14 +204,33 @@ const ParentVerificationPanel = () => {
 
   /**
    * Calculate student link statistics
+   * Fetches ALL verified links (not just recent 50) to ensure accurate count
+   * Includes students linked to parents, teachers, and admins
    */
-  const calculateStudentLinkStats = () => {
+  const calculateStudentLinkStats = async () => {
     const totalStudents = students.length;
 
+    // Fetch ALL verified links (without limit) for accurate statistics
+    const { data: allVerifiedLinks, error } = await supabase
+      .from('parent_children')
+      .select('student_id')
+      .eq('verified', true);
+
+    if (error) {
+      console.error('Error fetching verified links for stats:', error);
+      setStudentLinkStats({
+        linked: 0,
+        total: totalStudents,
+        percentage: 0
+      });
+      return;
+    }
+
     // Get unique student IDs that have verified parent links
+    // This includes students linked to users with any role (parent, teacher, admin)
     const linkedStudentIds = new Set();
-    verifiedLinks.forEach(link => {
-      if (link.student_id && link.students) {
+    (allVerifiedLinks || []).forEach(link => {
+      if (link.student_id) {
         linkedStudentIds.add(link.student_id);
       }
     });
@@ -260,6 +282,7 @@ const ParentVerificationPanel = () => {
 
       toast.success('✓ Parent verified and linked to student (name updated for future accuracy)');
       await loadData();
+      await calculateStudentLinkStats();
 
     } catch (error) {
       console.error('Error verifying parent:', error);
@@ -286,6 +309,7 @@ const ParentVerificationPanel = () => {
 
       toast.success('Link request rejected');
       await loadData();
+      await calculateStudentLinkStats();
 
     } catch (error) {
       console.error('Error rejecting link:', error);
@@ -367,8 +391,9 @@ const ParentVerificationPanel = () => {
       document.body.style.width = '';
       document.body.style.overflow = 'unset';
       window.scrollTo(0, parseInt(scrollY || '0') * -1);
-      
+
       await loadData();
+      await calculateStudentLinkStats();
 
     } catch (error) {
       console.error('Error adding new link:', error);
@@ -444,6 +469,7 @@ const ParentVerificationPanel = () => {
       setEditingLink(null);
       setEditData({ studentId: '' });
       await loadData();
+      await calculateStudentLinkStats();
 
     } catch (error) {
       console.error('Error updating link:', error);
@@ -473,6 +499,7 @@ const ParentVerificationPanel = () => {
 
       toast.success('✓ Parent-child link deleted successfully');
       await loadData();
+      await calculateStudentLinkStats();
 
     } catch (error) {
       console.error('Error deleting link:', error);
@@ -519,6 +546,7 @@ const ParentVerificationPanel = () => {
       console.log('Remap Results:', result.details);
 
       await loadData();
+      await calculateStudentLinkStats();
 
     } catch (error) {
       toast.dismiss('remap');
@@ -1297,7 +1325,7 @@ const ParentVerificationPanel = () => {
                   <option value="">-- Select Parent --</option>
                   {allParents.map((parent) => (
                     <option key={parent.id} value={parent.id}>
-                      {parent.full_name} ({parent.email})
+                      {parent.full_name} ({parent.email}){parent.role !== 'parent' ? ` [${parent.role}]` : ''}
                     </option>
                   ))}
                 </select>
@@ -1576,9 +1604,27 @@ const ParentVerificationPanel = () => {
                           fontWeight: '700',
                           color: '#1e293b',
                           marginBottom: '8px',
-                          wordBreak: 'break-word'
+                          wordBreak: 'break-word',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          flexWrap: 'wrap'
                         }}>
                           {link.parent?.full_name || 'Unknown Parent'}
+                          {link.parent?.role && link.parent.role !== 'parent' && (
+                            <span style={{
+                              fontSize: window.innerWidth < 768 ? '10px' : '11px',
+                              fontWeight: '600',
+                              color: link.parent.role === 'teacher' ? '#0284c7' : '#8b5cf6',
+                              background: link.parent.role === 'teacher' ? '#e0f2fe' : '#f3e8ff',
+                              padding: '2px 6px',
+                              borderRadius: '10px',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px'
+                            }}>
+                              {link.parent.role}
+                            </span>
+                          )}
                         </h3>
                         <div style={{
                           fontSize: window.innerWidth < 768 ? '13px' : '14px',
@@ -1793,10 +1839,25 @@ const ParentVerificationPanel = () => {
                           wordBreak: 'break-word',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '8px'
+                          gap: '8px',
+                          flexWrap: 'wrap'
                         }}>
                           <span style={{ fontSize: '20px' }}></span>
                           {parentGroup.parent?.full_name}
+                          {parentGroup.parent?.role && parentGroup.parent.role !== 'parent' && (
+                            <span style={{
+                              fontSize: window.innerWidth < 768 ? '11px' : '12px',
+                              fontWeight: '600',
+                              color: parentGroup.parent.role === 'teacher' ? '#0284c7' : '#8b5cf6',
+                              background: parentGroup.parent.role === 'teacher' ? '#e0f2fe' : '#f3e8ff',
+                              padding: '3px 8px',
+                              borderRadius: '12px',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px'
+                            }}>
+                              {parentGroup.parent.role}
+                            </span>
+                          )}
                         </div>
                         <div style={{
                           fontSize: window.innerWidth < 768 ? '13px' : '14px',
