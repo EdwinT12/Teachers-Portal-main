@@ -38,6 +38,8 @@ const ParentVerificationPanel = () => {
 
   // For showing link status
   const [linkStatus, setLinkStatus] = useState(null);
+  const [studentLinkStats, setStudentLinkStats] = useState({ linked: 0, total: 0, percentage: 0 });
+  const [showStatsTooltip, setShowStatsTooltip] = useState(false);
 
   // For filtering and search
   const [activeTab, setActiveTab] = useState('verified'); // 'verified' or 'pending'
@@ -167,6 +169,13 @@ const ParentVerificationPanel = () => {
     }
   };
 
+  // Calculate student link stats when students or verifiedLinks change
+  useEffect(() => {
+    if (students.length > 0 || verifiedLinks.length > 0) {
+      calculateStudentLinkStats();
+    }
+  }, [students, verifiedLinks]);
+
   /**
    * Check the status of all parent-child links
    */
@@ -188,6 +197,30 @@ const ParentVerificationPanel = () => {
     } catch (error) {
       console.error('Error checking link status:', error);
     }
+  };
+
+  /**
+   * Calculate student link statistics
+   */
+  const calculateStudentLinkStats = () => {
+    const totalStudents = students.length;
+
+    // Get unique student IDs that have verified parent links
+    const linkedStudentIds = new Set();
+    verifiedLinks.forEach(link => {
+      if (link.student_id && link.students) {
+        linkedStudentIds.add(link.student_id);
+      }
+    });
+
+    const linkedStudents = linkedStudentIds.size;
+    const percentage = totalStudents > 0 ? Math.round((linkedStudents / totalStudents) * 100) : 0;
+
+    setStudentLinkStats({
+      linked: linkedStudents,
+      total: totalStudents,
+      percentage: percentage
+    });
   };
 
   /**
@@ -778,21 +811,93 @@ const ParentVerificationPanel = () => {
                 minWidth: window.innerWidth < 768 ? '80px' : 'auto',
                 textAlign: 'center'
               }}>
-                <div style={{ 
-                  fontSize: window.innerWidth < 768 ? '20px' : '24px', 
-                  fontWeight: '800', 
-                  color: '#d97706' 
+                <div style={{
+                  fontSize: window.innerWidth < 768 ? '20px' : '24px',
+                  fontWeight: '800',
+                  color: '#d97706'
                 }}>
                   {linkStatus.PENDING_VERIFICATION}
                 </div>
-                <div style={{ 
-                  fontSize: window.innerWidth < 768 ? '10px' : '12px', 
-                  color: '#b45309', 
+                <div style={{
+                  fontSize: window.innerWidth < 768 ? '10px' : '12px',
+                  color: '#b45309',
                   fontWeight: '600',
                   whiteSpace: window.innerWidth < 768 ? 'nowrap' : 'normal'
                 }}>
                   Pending
                 </div>
+              </div>
+            )}
+            {studentLinkStats.total > 0 && (
+              <div
+                style={{
+                  padding: window.innerWidth < 768 ? '10px 12px' : '12px 16px',
+                  background: studentLinkStats.percentage >= 75 ? '#f0f9ff' : studentLinkStats.percentage >= 50 ? '#fef3c7' : '#fee2e2',
+                  borderRadius: '8px',
+                  border: `2px solid ${studentLinkStats.percentage >= 75 ? '#7dd3fc' : studentLinkStats.percentage >= 50 ? '#fcd34d' : '#fca5a5'}`,
+                  flex: window.innerWidth < 768 ? '1 1 calc(33.333% - 8px)' : '0 0 auto',
+                  minWidth: window.innerWidth < 768 ? '80px' : 'auto',
+                  textAlign: 'center',
+                  cursor: 'help',
+                  transition: 'all 0.2s',
+                  position: 'relative'
+                }}
+                onMouseEnter={() => {
+                  setShowStatsTooltip(true);
+                }}
+                onMouseLeave={() => {
+                  setShowStatsTooltip(false);
+                }}
+              >
+                <div style={{
+                  fontSize: window.innerWidth < 768 ? '20px' : '24px',
+                  fontWeight: '800',
+                  color: studentLinkStats.percentage >= 75 ? '#0284c7' : studentLinkStats.percentage >= 50 ? '#d97706' : '#dc2626'
+                }}>
+                  {studentLinkStats.percentage}%
+                </div>
+                <div style={{
+                  fontSize: window.innerWidth < 768 ? '10px' : '12px',
+                  color: studentLinkStats.percentage >= 75 ? '#075985' : studentLinkStats.percentage >= 50 ? '#b45309' : '#991b1b',
+                  fontWeight: '600',
+                  whiteSpace: window.innerWidth < 768 ? 'nowrap' : 'normal'
+                }}>
+                  Students Linked
+                </div>
+
+                {/* Custom Tooltip */}
+                {showStatsTooltip && (
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 'calc(100% + 8px)',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: '#1e293b',
+                    color: 'white',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                    zIndex: 1000,
+                    pointerEvents: 'none'
+                  }}>
+                    {studentLinkStats.linked}/{studentLinkStats.total}
+                    {/* Tooltip Arrow */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: 0,
+                      height: 0,
+                      borderLeft: '6px solid transparent',
+                      borderRight: '6px solid transparent',
+                      borderTop: '6px solid #1e293b'
+                    }}></div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1717,7 +1822,7 @@ const ParentVerificationPanel = () => {
                           }}>
                             Children ({parentGroup.children.length}):
                           </div>
-                          {parentGroup.children.map((link, index) => (
+                          {parentGroup.children.map((link) => (
                             <div
                               key={link.id}
                               style={{
