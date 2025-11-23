@@ -358,12 +358,12 @@ const ParentDashboard = () => {
                 box-shadow: 0 0 60px rgba(102, 126, 234, 1), 0 0 100px rgba(102, 126, 234, 0.8), 0 0 140px rgba(102, 126, 234, 0.6), 0 8px 24px rgba(102, 126, 234, 0.8);
               }
             }
-            @keyframes pulse-glow-green {
+            @keyframes pulse-glow-orange {
               0%, 100% {
-                box-shadow: 0 0 40px rgba(16, 185, 129, 0.8), 0 0 80px rgba(16, 185, 129, 0.6), 0 0 120px rgba(16, 185, 129, 0.4), 0 8px 24px rgba(16, 185, 129, 0.6);
+                box-shadow: 0 0 40px rgba(249, 115, 22, 0.8), 0 0 80px rgba(236, 72, 153, 0.6), 0 0 120px rgba(249, 115, 22, 0.4), 0 8px 24px rgba(249, 115, 22, 0.6);
               }
               50% {
-                box-shadow: 0 0 60px rgba(16, 185, 129, 1), 0 0 100px rgba(16, 185, 129, 0.8), 0 0 140px rgba(16, 185, 129, 0.6), 0 8px 24px rgba(16, 185, 129, 0.8);
+                box-shadow: 0 0 60px rgba(249, 115, 22, 1), 0 0 100px rgba(236, 72, 153, 0.8), 0 0 140px rgba(249, 115, 22, 0.6), 0 8px 24px rgba(249, 115, 22, 0.8);
               }
             }
           `}
@@ -840,15 +840,15 @@ const ParentDashboard = () => {
             zIndex: 901,
             width: '56px',
             height: '56px',
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            background: 'linear-gradient(135deg, #06b6d4 0%, #a855f7 100%)',
             border: 'none',
             borderRadius: '50%',
             cursor: 'pointer',
-            boxShadow: '0 0 40px rgba(16, 185, 129, 0.8), 0 0 80px rgba(16, 185, 129, 0.6), 0 0 120px rgba(16, 185, 129, 0.4), 0 8px 24px rgba(16, 185, 129, 0.6)',
+            boxShadow: '0 0 40px rgba(6, 182, 212, 0.8), 0 0 80px rgba(168, 85, 247, 0.6), 0 0 120px rgba(6, 182, 212, 0.4), 0 8px 24px rgba(6, 182, 212, 0.6)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            animation: 'pulse-glow-green 2s ease-in-out infinite'
+            animation: 'pulse-glow-cyan 2s ease-in-out infinite'
           }}
         >
           <ChevronUp style={{ width: '28px', height: '28px', color: 'white' }} />
