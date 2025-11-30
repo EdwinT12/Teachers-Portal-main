@@ -4,12 +4,12 @@ import { AuthContext } from '../../context/AuthContext';
 import supabase from '../../utils/supabase';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Calendar, 
-  FileText, 
-  Settings, 
-  Users, 
-  AlertCircle, 
+import {
+  Calendar,
+  FileText,
+  Settings,
+  Users,
+  AlertCircle,
   Clock,
   Award,
   LogOut,
@@ -21,7 +21,8 @@ import {
   PanelLeftOpen,
   ChevronUp,
   ChevronDown,
-  ArrowRight
+  ArrowRight,
+  BookOpen
 } from 'lucide-react';
 
 // Import child components
@@ -30,6 +31,7 @@ import AbsenceRequests from '../../components/parent/AbsenceRequests';
 import TestResults from '../../components/parent/TestResults';
 import ParentSettings from '../../components/parent/ParentSettings';
 import EvaluationOverview from '../../components/parent/EvaluationOverview';
+import TeachingMaterials from '../../components/parent/TeachingMaterials';
 
 const ParentDashboard = () => {
   const { user } = useContext(AuthContext);
@@ -51,6 +53,7 @@ const ParentDashboard = () => {
   const sidebarItems = [
     { id: 'attendance', label: 'Attendance', icon: Calendar },
     { id: 'evaluations', label: 'Evaluations', icon: Award },
+    { id: 'materials', label: 'Teaching Materials', icon: BookOpen },
     { id: 'absences', label: 'Absence Requests', icon: FileText },
     { id: 'results', label: 'Test Results', icon: Clock },
     { id: 'settings', label: 'Settings', icon: Settings }
@@ -316,6 +319,7 @@ const ParentDashboard = () => {
   const tabs = [
     { id: 'attendance', label: 'Attendance', icon: Calendar },
     { id: 'evaluations', label: 'Evaluations', icon: Award },
+    { id: 'materials', label: 'Teaching Materials', icon: BookOpen },
     { id: 'absences', label: 'Absence Requests', icon: FileText },
     { id: 'results', label: 'Test Results', icon: FileText },
     { id: 'settings', label: 'Settings', icon: Settings }
@@ -1177,6 +1181,9 @@ const ParentDashboard = () => {
                 )}
                 {activeTab === 'evaluations' && (
                   <EvaluationOverview linkedChildren={linkedChildren} />
+                )}
+                {activeTab === 'materials' && (
+                  <TeachingMaterials />
                 )}
                 {activeTab === 'absences' && (
                   <AbsenceRequests linkedChildren={linkedChildren} onRequestSubmitted={loadParentData} />

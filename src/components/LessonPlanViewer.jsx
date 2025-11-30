@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import supabase from '../utils/supabase';
 import { AuthContext } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import { FileText, Upload, Loader, Download, Eye, Trash2, FolderOpen, X, Folder, Plus, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
+import { FileText, Upload, Loader, Download, Eye, Trash2, FolderOpen, X, Folder, Plus, ChevronDown, ChevronRight, ExternalLink, BookOpen } from 'lucide-react';
 
 const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
   const { user } = useContext(AuthContext);
@@ -57,22 +57,30 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
 
       if (classesError) throw classesError;
       
-      // Add "General" as a special class at the beginning
+      // Add "Parent Materials" and "General" as special folders
+      const parentMaterialsFolder = {
+        id: 'parent-materials',
+        name: 'Parent Materials',
+        year_level: -1,
+        description: 'Materials visible to all parents',
+        isParentMaterials: true
+      };
+
       const generalClass = {
         id: 'general',
         name: 'General Resources',
         year_level: 0,
         description: 'General teaching resources for all classes'
       };
-      
-      const allClassesWithGeneral = [generalClass, ...classesData];
-      setClasses(allClassesWithGeneral);
+
+      const allClassesWithSpecial = [parentMaterialsFolder, generalClass, ...classesData];
+      setClasses(allClassesWithSpecial);
 
       // Set all folders as collapsed by default for a cleaner look
       setExpandedFolders({});
 
       // Load all lesson plans organized by class
-      await loadAllLessonPlans(allClassesWithGeneral);
+      await loadAllLessonPlans(allClassesWithSpecial);
 
     } catch (error) {
       console.error('Error loading data:', error);
@@ -84,8 +92,14 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
 
   const loadAllLessonPlans = async (classList) => {
     try {
-      // List all files in the lesson-plans bucket
-      const { data: files, error } = await supabase.storage
+      const filesByClass = {};
+
+      classList.forEach(cls => {
+        filesByClass[cls.id] = [];
+      });
+
+      // Load files from lesson-plans bucket
+      const { data: lessonFiles, error: lessonError } = await supabase.storage
         .from('lesson-plans')
         .list('', {
           limit: 1000,
@@ -93,58 +107,89 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
           sortBy: { column: 'name', order: 'asc' }
         });
 
-      if (error) {
-        console.error('Error loading lesson plans list:', error);
-        return;
+      if (lessonError) {
+        console.error('Error loading lesson plans:', lessonError);
+      } else {
+        lessonFiles.forEach(file => {
+          if (file.name.endsWith('.pdf')) {
+            // Parse filename to determine which class it belongs to
+            // Format: classId_filename.pdf or general_filename.pdf
+            const parts = file.name.split('_');
+            const classIdentifier = parts[0];
+
+            // Find matching class
+            const matchingClass = classList.find(cls => {
+              if (cls.id === 'general') {
+                return classIdentifier === 'general';
+              }
+              // Match by class ID or sanitized name
+              const sanitizedName = cls.name.toLowerCase().replace(/\s+/g, '-');
+              return classIdentifier === cls.id || classIdentifier === sanitizedName;
+            });
+
+            const classId = matchingClass ? matchingClass.id : 'general';
+
+            const { data } = supabase.storage
+              .from('lesson-plans')
+              .getPublicUrl(file.name);
+
+            // Extract display name (remove classId prefix and .pdf extension)
+            let displayName = file.name;
+            if (displayName.includes('_')) {
+              displayName = displayName.split('_').slice(1).join('_');
+            }
+            displayName = displayName.replace('.pdf', '').replace(/-/g, ' ');
+
+            filesByClass[classId].push({
+              name: file.name,
+              displayName: displayName,
+              url: data.publicUrl,
+              size: file.metadata?.size,
+              updatedAt: file.updated_at,
+              classId: classId,
+              bucket: 'lesson-plans'
+            });
+          }
+        });
       }
 
-      // Organize files by class folder
-      const filesByClass = {};
-      
-      classList.forEach(cls => {
-        filesByClass[cls.id] = [];
-      });
+      // Load files from parent-materials bucket
+      const { data: parentFiles, error: parentError } = await supabase.storage
+        .from('parent-materials')
+        .list('', {
+          limit: 1000,
+          offset: 0,
+          sortBy: { column: 'name', order: 'asc' }
+        });
 
-      files.forEach(file => {
-        if (file.name.endsWith('.pdf')) {
-          // Parse filename to determine which class it belongs to
-          // Format: classId_filename.pdf or general_filename.pdf
-          const parts = file.name.split('_');
-          const classIdentifier = parts[0];
-          
-          // Find matching class
-          const matchingClass = classList.find(cls => {
-            if (cls.id === 'general') {
-              return classIdentifier === 'general';
-            }
-            // Match by class ID or sanitized name
-            const sanitizedName = cls.name.toLowerCase().replace(/\s+/g, '-');
-            return classIdentifier === cls.id || classIdentifier === sanitizedName;
-          });
+      if (parentError) {
+        console.error('Error loading parent materials:', parentError);
+      } else {
+        parentFiles.forEach(file => {
+          if (file.name.endsWith('.pdf')) {
+            const { data } = supabase.storage
+              .from('parent-materials')
+              .getPublicUrl(file.name);
 
-          const classId = matchingClass ? matchingClass.id : 'general';
+            // Extract display name (remove .pdf extension)
+            let displayName = file.name.replace('.pdf', '');
+            displayName = displayName.replace(/[-_]/g, ' ')
+              .split(' ')
+              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(' ');
 
-          const { data } = supabase.storage
-            .from('lesson-plans')
-            .getPublicUrl(file.name);
-          
-          // Extract display name (remove classId prefix and .pdf extension)
-          let displayName = file.name;
-          if (displayName.includes('_')) {
-            displayName = displayName.split('_').slice(1).join('_');
+            filesByClass['parent-materials'].push({
+              name: file.name,
+              displayName: displayName,
+              url: data.publicUrl,
+              size: file.metadata?.size,
+              updatedAt: file.updated_at,
+              classId: 'parent-materials',
+              bucket: 'parent-materials'
+            });
           }
-          displayName = displayName.replace('.pdf', '').replace(/-/g, ' ');
-          
-          filesByClass[classId].push({
-            name: file.name,
-            displayName: displayName,
-            url: data.publicUrl,
-            size: file.metadata?.size,
-            updatedAt: file.updated_at,
-            classId: classId
-          });
-        }
-      });
+        });
+      }
 
       setLessonPlansByClass(filesByClass);
     } catch (error) {
@@ -186,14 +231,24 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
 
     setUploading(true);
     try {
-      // Create filename with class prefix and custom name
-      const classPrefix = selectedClass.id === 'general' 
-        ? 'general'
-        : selectedClass.id;
-      
+      // Determine bucket and filename based on selected folder
+      const isParentMaterials = selectedClass.id === 'parent-materials';
+      const bucket = isParentMaterials ? 'parent-materials' : 'lesson-plans';
+
       // Sanitize the custom filename
       const sanitizedFileName = uploadFileName.trim().replace(/[^a-zA-Z0-9-_\s]/g, '').replace(/\s+/g, '-');
-      const fileName = `${classPrefix}_${sanitizedFileName}.pdf`;
+
+      let fileName;
+      if (isParentMaterials) {
+        // For parent materials: no prefix needed
+        fileName = `${sanitizedFileName}.pdf`;
+      } else {
+        // For lesson plans: use class prefix
+        const classPrefix = selectedClass.id === 'general'
+          ? 'general'
+          : selectedClass.id;
+        fileName = `${classPrefix}_${sanitizedFileName}.pdf`;
+      }
 
       // Check if file already exists
       const existingFiles = lessonPlansByClass[selectedClass.id] || [];
@@ -205,9 +260,9 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
         }
       }
 
-      // Upload to Supabase Storage
+      // Upload to appropriate Supabase Storage bucket
       const { error: uploadError } = await supabase.storage
-        .from('lesson-plans')
+        .from(bucket)
         .upload(fileName, uploadFile, {
           cacheControl: '3600',
           upsert: true // Replace if exists
@@ -215,7 +270,10 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
 
       if (uploadError) throw uploadError;
 
-      toast.success('Lesson plan uploaded successfully!');
+      const successMessage = isParentMaterials
+        ? 'Parent material uploaded successfully!'
+        : 'Lesson plan uploaded successfully!';
+      toast.success(successMessage);
       setUploadFile(null);
       setUploadFileName('');
       setShowUploadModal(false);
@@ -232,31 +290,39 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
   };
 
   const handleDelete = async (file) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${file.displayName}"? This action cannot be undone.`
-    );
+    const isParentMaterial = file.bucket === 'parent-materials';
+    const confirmMessage = isParentMaterial
+      ? `Are you sure you want to delete "${file.displayName}"? This action cannot be undone and will affect all parents.`
+      : `Are you sure you want to delete "${file.displayName}"? This action cannot be undone.`;
+
+    const confirmed = window.confirm(confirmMessage);
 
     if (!confirmed) return;
 
     try {
+      // Use the correct bucket based on the file's bucket property
+      const bucket = file.bucket || 'lesson-plans';
       const { error } = await supabase.storage
-        .from('lesson-plans')
+        .from(bucket)
         .remove([file.name]);
 
       if (error) throw error;
 
-      toast.success('Lesson plan deleted successfully!');
-      
+      const successMessage = isParentMaterial
+        ? 'Parent material deleted successfully!'
+        : 'Lesson plan deleted successfully!';
+      toast.success(successMessage);
+
       // If the deleted file was selected, clear selection
       if (selectedFile?.name === file.name) {
         setSelectedFile(null);
       }
-      
+
       // Reload lesson plans
       await loadAllLessonPlans(classes);
 
     } catch (error) {
-      console.error('Error deleting lesson plan:', error);
+      console.error('Error deleting file:', error);
       toast.error(`Delete failed: ${error.message}`);
     }
   };
@@ -442,11 +508,19 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
                       color: '#10b981'
                     }} />
                   </motion.div>
-                  <Folder style={{
-                    width: isMobile ? '24px' : '28px',
-                    height: isMobile ? '24px' : '28px',
-                    color: classItem.id === 'general' ? '#8b5cf6' : '#10b981'
-                  }} />
+                  {classItem.id === 'parent-materials' ? (
+                    <BookOpen style={{
+                      width: isMobile ? '24px' : '28px',
+                      height: isMobile ? '24px' : '28px',
+                      color: '#8b5cf6'
+                    }} />
+                  ) : (
+                    <Folder style={{
+                      width: isMobile ? '24px' : '28px',
+                      height: isMobile ? '24px' : '28px',
+                      color: classItem.id === 'general' ? '#8b5cf6' : '#10b981'
+                    }} />
+                  )}
                   <div style={{ flex: 1 }}>
                     <h3 style={{
                       fontSize: isMobile ? '16px' : '18px',
@@ -473,11 +547,29 @@ const LessonPlanViewer = ({ isModal = false, onClose = null }) => {
                   alignItems: 'center',
                   gap: '12px'
                 }}>
+                  {classItem.id === 'parent-materials' && (
+                    <span style={{
+                      fontSize: isMobile ? '10px' : '11px',
+                      fontWeight: '700',
+                      color: '#7c3aed',
+                      backgroundColor: '#ede9fe',
+                      padding: '3px 8px',
+                      borderRadius: '8px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      Parents Can See
+                    </span>
+                  )}
                   <span style={{
                     fontSize: isMobile ? '12px' : '13px',
                     fontWeight: '600',
-                    color: fileCount > 0 ? '#10b981' : '#9ca3af',
-                    backgroundColor: fileCount > 0 ? '#d1fae5' : '#f3f4f6',
+                    color: fileCount > 0
+                      ? (classItem.id === 'parent-materials' ? '#8b5cf6' : '#10b981')
+                      : '#9ca3af',
+                    backgroundColor: fileCount > 0
+                      ? (classItem.id === 'parent-materials' ? '#ede9fe' : '#d1fae5')
+                      : '#f3f4f6',
                     padding: '4px 12px',
                     borderRadius: '12px'
                   }}>

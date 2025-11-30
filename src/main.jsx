@@ -35,6 +35,9 @@ import CatechismLessonTracker from "./pages/admin/CatechismLessonTracker.jsx";
 // Lesson Plan Viewer
 import LessonPlanViewer from "./components/LessonPlanViewer.jsx";
 
+// Parent Materials Manager
+import ParentMaterialsManager from "./components/ParentMaterialsManager.jsx";
+
 createRoot(document.getElementById("root")).render(
   <div
     style={{
@@ -138,6 +141,15 @@ createRoot(document.getElementById("root")).render(
                 </ProtectedRoute>
               } />
 
+              {/* Parent Materials Manager - Teacher Route */}
+              <Route path="/teacher/parent-materials" element={
+                <ProtectedRoute>
+                  <RoleBasedRoute>
+                    <ParentMaterialsManager />
+                  </RoleBasedRoute>
+                </ProtectedRoute>
+              } />
+
               {/* Evaluation Diagnostic */}
               <Route path="/admin/diagnostic" element={
                 <ProtectedRoute>
@@ -161,6 +173,15 @@ createRoot(document.getElementById("root")).render(
                 <ProtectedRoute>
                   <RoleBasedRoute>
                     <CatechismLessonTracker />
+                  </RoleBasedRoute>
+                </ProtectedRoute>
+              } />
+
+              {/* Parent Materials Manager - Admin Route */}
+              <Route path="/admin/parent-materials" element={
+                <ProtectedRoute>
+                  <RoleBasedRoute>
+                    <ParentMaterialsManager />
                   </RoleBasedRoute>
                 </ProtectedRoute>
               } />
