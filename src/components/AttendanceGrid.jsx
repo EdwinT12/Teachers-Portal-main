@@ -427,9 +427,12 @@ const AttendanceGrid = ({ students, weeks, attendanceData, classId, teacherId, o
           // Enhanced mobile scrolling
           WebkitOverflowScrolling: 'touch',
           scrollBehavior: 'smooth',
-          // Show scrollbar on mobile
-          scrollbarWidth: isMobile ? 'thin' : 'auto',
-          scrollbarColor: isMobile ? '#10b981 #f1f1f1' : undefined
+          // Show scrollbar on all devices
+          scrollbarWidth: 'thin',
+          scrollbarColor: '#10b981 #f1f5f9',
+          // Add subtle shadow to indicate scrollable content
+          position: 'relative',
+          boxShadow: 'inset -4px 0 8px -4px rgba(0, 0, 0, 0.1)'
         }}
       >
         <table style={{
@@ -691,29 +694,49 @@ const AttendanceGrid = ({ students, weeks, attendanceData, classId, teacherId, o
             100% { transform: rotate(360deg); }
           }
           
-          /* Enhanced scrollbar for better visibility */
+          /* Enhanced scrollbar for better visibility on all devices */
           #attendance-scroll-container::-webkit-scrollbar {
-            height: 8px;
+            height: 12px;
           }
           
           #attendance-scroll-container::-webkit-scrollbar-track {
             background: #f1f5f9;
-            border-radius: 4px;
+            border-radius: 6px;
+            margin: 0 4px;
           }
           
           #attendance-scroll-container::-webkit-scrollbar-thumb {
-            background: #10b981;
-            border-radius: 4px;
-            transition: background 0.2s;
+            background: linear-gradient(to bottom, #10b981, #059669);
+            border-radius: 6px;
+            transition: background 0.3s;
+            border: 2px solid #f1f5f9;
           }
           
           #attendance-scroll-container::-webkit-scrollbar-thumb:hover {
-            background: #059669;
+            background: linear-gradient(to bottom, #059669, #047857);
           }
           
-          /* Smooth momentum scrolling on iOS */
+          #attendance-scroll-container::-webkit-scrollbar-thumb:active {
+            background: #047857;
+          }
+          
+          /* Smooth momentum scrolling on iOS and mobile browsers */
           #attendance-scroll-container {
             -webkit-overflow-scrolling: touch;
+            scroll-padding: 0 20px;
+          }
+          
+          /* Add visual indicator when scrollable */
+          #attendance-scroll-container::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 40px;
+            background: linear-gradient(to left, rgba(255,255,255,0.9), transparent);
+            pointer-events: none;
+            z-index: 3;
           }
         `}
       </style>

@@ -383,7 +383,14 @@ const EvaluationGrid = ({ evalStudents, chapters, evaluationsData, classId, teac
           overflowY: 'visible',
           marginBottom: '20px',
           borderRadius: '12px',
-          border: '1px solid #e5e7eb'
+          border: '1px solid #e5e7eb',
+          // Enhanced scrolling
+          WebkitOverflowScrolling: 'touch',
+          scrollBehavior: 'smooth',
+          scrollbarWidth: 'thin',
+          scrollbarColor: '#8b5cf6 #f1f5f9',
+          position: 'relative',
+          boxShadow: 'inset -4px 0 8px -4px rgba(0, 0, 0, 0.1)'
         }}
       >
         <table style={{
@@ -627,27 +634,49 @@ const EvaluationGrid = ({ evalStudents, chapters, evaluationsData, classId, teac
             100% { transform: rotate(360deg); }
           }
           
+          /* Enhanced scrollbar for better visibility on all devices */
           #evaluation-scroll-container::-webkit-scrollbar {
-            height: 8px;
+            height: 12px;
           }
           
           #evaluation-scroll-container::-webkit-scrollbar-track {
             background: #f1f5f9;
-            border-radius: 4px;
+            border-radius: 6px;
+            margin: 0 4px;
           }
           
           #evaluation-scroll-container::-webkit-scrollbar-thumb {
-            background: #8b5cf6;
-            border-radius: 4px;
-            transition: background 0.2s;
+            background: linear-gradient(to bottom, #8b5cf6, #7c3aed);
+            border-radius: 6px;
+            transition: background 0.3s;
+            border: 2px solid #f1f5f9;
           }
           
           #evaluation-scroll-container::-webkit-scrollbar-thumb:hover {
-            background: #7c3aed;
+            background: linear-gradient(to bottom, #7c3aed, #6d28d9);
           }
           
+          #evaluation-scroll-container::-webkit-scrollbar-thumb:active {
+            background: #6d28d9;
+          }
+          
+          /* Smooth momentum scrolling on iOS and mobile browsers */
           #evaluation-scroll-container {
             -webkit-overflow-scrolling: touch;
+            scroll-padding: 0 20px;
+          }
+          
+          /* Add visual indicator when scrollable */
+          #evaluation-scroll-container::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 40px;
+            background: linear-gradient(to left, rgba(255,255,255,0.9), transparent);
+            pointer-events: none;
+            z-index: 3;
           }
         `}
       </style>
