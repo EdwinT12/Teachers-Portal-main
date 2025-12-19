@@ -256,6 +256,27 @@ const CatechismLessonTracker = () => {
       return;
     }
 
+    // Check if the date is in the future
+    const selectedDate = new Date(formData.lesson_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to compare only dates
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    if (selectedDate > today) {
+      const confirmFuture = confirm(
+        `⚠️ Warning: You are scheduling a lesson for a future date (${new Date(formData.lesson_date).toLocaleDateString('en-GB', { 
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        })}).\n\nAre you sure you want to continue?`
+      );
+      
+      if (!confirmFuture) {
+        return; // User cancelled
+      }
+    }
+
     try {
       const logData = {
         ...formData,
@@ -290,6 +311,8 @@ const CatechismLessonTracker = () => {
         alert('A lesson for this group on this date has already been logged.');
       } else if (error.code === '23502') {
         alert('Missing required user information. Please sign out and sign back in.');
+      } else if (error.code === '23514' || error.message?.includes('reasonable_lesson_date')) {
+        alert('The lesson date is outside the allowed range. Please contact your administrator to adjust the date constraint settings in the database to allow future lesson scheduling.');
       } else {
         alert('Error saving lesson log: ' + error.message);
       }
